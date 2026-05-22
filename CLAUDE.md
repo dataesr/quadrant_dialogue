@@ -305,7 +305,12 @@ Une bulle s'affiche uniquement si les **deux** dénominateurs (var1 et var2) son
 
 ### Filtrage par contexte
 
-Tous les endpoints API filtrent par `filtre_perimetre LIKE '%;<contexte_id>;%'`. Le `contexte_id` est un identifiant 5 caractères alphanumériques (a-z + A-Z + 0-9), casse mixte.
+Le `contexte_id` est un identifiant 5 caractères alphanumériques (a-z + A-Z + 0-9), casse mixte. Le filtrage par `filtre_perimetre LIKE '%;<contexte_id>;%'` n'est pas appliqué uniformément sur tous les endpoints :
+
+- **Vue Mentions** (`vue=mentions`) : filtrage SQL classique sur `filtre_perimetre`. Toutes les bulles renvoyées sont autorisées (`details_accessibles = true` partout).
+- **Vue Établissements** (`vue=etablissements`) : **pas** de filtrage SQL sur `filtre_perimetre`. Toutes les bulles de France remontent. Pour chaque bulle, l'API calcule un drapeau `details_accessibles` en testant si `filtre_perimetre` contient le `contexte_id` de l'utilisateur. Les bulles non accessibles sont anonymisées dans la réponse (champ `libelle` vide) — la bulle reste affichée mais sans infobulle ni interaction. Voir le cadrage §4 — Groupe 2 — Établissements.
+
+Cette dissymétrie est volontaire : sur la vue Établissements, chaque utilisateur doit pouvoir situer son périmètre dans le paysage national complet, tout en respectant les restrictions d'accès au détail.
 
 ---
 

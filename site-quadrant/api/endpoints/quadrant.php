@@ -97,7 +97,6 @@ if (!in_array($representativite, ['toutes', 'representatif'], true)) {
 $motifContexte = '%;' . $contexteId . ';%';
 
 $conditions = [
-    'm1.filtre_perimetre LIKE :motif',
     'm1.formation = :formation',
     'm1.millesime = :millesime',
     'm1.indicateur = :var1',
@@ -106,7 +105,6 @@ $conditions = [
     'm2.date_inser = :date2',
 ];
 $params = [
-    ':motif'     => $motifContexte,
     ':formation' => $formation,
     ':millesime' => $millesime,
     ':var1'      => $var1,
@@ -114,6 +112,18 @@ $params = [
     ':var2'      => $var2,
     ':date2'     => $dateInserVar2,
 ];
+
+// Filtrage par contexte (cf. cadrage §3 et §4) :
+//  - vue=mentions       : on restreint les bulles au périmètre de l'utilisateur
+//                         (filtre_perimetre LIKE %;<contexte_id>;%).
+//  - vue=etablissements : pas de filtre — toutes les bulles de France sont
+//                         renvoyées. La discrimination entre bulles détaillables
+//                         et bulles anonymes se fait ensuite via le drapeau
+//                         details_accessibles calculé par peutAccederDetail().
+if ($vue === 'mentions') {
+    $conditions[] = 'm1.filtre_perimetre LIKE :motif';
+    $params[':motif'] = $motifContexte;
+}
 
 // Filtres disciplinaires (uniquement vue=mentions)
 if ($vue === 'mentions') {
@@ -154,6 +164,7 @@ $sql = "
         m1.reg_id,
         m1.typologie_d_universites_et_assimiles AS typologie,
         m1.secteur_disciplinaire_quadrant,
+        m1.filtre_perimetre,
         m1.numerateur   AS num_x,
         m1.denominateur AS denom_x,
         m2.numerateur   AS num_y,
@@ -187,19 +198,22 @@ if ($vue === 'mentions') {
     }
 } else {
     // vue = etablissements. On agrège par établissement.
+    // Toutes les lignes d'un même id_paysage portent le même filtre_perimetre
+    // (forme `;<id_nat>;<id_reg>;<id_paysage>;`) : on le mémorise une fois.
     $parEtab = [];
     foreach ($lignes as $l) {
         $uai = $l['id_paysage'];
         if (!isset($parEtab[$uai])) {
             $parEtab[$uai] = [
-                'id_paysage' => $uai,
-                'uo_lib'     => $l['uo_lib'],
-                'reg_id'     => $l['reg_id'],
-                'typologie'  => $l['typologie'],
-                'num_x'      => 0,
-                'denom_x'    => 0,
-                'num_y'      => 0,
-                'denom_y'    => 0,
+                'id_paysage'       => $uai,
+                'uo_lib'           => $l['uo_lib'],
+                'reg_id'           => $l['reg_id'],
+                'typologie'        => $l['typologie'],
+                'filtre_perimetre' => $l['filtre_perimetre'],
+                'num_x'            => 0,
+                'denom_x'          => 0,
+                'num_y'            => 0,
+                'denom_y'          => 0,
             ];
         }
         $parEtab[$uai]['num_x']   += (int)$l['num_x'];
@@ -253,9 +267,20 @@ foreach ($pointsBruts as $p) {
     // Vérification des droits au détail (selon contexte et bulle)
     $detailsAccessibles = peutAccederDetail($p, $contexteId);
 
+    // Anonymisation des bulles hors contexte sur vue=etablissements : la bulle
+    // reste visible (position, couleur, forme, taille) mais le libellé n'est
+    // pas exposé pour ne pas révéler l'identité de l'établissement.
+    // L'id technique (id_paysage) reste renseigné : opaque pour un humain,
+    // utile au frontend pour clés React et déduplication.
+    if ($vue === 'etablissements' && !$detailsAccessibles) {
+        $libelle = '';
+    } else {
+        $libelle = $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'];
+    }
+
     $bulles[] = [
         'id'                  => $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'],
-        'libelle'             => $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'],
+        'libelle'             => $libelle,
         'x'                   => round($x, 4),
         'y'                   => round($y, 4),
         'denom_x'             => $denomX,
@@ -375,21 +400,25 @@ function categoriserEtablissement(array $etab, string $etabContexte, array $tous
 /**
  * Détermine si l'utilisateur peut accéder au détail de cette bulle.
  *
- * Règle :
- *  - Si le contexte de l'utilisateur (id_paysage, id_reg ou id_nat) est présent dans
- *    le filtre_perimetre de la bulle, alors il peut voir le détail.
+ * Règle : le contexte_id (id_paysage, id_reg ou id_nat selon le rôle de
+ * l'utilisateur) doit être présent dans le filtre_perimetre de la bulle.
+ * Les délimiteurs `;` encadrant le contexte_id dans le motif évitent qu'un id
+ * soit faux-positif d'un autre (les id ont une longueur fixe de 5 caractères,
+ * mais ceinture et bretelles).
  *
- * En pratique, comme la bulle est déjà passée par le filtre du contexte_id,
- * elle est forcément accessible. Mais cette fonction permet d'affiner si besoin
- * (ex. pour les bulles affichées en "fond" mais non détaillables).
- *
- * NOTE : pour l'instant on retourne toujours true car les bulles non autorisées
- * sont déjà absentes du résultat. À enrichir si on décide d'afficher les bulles
- * "anonymes" en fond pour le contexte étab/rectorat sur vue=etablissements.
+ *  - vue=mentions       : le filtre LIKE de la requête principale a déjà
+ *                         exclu les bulles hors contexte, donc cette fonction
+ *                         renvoie true sur toutes les bulles renvoyées (garde-fou).
+ *  - vue=etablissements : la requête principale ne filtre PAS sur le contexte
+ *                         (cf. cadrage §4 — anonymisation), c'est ici qu'on
+ *                         discrimine les bulles détaillables des bulles anonymes.
  */
-function peutAccederDetail(array $etab, string $contexteId): bool
+function peutAccederDetail(array $row, string $contexteId): bool
 {
-    return true;
+    if (!isset($row['filtre_perimetre'])) {
+        return false;
+    }
+    return strpos($row['filtre_perimetre'], ';' . $contexteId . ';') !== false;
 }
 
 /**
