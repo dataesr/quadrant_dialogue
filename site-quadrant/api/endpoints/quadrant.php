@@ -269,31 +269,58 @@ foreach ($pointsBruts as $p) {
     $detailsAccessibles = peutAccederDetail($p, $contexteId);
 
     // Anonymisation des bulles hors contexte sur vue=etablissements : la bulle
-    // reste visible (position, couleur, forme, taille) mais ni l'id_paysage ni
-    // le libellé ne sont exposés (l'id_paysage est rapprochable d'un étab via
-    // les référentiels publics, donc non opaque). On lui substitue un id local
-    // "anon_<N>" stable le temps de la réponse, utile au frontend pour les clés
-    // React et la déduplication, mais non rapprochable d'un établissement réel.
+    // reste visible (position, couleur, forme) mais on masque tout ce qui permet
+    // de rapprocher la bulle d'un établissement réel :
+    //   - id      : "anon_<N>" local à la réponse au lieu de l'id_paysage
+    //               (l'id_paysage est rapprochable d'un étab via les référentiels publics).
+    //   - libelle : chaîne vide.
+    //   - denom   : denom_x brouillé ±15% (bruit déterministe par id_paysage)
+    //               à la place de denom_x et denom_y. Un effectif précis identifie
+    //               un étab par recoupement ; le brouillage le rend non rapprochable
+    //               tout en restant cohérent avec la taille visuelle de la bulle.
+    //               Borne basse à 5 pour ne pas créer artificiellement une bulle
+    //               non diffusable.
+    //
+    // Côté frontend, la taille de la bulle est calculée à partir de :
+    //   - denom_x pour les bulles autorisées (vue=mentions, ou vue=etablissements
+    //     avec details_accessibles=true)
+    //   - denom   pour les bulles anonymes (vue=etablissements avec
+    //     details_accessibles=false). Les champs denom_x / denom_y y sont absents.
     if ($vue === 'etablissements' && !$detailsAccessibles) {
         $compteurAnonyme++;
-        $id      = 'anon_' . $compteurAnonyme;
-        $libelle = '';
+
+        // Bruit multiplicatif ±15% stable par id_paysage : crc32 % 31 donne un
+        // entier dans [0, 30] qu'on recentre sur [-15, +15] puis on divise par 100.
+        $hash  = crc32($p['id_paysage']);
+        $ratio = (($hash % 31) - 15) / 100.0;
+        $denomBrouille = max(5, (int) round($denomX * (1 + $ratio)));
+
+        $bulles[] = [
+            'id'                  => 'anon_' . $compteurAnonyme,
+            'libelle'             => '',
+            'x'                   => round($x, 4),
+            'y'                   => round($y, 4),
+            'denom'               => $denomBrouille,
+            'forme'               => $forme,
+            'couleur_key'         => $couleurKey,
+            'details_accessibles' => $detailsAccessibles,
+        ];
     } else {
         $id      = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
         $libelle = $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'];
-    }
 
-    $bulles[] = [
-        'id'                  => $id,
-        'libelle'             => $libelle,
-        'x'                   => round($x, 4),
-        'y'                   => round($y, 4),
-        'denom_x'             => $denomX,
-        'denom_y'             => $denomY,
-        'forme'               => $forme,
-        'couleur_key'         => $couleurKey,
-        'details_accessibles' => $detailsAccessibles,
-    ];
+        $bulles[] = [
+            'id'                  => $id,
+            'libelle'             => $libelle,
+            'x'                   => round($x, 4),
+            'y'                   => round($y, 4),
+            'denom_x'             => $denomX,
+            'denom_y'             => $denomY,
+            'forme'               => $forme,
+            'couleur_key'         => $couleurKey,
+            'details_accessibles' => $detailsAccessibles,
+        ];
+    }
 }
 
 // =============================================================================
