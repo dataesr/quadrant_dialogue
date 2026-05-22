@@ -44,6 +44,40 @@ Ce document fournit le contexte permanent du projet. Le lire en début de sessio
 **OVH (prod et dev)** : héberge l'API PHP, la BDD, et l'iframe React une fois buildée.
 **GitHub** : repo privé, source de vérité du code.
 
+### Chemins de référence
+
+**Sur le Mac (poste de développement)** :
+```
+/Users/yann/quadrant/quadrant/          ← racine du repo Git
+├── CLAUDE.md
+├── docs/
+├── site-quadrant/
+│   ├── api/                            ← code de l'API PHP
+│   └── frontend/                       ← code du React (Vite)
+└── site-hote/
+```
+
+**Sur OVH (déploiement)** :
+```
+/quadsies/                              ← racine web de quadrant.exemple.fr
+├── api/                                ← API PHP déployée (copie de site-quadrant/api/)
+└── dist/                               ← build React déployé (sortie de "npm run build")
+```
+
+Cette séparation en deux sous-dossiers permet :
+- Des déploiements indépendants de l'API et du React
+- D'éviter tout effacement accidentel des fichiers de l'autre côté
+- Une structure claire pour les sauvegardes et le suivi
+
+**URLs résultantes** :
+- `https://quadrant.exemple.fr/api/health` → endpoint de santé
+- `https://quadrant.exemple.fr/api/quadrant?...` → endpoint principal
+- `https://quadrant.exemple.fr/dist/` → iframe React (URL ciblée par le formulaire POST du site hôte)
+
+**Configuration Vite associée** : `vite.config.js` doit déclarer `base: '/dist/'` pour que les chemins relatifs vers les assets après build pointent correctement.
+
+**GitHub** : `https://github.com/dataesr/quadrant_dialogue` (repo privé)
+
 ---
 
 ## 3. Stack technique
@@ -130,7 +164,7 @@ quadrant-projet/
 │   │   └── endpoints/
 │   │       ├── health.php
 │   │       └── quadrant.php
-│   ├── iframe/                  ← React (Vite)
+│   ├── frontend/                ← React (Vite)
 │   │   ├── src/
 │   │   ├── public/
 │   │   ├── package.json

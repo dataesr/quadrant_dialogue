@@ -36,7 +36,7 @@ quadrant-projet/
 │   │   │   └── config.php        (gitignored)
 │   │   ├── lib/
 │   │   └── endpoints/
-│   ├── iframe/                   Application React (Vite, dev local)
+│   ├── frontend/                 Application React (Vite, dev local)
 │   │   ├── src/
 │   │   ├── public/
 │   │   ├── package.json
@@ -250,7 +250,7 @@ les performances d'établissements universitaires.
 
 - `site-quadrant/` : application autonome
   - `api/` : API PHP 8.x (déploiement OVH)
-  - `iframe/` : application React (Vite, dev local + déploiement OVH)
+  - `frontend/` : application React (Vite, dev local + déploiement OVH)
   - `tests/` : outils de test manuels
 - `site-hote/` : composants pour intégration côté site hôte (PHP 5.6)
 - `docs/` : cadrage, contrats d'interface, migrations SQL
@@ -266,7 +266,7 @@ Voir `docs/cadrage-quadrant.md`.
 
 ---
 
-## 5. Initialiser le projet React (iframe)
+## 5. Initialiser le projet React (frontend)
 
 C'est la partie qui n'a pas encore été générée. À faire sur votre Mac :
 
@@ -274,9 +274,9 @@ C'est la partie qui n'a pas encore été générée. À faire sur votre Mac :
 cd ~/dev/quadrant-projet/site-quadrant/
 
 # Création du projet avec Vite (template React, sans TypeScript)
-npm create vite@latest iframe -- --template react
+npm create vite@latest frontend -- --template react
 
-cd iframe
+cd frontend
 npm install
 
 # Test du serveur de dev
@@ -420,7 +420,7 @@ retourne environ 572 180.
 
 ```bash
 # Terminal : React en local
-cd ~/dev/quadrant-projet/site-quadrant/iframe
+cd ~/dev/quadrant-projet/site-quadrant/frontend
 npm run dev
 # → http://localhost:5173
 ```

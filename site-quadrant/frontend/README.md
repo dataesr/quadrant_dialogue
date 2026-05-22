@@ -1,4 +1,4 @@
-# Application React (iframe)
+# Application React (frontend)
 
 Ce dossier sera initialisé avec Vite à la première mise en place.
 
@@ -8,11 +8,11 @@ Depuis le dossier `site-quadrant/` :
 
 ```bash
 # Suppression de ce placeholder
-rm -rf iframe
+rm -rf frontend
 
 # Création du projet React avec Vite
-npm create vite@latest iframe -- --template react
-cd iframe
+npm create vite@latest frontend -- --template react
+cd frontend
 npm install
 
 # Démarrage du serveur de dev

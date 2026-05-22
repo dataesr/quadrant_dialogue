@@ -7,7 +7,7 @@ les performances d'établissements universitaires.
 
 - `site-quadrant/` : application autonome
   - `api/` : API PHP 8.x (déploiement OVH)
-  - `iframe/` : application React (Vite, dev local + déploiement OVH)
+  - `frontend/` : application React (Vite, dev local + déploiement OVH)
   - `tests/` : outils de test manuels
 - `site-hote/` : composants pour intégration côté site hôte (PHP 5.6)
 - `docs/` : cadrage, contrats d'interface, migrations SQL
