@@ -230,6 +230,7 @@ if ($vue === 'mentions') {
 
 $bulles = [];
 $pointsCalculables = []; // pour le calcul de la médiane/moyenne (avant filtres d'affichage)
+$compteurAnonyme = 0;    // numérote les bulles anonymes (vue=etablissements hors périmètre)
 
 foreach ($pointsBruts as $p) {
     $denomX = (int)$p['denom_x'];
@@ -268,18 +269,22 @@ foreach ($pointsBruts as $p) {
     $detailsAccessibles = peutAccederDetail($p, $contexteId);
 
     // Anonymisation des bulles hors contexte sur vue=etablissements : la bulle
-    // reste visible (position, couleur, forme, taille) mais le libellé n'est
-    // pas exposé pour ne pas révéler l'identité de l'établissement.
-    // L'id technique (id_paysage) reste renseigné : opaque pour un humain,
-    // utile au frontend pour clés React et déduplication.
+    // reste visible (position, couleur, forme, taille) mais ni l'id_paysage ni
+    // le libellé ne sont exposés (l'id_paysage est rapprochable d'un étab via
+    // les référentiels publics, donc non opaque). On lui substitue un id local
+    // "anon_<N>" stable le temps de la réponse, utile au frontend pour les clés
+    // React et la déduplication, mais non rapprochable d'un établissement réel.
     if ($vue === 'etablissements' && !$detailsAccessibles) {
+        $compteurAnonyme++;
+        $id      = 'anon_' . $compteurAnonyme;
         $libelle = '';
     } else {
+        $id      = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
         $libelle = $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'];
     }
 
     $bulles[] = [
-        'id'                  => $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'],
+        'id'                  => $id,
         'libelle'             => $libelle,
         'x'                   => round($x, 4),
         'y'                   => round($y, 4),
