@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Test API Quadrant</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f5f5f5;
+    color: #222;
+    font-size: 14px;
+  }
+  h1 { font-size: 18px; margin: 0 0 16px 0; }
+  h2 { font-size: 14px; margin: 16px 0 8px 0; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+  .panel { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 16px; }
+  .form-group { margin-bottom: 10px; }
+  label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+  input, select { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; font-family: inherit; }
+  input:focus, select:focus { outline: 2px solid #4A7AAA; outline-offset: -1px; border-color: transparent; }
+  button {
+    background: #4A7AAA; color: white; border: none; padding: 10px 16px;
+    border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;
+    width: 100%; margin-top: 8px;
+  }
+  button:hover { background: #3A6A9A; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .status { padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; }
+  .status.ok { background: #e0f0d8; color: #2a6e2a; }
+  .status.error { background: #fadcdc; color: #8b2020; }
+  .status.loading { background: #fff4cc; color: #8b6e20; }
+  pre {
+    background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px;
+    overflow: auto; max-height: 400px; font-size: 12px; line-height: 1.5;
+    font-family: "SF Mono", Monaco, Consolas, monospace;
+  }
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; border-bottom: 1px solid #ddd; }
+  .tab { padding: 6px 12px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px; }
+  .tab.active { border-bottom-color: #4A7AAA; font-weight: 500; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .quadrant-svg { background: white; border: 1px solid #ddd; border-radius: 4px; display: block; margin: 0 auto; }
+  .legend { font-size: 11px; margin-top: 8px; color: #555; }
+  .legend-item { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+  .help { font-size: 11px; color: #888; margin-top: 2px; }
+  .url-preview { font-size: 11px; color: #777; word-break: break-all; padding: 8px; background: #f9f9f9; border-radius: 4px; margin-top: 8px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Test API Quadrant — mode dev</h1>
+
+<div class="layout">
+
+<!-- ========== PANNEAU GAUCHE : FORMULAIRE ========== -->
+<div class="panel">
+
+<h2>Connexion</h2>
+<div class="form-group">
+  <label for="api-base">URL de base de l'API</label>
+  <input type="text" id="api-base" value="https://quadrant.exemple.fr">
+  <div class="help">Sans slash final. Exemple : https://quadrant.exemple.fr</div>
+</div>
+
+<div class="form-group">
+  <label for="contexte-id">contexte_id (mode dev)</label>
+  <input type="text" id="contexte-id" value="etBz7" maxlength="5">
+  <div class="help">5 caractères alphanumériques d'un id_paysage, id_reg ou id_nat de votre BDD</div>
+</div>
+
+<h2>Paramètres du quadrant</h2>
+
+<div class="row-2">
+  <div class="form-group">
+    <label for="formation">formation</label>
+    <select id="formation">
+      <option value="Licence générale">Licence générale</option>
+      <option value="Licence professionnelle">Licence professionnelle</option>
+      <option value="Bachelor universitaire de technologie">BUT</option>
+      <option value="Master" selected>Master</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="vue">vue</label>
+    <select id="vue">
+      <option value="mentions" selected>mentions</option>
+      <option value="etablissements">etablissements</option>
+    </select>
+  </div>
+</div>
+
+<div class="form-group">
+  <label for="millesime">millesime</label>
+  <select id="millesime">
+    <option>2019</option>
+    <option>2020</option>
+    <option>2021</option>
+    <option value="2022" selected>2022</option>
+    <option>2023</option>
+    <option>2024</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="var1">Variable X</label>
+  <select id="var1"></select>
+</div>
+
+<div class="form-group" id="date1-group">
+  <label for="date1">date_inser_var1</label>
+  <select id="date1">
+    <option value="">(non déclinable)</option>
+    <option value="6">6 mois</option>
+    <option value="12" selected>12 mois</option>
+    <option value="18">18 mois</option>
+    <option value="24">24 mois</option>
+    <option value="30">30 mois</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="var2">Variable Y</label>
+  <select id="var2"></select>
+</div>
+
+<div class="form-group" id="date2-group">
+  <label for="date2">date_inser_var2</label>
+  <select id="date2">
+    <option value="">(non déclinable)</option>
+    <option value="6">6 mois</option>
+    <option value="12">12 mois</option>
+    <option value="18" selected>18 mois</option>
+    <option value="24">24 mois</option>
+    <option value="30">30 mois</option>
+  </select>
+</div>
+
+<h2>Filtres optionnels</h2>
+
+<div class="row-2">
+  <div class="form-group">
+    <label for="dom">dom</label>
+    <select id="dom">
+      <option value="">(tous)</option>
+      <option value="DEG">DEG</option>
+      <option value="LLA">LLA</option>
+      <option value="SHS">SHS</option>
+      <option value="STS">STS</option>
+      <option value="INTERD">INTERD</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="discipli">discipli</label>
+    <input type="text" id="discipli" placeholder="(vide)" maxlength="2">
+  </div>
+</div>
+
+<div class="form-group">
+  <label for="secteur">secteur</label>
+  <input type="text" id="secteur" placeholder="(vide)">
+  <div class="help">Ex : Gestion, Informatique, Droit...</div>
+</div>
+
+<div class="form-group">
+  <label for="master">master (Masters uniquement)</label>
+  <select id="master">
+    <option value="">(tous)</option>
+    <option value="Master enseignement">Master enseignement</option>
+    <option value="Master hors enseignement">Master hors enseignement</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="etab-contexte">etab_contexte</label>
+  <input type="text" id="etab-contexte" value="etBz7" maxlength="5">
+  <div class="help">id_paysage de l'étab sélectionné pour la coloration</div>
+</div>
+
+<div class="row-2">
+  <div class="form-group">
+    <label for="representativite">representativite</label>
+    <select id="representativite">
+      <option value="toutes" selected>toutes</option>
+      <option value="representatif">représentatif</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="agregation">agregation</label>
+    <select id="agregation">
+      <option value="mediane" selected>médiane</option>
+      <option value="moyenne">moyenne</option>
+    </select>
+  </div>
+</div>
+
+<button id="btn-call">Appeler /quadrant</button>
+<button id="btn-health" style="background: #888; margin-top: 4px;">Tester /health</button>
+
+<div class="url-preview" id="url-preview"></div>
+
+</div>
+
+<!-- ========== PANNEAU DROITE : RÉSULTAT ========== -->
+<div class="panel">
+
+<div id="status" style="display: none;"></div>
+
+<div class="tabs">
+  <div class="tab active" data-target="tab-visual">Visualisation</div>
+  <div class="tab" data-target="tab-json">JSON brut</div>
+  <div class="tab" data-target="tab-summary">Résumé</div>
+</div>
+
+<div id="tab-visual" class="tab-content active">
+  <svg id="quadrant-svg" class="quadrant-svg" width="600" height="500" viewBox="0 0 600 500"></svg>
+  <div class="legend" id="legend"></div>
+</div>
+
+<div id="tab-json" class="tab-content">
+  <pre id="json-output">(appelez l'API pour voir le résultat)</pre>
+</div>
+
+<div id="tab-summary" class="tab-content">
+  <div id="summary-output">(appelez l'API pour voir le résumé)</div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+<script>
+// ============================================================================
+// Données et configuration
+// ============================================================================
+
+// Matrice cursus × indicateur (selon ce qu'on a en BDD)
+const INDICATEURS_PAR_FORMATION = {
+  "Licence générale": [
+    "Taux de réussite en 3 ans",
+    "Taux de réussite en 4 ans",
+    "Taux de réussite en 3 ou 4 ans",
+    "Taux de poursuite",
+    "Taux de poursuivants",
+    "Taux sortants en emploi salarié en France",
+    "Taux sortants en emploi non salarié",
+    "Taux sortants en emploi stable",
+  ],
+  "Licence professionnelle": [
+    "Taux de réussite",
+    "Taux de poursuivants",
+    "Taux sortants en emploi salarié en France",
+    "Taux sortants en emploi non salarié",
+    "Taux sortants en emploi stable",
+  ],
+  "Bachelor universitaire de technologie": [
+    "Taux de réussite",
+    "Taux de poursuite",
+    "Taux de poursuivants",
+    "Taux sortants en emploi salarié en France",
+    "Taux sortants en emploi non salarié",
+    "Taux sortants en emploi stable",
+  ],
+  "Master": [
+    "Taux de réussite en 2 ans",
+    "Taux de réussite en 3 ans",
+    "Taux de réussite en 2 ou 3 ans",
+    "Taux de poursuivants",
+    "Taux sortants en emploi salarié en France",
+    "Taux sortants en emploi non salarié",
+    "Taux sortants en emploi stable",
+  ],
+};
+
+const INDICATEURS_DECLINABLES = new Set([
+  "Taux sortants en emploi salarié en France",
+  "Taux sortants en emploi non salarié",
+  "Taux sortants en emploi stable",
+]);
+
+// Palette des 17 secteurs disciplinaires
+const COULEURS_SECTEUR = {
+  "Droit": "#44709D",
+  "Sciences économiques": "#6D91B1",
+  "Gestion": "#8CB8D3",
+  "Autres formations juridiques, économiques et de gestion": "#BFDBF1",
+  "Lettres, langue, arts": "#B8502B",
+  "Psychologie": "#C65D26",
+  "Histoire-géographie": "#E6782D",
+  "Information communication": "#EEA95E",
+  "Autres sciences humaines et sociales": "#F2CF75",
+  "Sciences de la vie, de la terre et de l'univers": "#2B6443",
+  "Sciences fondamentales": "#3C874C",
+  "Sciences de l'ingénieur": "#5F9D5A",
+  "Informatique": "#71B467",
+  "Autres sciences, technologies": "#90C486",
+  "STAPS": "#9DD28A",
+  "Santé": "#B4DEAE",
+  "Interdisciplinaire": "#8B6FA8",
+};
+
+// Palette des 5 catégories établissements
+const COULEURS_CATEGORIE = {
+  "selectionne": "#DD5957",
+  "meme_region_autre_typologie": "#4A7AAA",
+  "meme_region_et_typologie": "#5C9D5B",
+  "meme_typologie_autre_region": "#ECC94B",
+  "autres": "#BBB0AA",
+};
+
+// ============================================================================
+// Initialisation du formulaire
+// ============================================================================
+
+const $ = (id) => document.getElementById(id);
+
+function remplirSelectIndicateurs() {
+  const formation = $("formation").value;
+  const indicateurs = INDICATEURS_PAR_FORMATION[formation] || [];
+  [$("var1"), $("var2")].forEach((sel, idx) => {
+    const ancien = sel.value;
+    sel.innerHTML = "";
+    indicateurs.forEach(ind => {
+      const opt = document.createElement("option");
+      opt.value = ind;
+      opt.textContent = ind;
+      sel.appendChild(opt);
+    });
+    // Tenter de restaurer la sélection précédente
+    if ([...sel.options].some(o => o.value === ancien)) {
+      sel.value = ancien;
+    } else {
+      // Par défaut : var1 = 1er, var2 = dernier (insertion)
+      sel.selectedIndex = idx === 0 ? 0 : sel.options.length - 1;
+    }
+  });
+  ajusterDateInser();
+}
+
+function ajusterDateInser() {
+  $("date1-group").style.display = INDICATEURS_DECLINABLES.has($("var1").value) ? "" : "none";
+  $("date2-group").style.display = INDICATEURS_DECLINABLES.has($("var2").value) ? "" : "none";
+}
+
+function ajusterMaster() {
+  $("master").parentElement.style.display = $("formation").value === "Master" ? "" : "none";
+}
+
+$("formation").addEventListener("change", () => {
+  remplirSelectIndicateurs();
+  ajusterMaster();
+  miseAJourUrlPreview();
+});
+
+["var1", "var2"].forEach(id => {
+  $(id).addEventListener("change", () => {
+    ajusterDateInser();
+    miseAJourUrlPreview();
+  });
+});
+
+// Mise à jour de l'aperçu URL à chaque changement
+document.querySelectorAll("input, select").forEach(el => {
+  el.addEventListener("change", miseAJourUrlPreview);
+  el.addEventListener("input", miseAJourUrlPreview);
+});
+
+remplirSelectIndicateurs();
+ajusterMaster();
+
+// ============================================================================
+// Construction de l'URL et appel API
+// ============================================================================
+
+function construireUrl() {
+  const base = $("api-base").value.replace(/\/$/, "");
+  const params = new URLSearchParams();
+  params.set("contexte_id", $("contexte-id").value);
+  params.set("formation", $("formation").value);
+  params.set("vue", $("vue").value);
+  params.set("millesime", $("millesime").value);
+  params.set("var1", $("var1").value);
+  params.set("var2", $("var2").value);
+  if (INDICATEURS_DECLINABLES.has($("var1").value)) {
+    params.set("date_inser_var1", $("date1").value);
+  }
+  if (INDICATEURS_DECLINABLES.has($("var2").value)) {
+    params.set("date_inser_var2", $("date2").value);
+  }
+  if ($("dom").value)              params.set("dom", $("dom").value);
+  if ($("discipli").value)         params.set("discipli", $("discipli").value);
+  if ($("secteur").value)          params.set("secteur", $("secteur").value);
+  if ($("formation").value === "Master" && $("master").value) {
+    params.set("master", $("master").value);
+  }
+  if ($("etab-contexte").value)    params.set("etab_contexte", $("etab-contexte").value);
+  params.set("representativite", $("representativite").value);
+  params.set("agregation", $("agregation").value);
+
+  return `${base}/quadrant?${params.toString()}`;
+}
+
+function miseAJourUrlPreview() {
+  $("url-preview").textContent = construireUrl();
+}
+
+function afficherStatus(message, type) {
+  const el = $("status");
+  el.style.display = "block";
+  el.className = "status " + type;
+  el.textContent = message;
+}
+
+async function appellerApi() {
+  const url = construireUrl();
+  afficherStatus("Appel en cours...", "loading");
+  $("btn-call").disabled = true;
+
+  const debut = Date.now();
+  try {
+    const reponse = await fetch(url);
+    const duree = Date.now() - debut;
+    const data = await reponse.json();
+
+    if (!reponse.ok) {
+      afficherStatus(`Erreur ${reponse.status} : ${data.message || data.error}`, "error");
+      $("json-output").textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    afficherStatus(`Succès en ${duree} ms — ${(data.bulles || []).length} bulles renvoyées`, "ok");
+    $("json-output").textContent = JSON.stringify(data, null, 2);
+    afficherResume(data);
+    dessinerQuadrant(data);
+  } catch (err) {
+    afficherStatus(`Erreur réseau : ${err.message}`, "error");
+    $("json-output").textContent = err.toString();
+  } finally {
+    $("btn-call").disabled = false;
+  }
+}
+
+async function appellerHealth() {
+  const base = $("api-base").value.replace(/\/$/, "");
+  afficherStatus("Test /health...", "loading");
+  try {
+    const reponse = await fetch(`${base}/health`);
+    const data = await reponse.json();
+    if (reponse.ok && data.status === "ok") {
+      afficherStatus(`/health OK — database: ${data.database}`, "ok");
+    } else {
+      afficherStatus(`/health dégradé : ${JSON.stringify(data)}`, "error");
+    }
+    $("json-output").textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    afficherStatus(`Erreur /health : ${err.message}`, "error");
+  }
+}
+
+$("btn-call").addEventListener("click", appellerApi);
+$("btn-health").addEventListener("click", appellerHealth);
+
+// ============================================================================
+// Affichage du résumé
+// ============================================================================
+
+function afficherResume(data) {
+  const bulles = data.bulles || [];
+  const nonRep = data.mentions_non_representees || [];
+  const ref = data.reference;
+
+  const formes = {};
+  bulles.forEach(b => { formes[b.forme] = (formes[b.forme] || 0) + 1; });
+
+  let html = `<h2>Données reçues</h2>`;
+  html += `<p><strong>${bulles.length}</strong> bulles affichables`;
+  html += Object.keys(formes).length ? ` (${Object.entries(formes).map(([f,n]) => `${n} ${f}`).join(", ")})` : "";
+  html += `</p>`;
+
+  if (ref) {
+    html += `<p><strong>Référence ${ref.type}</strong> : X = ${(ref.x*100).toFixed(1)}%, Y = ${(ref.y*100).toFixed(1)}%</p>`;
+  }
+
+  if (nonRep.length) {
+    html += `<h2>Mentions non représentées (${nonRep.length})</h2>`;
+    html += `<ul style="margin: 0; padding-left: 18px; font-size: 13px;">`;
+    nonRep.slice(0, 20).forEach(m => {
+      html += `<li><strong>${m.libelle}</strong> — ${m.raison}</li>`;
+    });
+    if (nonRep.length > 20) html += `<li>... (${nonRep.length - 20} de plus)</li>`;
+    html += `</ul>`;
+  }
+
+  $("summary-output").innerHTML = html;
+}
+
+// ============================================================================
+// Dessin du quadrant
+// ============================================================================
+
+function dessinerQuadrant(data) {
+  const svg = $("quadrant-svg");
+  svg.innerHTML = "";
+
+  const W = 600, H = 500;
+  const padding = { top: 20, right: 30, bottom: 50, left: 60 };
+  const innerW = W - padding.left - padding.right;
+  const innerH = H - padding.top - padding.bottom;
+
+  const xScale = (x) => padding.left + x * innerW;
+  const yScale = (y) => padding.top + (1 - y) * innerH;
+
+  // Cadre
+  const cadre = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  cadre.setAttribute("x", padding.left);
+  cadre.setAttribute("y", padding.top);
+  cadre.setAttribute("width", innerW);
+  cadre.setAttribute("height", innerH);
+  cadre.setAttribute("fill", "none");
+  cadre.setAttribute("stroke", "#444");
+  cadre.setAttribute("stroke-width", "1");
+  svg.appendChild(cadre);
+
+  // Graduations
+  for (let i = 0; i <= 4; i++) {
+    const pct = i * 25;
+    const x = xScale(i / 4);
+    const y = yScale(i / 4);
+
+    const tx = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    tx.setAttribute("x", x);
+    tx.setAttribute("y", padding.top + innerH + 14);
+    tx.setAttribute("text-anchor", "middle");
+    tx.setAttribute("font-size", "10");
+    tx.setAttribute("fill", "#666");
+    tx.textContent = pct + "%";
+    svg.appendChild(tx);
+
+    const ty = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    ty.setAttribute("x", padding.left - 8);
+    ty.setAttribute("y", y + 3);
+    ty.setAttribute("text-anchor", "end");
+    ty.setAttribute("font-size", "10");
+    ty.setAttribute("fill", "#666");
+    ty.textContent = pct + "%";
+    svg.appendChild(ty);
+  }
+
+  // Lignes de référence (médiane/moyenne)
+  if (data.reference) {
+    const lx = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    lx.setAttribute("x1", xScale(data.reference.x));
+    lx.setAttribute("y1", padding.top);
+    lx.setAttribute("x2", xScale(data.reference.x));
+    lx.setAttribute("y2", padding.top + innerH);
+    lx.setAttribute("stroke", "#888");
+    lx.setAttribute("stroke-width", "1");
+    lx.setAttribute("stroke-dasharray", "3 3");
+    svg.appendChild(lx);
+
+    const ly = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    ly.setAttribute("x1", padding.left);
+    ly.setAttribute("y1", yScale(data.reference.y));
+    ly.setAttribute("x2", padding.left + innerW);
+    ly.setAttribute("y2", yScale(data.reference.y));
+    ly.setAttribute("stroke", "#888");
+    ly.setAttribute("stroke-width", "1");
+    ly.setAttribute("stroke-dasharray", "3 3");
+    svg.appendChild(ly);
+  }
+
+  // Bulles
+  const vue = $("vue").value;
+  const couleurs = vue === "mentions" ? COULEURS_SECTEUR : COULEURS_CATEGORIE;
+
+  (data.bulles || []).forEach(b => {
+    const couleur = couleurs[b.couleur_key] || "#888";
+    const cx = xScale(b.x);
+    const cy = yScale(b.y);
+    // Taille proportionnelle au dénominateur de X (avec borne min/max)
+    const rayon = Math.max(3, Math.min(25, Math.sqrt(b.denom_x) * 0.6));
+
+    let forme;
+    if (b.forme === "rond") {
+      forme = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      forme.setAttribute("cx", cx);
+      forme.setAttribute("cy", cy);
+      forme.setAttribute("r", rayon);
+    } else if (b.forme === "triangle_bas") {
+      forme = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      forme.setAttribute("points", `${cx},${cy+rayon} ${cx-rayon},${cy-rayon*0.7} ${cx+rayon},${cy-rayon*0.7}`);
+    } else if (b.forme === "triangle_gauche") {
+      forme = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      forme.setAttribute("points", `${cx-rayon},${cy} ${cx+rayon*0.7},${cy-rayon} ${cx+rayon*0.7},${cy+rayon}`);
+    } else if (b.forme === "croix") {
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      [["x1","y1","x2","y2"], ["x1","y2","x2","y1"]].forEach(coords => {
+        const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        l.setAttribute("x1", cx - rayon);
+        l.setAttribute("y1", cy - rayon);
+        l.setAttribute("x2", cx + rayon);
+        l.setAttribute("y2", cy + rayon);
+        if (coords[1] === "y2") {
+          l.setAttribute("y1", cy + rayon);
+          l.setAttribute("y2", cy - rayon);
+        }
+        l.setAttribute("stroke", couleur);
+        l.setAttribute("stroke-width", "3");
+        l.setAttribute("opacity", "0.61");
+        g.appendChild(l);
+      });
+      forme = g;
+    }
+
+    if (forme && b.forme !== "croix") {
+      forme.setAttribute("fill", couleur);
+      forme.setAttribute("opacity", "0.61");
+      forme.setAttribute("stroke", couleur);
+      forme.setAttribute("stroke-width", "0.5");
+    }
+
+    if (forme) {
+      const titre = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      titre.textContent = `${b.libelle}\nX=${(b.x*100).toFixed(1)}% (denom ${b.denom_x})\nY=${(b.y*100).toFixed(1)}% (denom ${b.denom_y})`;
+      forme.appendChild(titre);
+      svg.appendChild(forme);
+    }
+  });
+
+  // Légende dynamique
+  const legendeUtilisee = new Set((data.bulles || []).map(b => b.couleur_key));
+  let html = "";
+  legendeUtilisee.forEach(key => {
+    const c = couleurs[key] || "#888";
+    html += `<span class="legend-item"><span class="legend-dot" style="background:${c}"></span>${key}</span>`;
+  });
+  $("legend").innerHTML = html || "<em>Aucune bulle pour ces paramètres</em>";
+}
+
+// ============================================================================
+// Onglets
+// ============================================================================
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    $(t.dataset.target).classList.add("active");
+  });
+});
+
+// Initialisation
+miseAJourUrlPreview();
+</script>
+
+</body>
+</html>

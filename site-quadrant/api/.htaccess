@@ -1,0 +1,42 @@
+# =============================================================================
+# Configuration Apache pour l'API Quadrant
+# =============================================================================
+
+# Activation du moteur de réécriture
+RewriteEngine On
+
+# Empêcher l'accès direct aux fichiers PHP autres que index.php
+# Toutes les requêtes sont routées vers index.php qui s'occupe du routage interne
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]
+
+# Bloquer l'accès aux dossiers internes (config, lib)
+RewriteRule ^(config|lib)/ - [F,L]
+
+# Sécurité : headers HTTP
+<IfModule mod_headers.c>
+    # HSTS : forcer HTTPS pendant 1 an
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    
+    # Pas de MIME sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Pas de frame ailleurs que sur le site hôte
+    Header always set Content-Security-Policy "frame-ancestors https://etablissement.exemple.fr"
+    
+    # Politique de référent réduite
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # XSS protection (ancien header mais inoffensif)
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Bloquer l'accès aux fichiers cachés et de configuration
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(env|ini|log|sql)$">
+    Require all denied
+</FilesMatch>

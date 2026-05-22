@@ -1,0 +1,38 @@
+# === Configuration sensible ===
+**/config/config.php
+.env
+.env.local
+
+# === Node (React) ===
+node_modules/
+dist/
+build/
+.vite/
+*.log
+npm-debug.log*
+
+# === macOS ===
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Logs et temporaires ===
+*.log
+tmp/
+temp/
+
+# === PHP ===
+vendor/
+composer.lock
+
+# === Déploiement ===
+deploy.sh
+.ftpconfig
