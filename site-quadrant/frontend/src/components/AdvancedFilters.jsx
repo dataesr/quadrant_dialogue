@@ -9,11 +9,18 @@ import BinaryToggle from './selectors/BinaryToggle.jsx';
 // Le titre indique le nombre de filtres avancés actifs.
 //
 // On ne réutilise pas le composant DSFR fr-accordion : il s'appuie sur du
-// JS qui s'attache au DOM au chargement, ce qui ne joue pas bien avec une
+// JS qui s'attache au DOM au chargement, ce qui ne joue pas bien avec un
 // arbre React qui se reconstruit. On gère la collapse à la main, en
 // gardant les styles DSFR (fr-collapse, fr-collapse--expanded, fr-btn).
+//
+// Layout : utilisé dans le panneau latéral (.panneau-filtres, 280 px de
+// large) → contenu en colonne unique, chaque sélecteur prenant toute la
+// largeur de la colonne.
 
-const DEFAULT_REPRESENTATIVITE = true;
+// IMPORTANT : ces deux constantes DOIVENT rester alignées avec celles
+// d'AppContext.jsx, sinon le compteur de filtres actifs est faux dès le
+// chargement (un filtre paraîtra actif alors qu'il est à son défaut).
+const DEFAULT_REPRESENTATIVITE = false;
 const DEFAULT_LIGNE_REFERENCE  = 'mediane';
 
 export default function AdvancedFilters() {
@@ -63,7 +70,7 @@ export default function AdvancedFilters() {
   const chevron = open ? 'fr-icon-arrow-up-s-line' : 'fr-icon-arrow-down-s-line';
 
   return (
-    <section className="fr-mb-2w">
+    <section>
       <button
         type="button"
         className={`fr-btn fr-btn--tertiary-no-outline fr-btn--icon-left ${chevron}`}
@@ -79,106 +86,85 @@ export default function AdvancedFilters() {
         className={`fr-collapse${open ? ' fr-collapse--expanded' : ''}`}
         style={{ display: open ? 'block' : 'none' }}
       >
-        <div className="fr-pt-2w">
-          {/* Ligne 1 : référentiels disciplinaires (4 colonnes indépendantes) */}
-          <div className="fr-grid-row fr-grid-row--gutters">
-            <div className="fr-col-12 fr-col-md-3">
-              <ReferentielSelect
-                id="quadrant-domaine"
-                label="Domaine"
-                defaultLabel="Tous"
-                items={disciData?.domaines}
-                value={domaine}
-                onChange={setDomaine}
-                disabled={disabled}
-                loading={disciLoading}
-              />
-            </div>
-            <div className="fr-col-12 fr-col-md-3">
-              <ReferentielSelect
-                id="quadrant-discipline"
-                label="Discipline"
-                defaultLabel="Toutes"
-                items={disciData?.disciplines}
-                value={discipline}
-                onChange={setDiscipline}
-                disabled={disabled}
-                loading={disciLoading}
-              />
-            </div>
-            <div className="fr-col-12 fr-col-md-3">
-              <ReferentielSelect
-                id="quadrant-secteur"
-                label="Secteur"
-                defaultLabel="Tous"
-                items={disciData?.secteurs}
-                value={secteur}
-                onChange={setSecteur}
-                disabled={disabled}
-                loading={disciLoading}
-              />
-            </div>
-            <div className="fr-col-12 fr-col-md-3">
-              <ReferentielSelect
-                id="quadrant-mention"
-                label="Mention"
-                defaultLabel="Toutes"
-                items={disciData?.mentions}
-                value={mention}
-                onChange={setMention}
-                disabled={disabled}
-                loading={disciLoading}
-              />
-            </div>
+        <div className="liste-filtres-avances fr-pt-2w">
+          {/* Référentiels disciplinaires — 4 sélecteurs indépendants en colonne. */}
+          <ReferentielSelect
+            id="quadrant-domaine"
+            label="Domaine"
+            defaultLabel="Tous"
+            items={disciData?.domaines}
+            value={domaine}
+            onChange={setDomaine}
+            disabled={disabled}
+            loading={disciLoading}
+          />
+          <ReferentielSelect
+            id="quadrant-discipline"
+            label="Discipline"
+            defaultLabel="Toutes"
+            items={disciData?.disciplines}
+            value={discipline}
+            onChange={setDiscipline}
+            disabled={disabled}
+            loading={disciLoading}
+          />
+          <ReferentielSelect
+            id="quadrant-secteur"
+            label="Secteur"
+            defaultLabel="Tous"
+            items={disciData?.secteurs}
+            value={secteur}
+            onChange={setSecteur}
+            disabled={disabled}
+            loading={disciLoading}
+          />
+          <ReferentielSelect
+            id="quadrant-mention"
+            label="Mention"
+            defaultLabel="Toutes"
+            items={disciData?.mentions}
+            value={mention}
+            onChange={setMention}
+            disabled={disabled}
+            loading={disciLoading}
+          />
+
+          {/* Options diverses (Master only pour TypeMaster, sinon caché). */}
+          {cursus === 'Master' && <TypeMasterSelect disabled={disabled} />}
+
+          <div className="fr-checkbox-group">
+            <input
+              type="checkbox"
+              id="quadrant-representativite"
+              checked={representativite}
+              onChange={(e) => setRepresentativite(e.target.checked)}
+              disabled={disabled}
+            />
+            <label className="fr-label" htmlFor="quadrant-representativite">
+              Représentatif uniquement (denom ≥ 20)
+            </label>
           </div>
 
-          {/* Ligne 2 : options diverses */}
-          <div className="fr-grid-row fr-grid-row--gutters fr-mt-2w">
-            {cursus === 'Master' && (
-              <div className="fr-col-12 fr-col-md-4">
-                <TypeMasterSelect disabled={disabled} />
-              </div>
-            )}
-            <div className="fr-col-12 fr-col-md-4">
-              <div className="fr-checkbox-group">
-                <input
-                  type="checkbox"
-                  id="quadrant-representativite"
-                  checked={representativite}
-                  onChange={(e) => setRepresentativite(e.target.checked)}
-                  disabled={disabled}
-                />
-                <label className="fr-label" htmlFor="quadrant-representativite">
-                  Représentatif uniquement (denom ≥ 20)
-                </label>
-              </div>
-            </div>
-            <div className="fr-col-12 fr-col-md-4">
-              <BinaryToggle
-                id="quadrant-ligne-ref"
-                legend="Ligne de référence"
-                options={[
-                  { value: 'mediane', label: 'Médiane' },
-                  { value: 'moyenne', label: 'Moyenne' },
-                ]}
-                value={ligneReference}
-                onChange={setLigneReference}
-                disabled={disabled}
-              />
-            </div>
-          </div>
+          <BinaryToggle
+            id="quadrant-ligne-ref"
+            legend="Ligne de référence"
+            options={[
+              { value: 'mediane', label: 'Médiane' },
+              { value: 'moyenne', label: 'Moyenne' },
+            ]}
+            value={ligneReference}
+            onChange={setLigneReference}
+            disabled={disabled}
+          />
 
-          {/* Bouton de réinitialisation aligné à droite */}
-          <div className="fr-grid-row fr-grid-row--right fr-mt-2w">
-            <button
-              type="button"
-              className="fr-btn fr-btn--secondary fr-btn--sm"
-              onClick={resetAdvancedFilters}
-              disabled={disabled || activeCount === 0}
-            >
-              Réinitialiser les filtres
-            </button>
-          </div>
+          <button
+            type="button"
+            className="fr-btn fr-btn--secondary fr-btn--sm"
+            onClick={resetAdvancedFilters}
+            disabled={disabled || activeCount === 0}
+          >
+            Réinitialiser les filtres
+          </button>
         </div>
       </div>
     </section>

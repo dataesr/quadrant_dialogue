@@ -9,8 +9,8 @@ import EmptyState from './components/EmptyState.jsx';
 // Coquille minimale : layout 1000px max (contrainte iframe), composants
 // DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
 // chargement, erreur, contenu (phase 3 = sélection étab + onglets +
-// filtres essentiels + panneau avancé + placeholder pour le quadrant SVG
-// à venir en phase 4).
+// panneau de filtres latéral + placeholder pour le quadrant SVG à venir
+// en phase 4).
 
 export default function App() {
   return (
@@ -37,15 +37,23 @@ function AppShell() {
       ) : (
         <>
           <EtabSelector />
-          <ViewTabs />
-          <CursusTabs />
-          <FilterBar />
-          <AdvancedFilters />
-          <main className="fr-mt-2w">
-            <EmptyState
-              variant={etabContexte ? 'placeholder' : 'no-selection'}
-            />
-          </main>
+
+          <div className="ligne-onglets">
+            <ViewTabs />
+            <CursusTabs />
+          </div>
+
+          <div className="quadrant-grille">
+            <aside className="panneau-filtres">
+              <FilterBar />
+              <AdvancedFilters />
+            </aside>
+            <main className="zone-quadrant">
+              <EmptyState
+                variant={etabContexte ? 'placeholder' : 'no-selection'}
+              />
+            </main>
+          </div>
         </>
       )}
     </div>

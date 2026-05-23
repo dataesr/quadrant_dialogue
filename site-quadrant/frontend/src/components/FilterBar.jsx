@@ -4,9 +4,14 @@ import MillesimeSelect from './selectors/MillesimeSelect.jsx';
 import VariableSelect from './selectors/VariableSelect.jsx';
 import DateInserSelect from './selectors/DateInserSelect.jsx';
 
-// Barre de filtres essentiels : Millésime, Variable X, Date X (conditionnel),
-// Variable Y, Date Y (conditionnel). Toujours visible mais désactivée tant
-// qu'aucun établissement n'est sélectionné.
+// Filtres essentiels (Millésime + Variables X/Y + Délais conditionnels).
+// Empilés verticalement dans le panneau latéral : chaque <select> prend
+// 100 % de la largeur de la colonne (280 px) → les libellés longs comme
+// « Taux sortants en emploi salarié en France » tiennent sans troncature.
+//
+// Le composant retourne un Fragment et laisse le parent .panneau-filtres
+// gérer l'espacement (flex column + gap). Les fr-select-group ont leur
+// margin-bottom intrinsèque DSFR neutralisée via global.css.
 //
 // Interdépendance X ↔ Y : la liste des Y possibles dépend de X (couples
 // autorisés par /referentiel/variables). Quand X change et que Y courant
@@ -78,52 +83,44 @@ export default function FilterBar() {
   }
 
   return (
-    <div className="fr-grid-row fr-grid-row--gutters fr-mb-2w">
-      <div className="fr-col-12 fr-col-md-2">
-        <MillesimeSelect disabled={disabled} />
-      </div>
-      <div className="fr-col-12 fr-col-md-3">
-        <VariableSelect
-          axis="X"
-          value={variableX}
-          options={xOptions}
-          onChange={handleChangeX}
-          disabled={disabled}
-          loading={variablesLoading}
-        />
-      </div>
+    <>
+      <MillesimeSelect disabled={disabled} />
+
+      <VariableSelect
+        axis="X"
+        value={variableX}
+        options={xOptions}
+        onChange={handleChangeX}
+        disabled={disabled}
+        loading={variablesLoading}
+      />
       {declinableX && (
-        <div className="fr-col-12 fr-col-md-2">
-          <DateInserSelect
-            axis="X"
-            value={dateInserX}
-            dates={dates}
-            onChange={setDateInserX}
-            disabled={disabled}
-          />
-        </div>
-      )}
-      <div className="fr-col-12 fr-col-md-3">
-        <VariableSelect
-          axis="Y"
-          value={variableY}
-          options={yOptions}
-          onChange={setVariableY}
+        <DateInserSelect
+          axis="X"
+          value={dateInserX}
+          dates={dates}
+          onChange={setDateInserX}
           disabled={disabled}
-          loading={variablesLoading}
         />
-      </div>
-      {declinableY && (
-        <div className="fr-col-12 fr-col-md-2">
-          <DateInserSelect
-            axis="Y"
-            value={dateInserY}
-            dates={dates}
-            onChange={setDateInserY}
-            disabled={disabled}
-          />
-        </div>
       )}
-    </div>
+
+      <VariableSelect
+        axis="Y"
+        value={variableY}
+        options={yOptions}
+        onChange={setVariableY}
+        disabled={disabled}
+        loading={variablesLoading}
+      />
+      {declinableY && (
+        <DateInserSelect
+          axis="Y"
+          value={dateInserY}
+          dates={dates}
+          onChange={setDateInserY}
+          disabled={disabled}
+        />
+      )}
+    </>
   );
 }

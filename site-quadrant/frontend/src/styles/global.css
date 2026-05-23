@@ -1,11 +1,61 @@
 /* Styles globaux applicatifs.
    Le reset, la typographie et les composants viennent du DSFR (chargé dans
    main.jsx avant ce fichier). On ne garde ici que ce qui n'a pas
-   d'équivalent DSFR — c'est-à-dire pour l'instant le cadre 1000px imposé
-   par le site hôte qui embarque l'iframe (cf. CLAUDE.md §11). */
+   d'équivalent DSFR — c'est-à-dire le cadre 1000px imposé par le site hôte
+   (cf. CLAUDE.md §11) et le layout en deux colonnes filtres/quadrant. */
 
 .quadrant-app {
   max-width: 1000px;
   margin: 0 auto;
   padding: 1rem;
+}
+
+/* Ligne d'onglets : Vue + Cursus côte à côte, hauteurs alignées sur le haut. */
+.ligne-onglets {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Layout principal en deux colonnes : 280px de filtres, le reste pour le
+   quadrant. DSFR n'a pas de pattern « sidebar + content », d'où ce custom. */
+.quadrant-grille {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Panneau de filtres latéral. Le gap du conteneur gère l'espacement vertical ;
+   on neutralise donc la margin-bottom intrinsèque que DSFR pose sur les
+   .fr-select-group (sinon elle s'ajoute au gap → double espacement). */
+.panneau-filtres {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panneau-filtres .fr-select-group {
+  margin-bottom: 0;
+}
+
+/* Conteneur du quadrant (phase 4). Pour la phase 3, EmptyState a sa propre
+   mise en forme via fr-alert — pas d'aspect-ratio ici, le SVG du quadrant
+   définira sa propre hauteur via un viewBox carré quand il arrivera. */
+.zone-quadrant {
+  width: 100%;
+}
+
+/* Liste verticale utilisée à l'intérieur du panneau de filtres avancés
+   quand il est déplié (selects + checkbox + segmented empilés). */
+.liste-filtres-avances {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.liste-filtres-avances .fr-select-group {
+  margin-bottom: 0;
 }
