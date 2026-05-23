@@ -114,19 +114,31 @@ export function AppProvider({ children }) {
   // (referentiels.variables.data.defauts.millesime, lu dans dim_defaut_cursus)
   // si présent ET cohérent avec la liste des millésimes disponibles.
   // Fallback : premier de la liste (le plus récent).
+  //
+  // Garde-fou anti-stale : au changement de cursus, setCursus reset
+  // millesime à null et useReferentiels relance les fetch — mais entre les
+  // deux, ce useEffect peut s'exécuter avec les `data` du closure encore
+  // pointés sur l'ancien cursus. On exige donc que les deux réponses
+  // (millesimes + variables) portent `formation === cursus` avant
+  // d'appliquer quoi que ce soit. Sinon on attend le render suivant.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (millesime !== null) return;
-    const list = referentiels.millesimes.data?.millesimes;
+    const millData = referentiels.millesimes.data;
+    const varsData = referentiels.variables.data;
+    if (!millData || !varsData) return;
+    if (millData.formation !== cursus || varsData.formation !== cursus) return;
+
+    const list = millData.millesimes;
     if (!Array.isArray(list) || list.length === 0) return;
 
-    const defautMillesime = referentiels.variables.data?.defauts?.millesime;
+    const defautMillesime = varsData.defauts?.millesime;
     if (defautMillesime && list.includes(defautMillesime)) {
       setMillesimeState(defautMillesime);
     } else {
       setMillesimeState(list[0]);
     }
-  }, [referentiels.millesimes.data, referentiels.variables.data, millesime]);
+  }, [referentiels.millesimes.data, referentiels.variables.data, millesime, cursus]);
 
   // ---------------------------------------------------------------------------
   // Auto-default des variables X/Y. Priorité au couple (indicateur_x,
@@ -146,6 +158,11 @@ export function AppProvider({ children }) {
     if (variableX !== null || variableY !== null) return;
     const data = referentiels.variables.data;
     if (!data) return;
+    // Garde-fou anti-stale : ne pas appliquer les défauts d'un cursus précédent.
+    // Sans ce check, après un setCursus le useEffect s'exécute une fois avec
+    // les data du closure encore pointées sur l'ancien cursus → on poserait
+    // des libellés introuvables dans le nouveau cursus (Y se retrouve vide).
+    if (data.formation !== cursus) return;
 
     const couples = data.couples_autorises || [];
     if (couples.length === 0) return;
@@ -175,7 +192,7 @@ export function AppProvider({ children }) {
     setVariableYState(defY);
     setDateInserX(declX ? (defauts?.date_inser_x ?? DEFAULT_DATE_INSER) : '');
     setDateInserY(declY ? (defauts?.date_inser_y ?? DEFAULT_DATE_INSER) : '');
-  }, [referentiels.variables.data, variableX, variableY]);
+  }, [referentiels.variables.data, variableX, variableY, cursus]);
 
   // ---------------------------------------------------------------------------
   // Setters publics
