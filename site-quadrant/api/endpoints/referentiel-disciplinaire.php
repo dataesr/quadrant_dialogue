@@ -2,37 +2,36 @@
 /**
  * GET /referentiel/disciplinaire
  *
- * Alimente les sélecteurs disciplinaires côté React. Renvoie les trois
- * nomenclatures (domaines, disciplines, secteurs quadrant) filtrées pour
- * ne contenir que les valeurs effectivement présentes en données dans
- * le périmètre demandé.
+ * Alimente les sélecteurs disciplinaires côté React. Renvoie les quatre
+ * listes (domaines, disciplines, secteurs quadrant, mentions) filtrées
+ * pour ne contenir que les valeurs effectivement présentes en données
+ * dans le périmètre du contexte utilisateur.
  *
  * Paramètres (query string) :
- *  - formation     : 'Licence générale' | 'Licence professionnelle' | 'Bachelor universitaire de technologie' | 'Master'
- *  - millesime     : ex '2023'
- *  - vue           : 'mentions' | 'etablissements'
- *  - etab_contexte : optionnel, id_paysage de l'établissement de référence
- *                    (utilisé uniquement en vue=mentions ; fallback sur contexte_id si absent)
+ *  - formation : 'Licence générale' | 'Licence professionnelle' | 'Bachelor universitaire de technologie' | 'Master'
+ *  - millesime : ex '2023'
  *
  * Headers requis : X-Connexion-Token, X-User-Token, X-Campagne-Token
  *
- * Filtrage selon la vue :
- *  - vue=mentions       : restreint aux mentions de l'établissement de contexte
- *                         (id_paysage = etab_contexte, ou contexte_id en fallback)
- *  - vue=etablissements : restreint au périmètre du contexte
- *                         (filtre_perimetre LIKE %;<contexte_id>;%)
+ * Filtrage : uniforme via filtre_perimetre LIKE %;<contexte_id>;%.
+ * Cette logique fonctionne pour tous les rôles (établissement, rectorat,
+ * national) car filtre_perimetre contient l'id du contexte dans tous
+ * les cas. Aucun paramètre vue ni etab_contexte n'est nécessaire.
  *
  * Structure de la réponse :
  *  {
  *    "domaines":    [{"code": "DEG", "libelle": "Droit, économie, gestion"}, ...],
  *    "disciplines": [{"code": "01",  "libelle": "Droit"}, ...],
- *    "secteurs":    [{"code": "Droit", "libelle": "Droit"}, ...]
+ *    "secteurs":    [{"code": "Droit", "libelle": "Droit"}, ...],
+ *    "mentions":    [{"code": "<diplom>", "libelle": "<intitulé>", "secteur": "<secteur>"}, ...]
  *  }
  *
+ * Les domaines / disciplines / secteurs ont la même forme {code, libelle}.
+ * Les mentions portent en plus le secteur quadrant rattaché, utile au
+ * filtre mention sur la vue Établissements.
+ *
  * Tri alphabétique par libellé pour stabilité de l'affichage côté React.
- * Les valeurs nulles ou vides sont ignorées. Sur la vue Établissements,
- * seuls les secteurs sont effectivement consommés côté React, mais les
- * trois listes sont renvoyées par cohérence et flexibilité.
+ * Les valeurs nulles ou vides sont ignorées.
  */
 
 require_once __DIR__ . '/../lib/Database.php';
@@ -56,10 +55,8 @@ $contexteId = $session->getContexteId();
 // 2. Lecture et validation des paramètres
 // =============================================================================
 
-$formation    = $_GET['formation']     ?? '';
-$millesime    = $_GET['millesime']     ?? '';
-$vue          = $_GET['vue']           ?? '';
-$etabContexte = $_GET['etab_contexte'] ?? '';
+$formation = $_GET['formation'] ?? '';
+$millesime = $_GET['millesime'] ?? '';
 
 $formationsAutorisees = [
     'Licence générale',
@@ -73,44 +70,29 @@ if (!in_array($formation, $formationsAutorisees, true)) {
 if (!preg_match('/^\d{4}$/', $millesime)) {
     Response::error('invalid_millesime', 'Paramètre millesime invalide.');
 }
-if (!in_array($vue, ['mentions', 'etablissements'], true)) {
-    Response::error('invalid_vue', 'Paramètre vue invalide.');
-}
-if ($etabContexte !== '' && !preg_match('/^[a-zA-Z0-9]{5}$/', $etabContexte)) {
-    Response::error('invalid_etab_contexte', 'Paramètre etab_contexte invalide (5 caractères alphanumériques attendus).');
-}
 
 // =============================================================================
-// 3. Construction du filtre WHERE commun aux trois requêtes
+// 3. Construction du filtre WHERE commun aux quatre requêtes
 // =============================================================================
 
+// Filtrage uniforme par périmètre : couvre les trois rôles (établissement,
+// rectorat, national) car filtre_perimetre encode `;id_nat;id_reg;id_paysage;`
+// et le contexte_id est forcément l'un de ces trois identifiants.
 $conditions = [
     'formation = :formation',
     'millesime = :millesime',
+    'filtre_perimetre LIKE :motif',
 ];
 $params = [
     ':formation' => $formation,
     ':millesime' => $millesime,
+    ':motif'     => '%;' . $contexteId . ';%',
 ];
-
-if ($vue === 'mentions') {
-    // En vue=mentions, on cible un établissement précis. Fallback sur le
-    // contexte_id si etab_contexte n'a pas été transmis (cas d'un rôle
-    // "établissement" où contexte et établissement sont identiques).
-    $etab = $etabContexte !== '' ? $etabContexte : $contexteId;
-    $conditions[] = 'id_paysage = :etab';
-    $params[':etab'] = $etab;
-} else {
-    // En vue=etablissements, on filtre sur le périmètre du contexte
-    // via filtre_perimetre LIKE %;<contexte_id>;%
-    $conditions[] = 'filtre_perimetre LIKE :motif';
-    $params[':motif'] = '%;' . $contexteId . ';%';
-}
 
 $whereClause = implode(' AND ', $conditions);
 
 // =============================================================================
-// 4. Trois requêtes DISTINCT, une par nomenclature
+// 4. Quatre requêtes DISTINCT
 // =============================================================================
 
 $pdo = Database::get();
@@ -118,6 +100,7 @@ $pdo = Database::get();
 $domaines    = chargerNomenclature($pdo, 'dom',      'dom_lib',      $whereClause, $params);
 $disciplines = chargerNomenclature($pdo, 'discipli', 'discipli_lib', $whereClause, $params);
 $secteurs    = chargerNomenclature($pdo, 'secteur_disciplinaire_quadrant', null, $whereClause, $params);
+$mentions    = chargerMentions($pdo, $whereClause, $params);
 
 // =============================================================================
 // 5. Réponse JSON
@@ -127,6 +110,7 @@ Response::json([
     'domaines'    => $domaines,
     'disciplines' => $disciplines,
     'secteurs'    => $secteurs,
+    'mentions'    => $mentions,
 ]);
 
 
@@ -187,6 +171,54 @@ function chargerNomenclature(PDO $pdo, string $colonneCode, ?string $colonneLibe
         $resultats[] = [
             'code'    => $code,
             'libelle' => $libelle,
+        ];
+    }
+
+    return $resultats;
+}
+
+/**
+ * Charge la liste des mentions présentes dans le périmètre, avec le
+ * secteur quadrant rattaché. Utilisée notamment par le filtre mention
+ * de la vue Établissements.
+ *
+ * Structure renvoyée : [{"code": "<diplom>", "libelle": "<intitulé>", "secteur": "<secteur>"}, ...]
+ *
+ * Tri alphabétique par libellé. Une même diplom peut apparaître sur plusieurs
+ * lignes (plusieurs étabs, plusieurs indicateurs) mais on consolide via
+ * GROUP BY diplom pour garantir l'unicité. MAX() est neutre puisque libellé
+ * et secteur ne varient pas à diplom donné.
+ *
+ * Ignore les lignes sans diplom.
+ */
+function chargerMentions(PDO $pdo, string $whereClause, array $params): array
+{
+    $sql = "
+        SELECT
+            diplom                                AS code,
+            MAX(libelle_intitule)                 AS libelle,
+            MAX(secteur_disciplinaire_quadrant)   AS secteur
+        FROM stats_quadrant
+        WHERE $whereClause
+          AND diplom IS NOT NULL
+          AND diplom <> ''
+        GROUP BY diplom
+        ORDER BY COALESCE(NULLIF(MAX(libelle_intitule), ''), diplom)
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    $resultats = [];
+    foreach ($rows as $r) {
+        $code    = (string)$r['code'];
+        $libelle = $r['libelle'] !== null && $r['libelle'] !== '' ? (string)$r['libelle'] : $code;
+        $secteur = $r['secteur'] !== null ? (string)$r['secteur'] : '';
+        $resultats[] = [
+            'code'    => $code,
+            'libelle' => $libelle,
+            'secteur' => $secteur,
         ];
     }
 
