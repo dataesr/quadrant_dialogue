@@ -308,7 +308,14 @@ Une bulle s'affiche uniquement si les **deux** dénominateurs (var1 et var2) son
 Le `contexte_id` est un identifiant 5 caractères alphanumériques (a-z + A-Z + 0-9), casse mixte. Le filtrage par `filtre_perimetre LIKE '%;<contexte_id>;%'` n'est pas appliqué uniformément sur tous les endpoints :
 
 - **Vue Mentions** (`vue=mentions`) : filtrage SQL classique sur `filtre_perimetre`. Toutes les bulles renvoyées sont autorisées (`details_accessibles = true` partout).
-- **Vue Établissements** (`vue=etablissements`) : **pas** de filtrage SQL sur `filtre_perimetre`. Toutes les bulles de France remontent. Pour chaque bulle, l'API calcule un drapeau `details_accessibles` en testant si `filtre_perimetre` contient le `contexte_id` de l'utilisateur. Les bulles non accessibles sont anonymisées dans la réponse (champ `libelle` vide) — la bulle reste affichée mais sans infobulle ni interaction. Voir le cadrage §4 — Groupe 2 — Établissements.
+- **Vue Établissements** (`vue=etablissements`) : **pas** de filtrage SQL sur `filtre_perimetre`. Toutes les bulles de France remontent. Pour chaque bulle, l'API calcule un drapeau `details_accessibles` en testant si `filtre_perimetre` contient le `contexte_id` de l'utilisateur. Les bulles non accessibles sont **anonymisées** dans la réponse — la bulle reste affichée (position, couleur, forme) mais toute donnée rapprochable d'un établissement réel est masquée :
+  - `id` remplacé par `"anon_<N>"` (compteur local à la réponse)
+  - `libelle` = `""`
+  - `denom_x` / `denom_y` supprimés, remplacés par un champ unique `denom` = `denom_x` brouillé ±15 % (bruit déterministe seedé sur l'id_paysage, borné à ≥ 5)
+  - `x`, `y`, `forme`, `couleur_key` inchangés
+  - pas d'infobulle ni d'interaction au clic
+
+  Côté frontend, la taille de la bulle utilise `denom_x` quand disponible, sinon `denom`. Voir le cadrage §4 — Groupe 2 — Établissements.
 
 Cette dissymétrie est volontaire : sur la vue Établissements, chaque utilisateur doit pouvoir situer son périmètre dans le paysage national complet, tout en respectant les restrictions d'accès au détail.
 

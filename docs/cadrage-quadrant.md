@@ -144,18 +144,21 @@ La coloration s'applique à **toutes** les bulles, autorisées ou non.
 
 **Anonymisation des bulles hors périmètre** :
 
-Seules les bulles que l'utilisateur a le droit de consulter en détail exposent leur identité (libellé d'établissement) et déclenchent une infobulle. Les autres restent visibles à leur position, avec leur couleur et leur forme, mais sont **anonymisées** :
+Seules les bulles que l'utilisateur a le droit de consulter en détail exposent leur identité et déclenchent une infobulle. Les autres restent visibles à leur position, avec leur couleur et leur forme, mais sont **anonymisées** — toute donnée permettant de rapprocher la bulle d'un établissement réel est masquée ou brouillée :
 
-- libellé non transmis (champ vide dans la réponse API)
-- pas d'infobulle au survol, pas d'épinglage au clic
-- curseur inactif
+- **`id`** : remplacé par un identifiant local de la forme `anon_<N>` (compteur local à la réponse, sans rapport avec l'id_paysage). L'id_paysage réel n'est pas exposé car rapprochable d'un établissement via les référentiels publics.
+- **`libelle`** : chaîne vide.
+- **Dénominateur** : les champs `denom_x` et `denom_y` ne sont pas exposés. À la place, un champ unique **`denom`** contient `denom_x` brouillé par un bruit multiplicatif de ±15 % (`denom_brouille = round(denom_x × (1 + ratio))` avec `ratio ∈ [-0.15, +0.15]`). Le bruit est déterministe à partir de l'id_paysage (pour qu'un même établissement ait toujours le même `denom` anonymisé entre deux requêtes), et borné inférieurement à 5 pour ne jamais faire basculer artificiellement une bulle dans le seuil de non-diffusion. Justification : un effectif précis (par exemple un Master avec 2440 inscrits dans un secteur donné) identifie aisément l'établissement par recoupement avec les référentiels publics.
+- **Pas d'infobulle** au survol, pas d'épinglage au clic, curseur inactif.
+
+Côté frontend, la taille de la bulle se calcule sur `denom_x` pour les bulles autorisées et sur `denom` pour les anonymes.
 
 Périmètre de détail selon le rôle (déterminé par la présence du `contexte_id` dans `filtre_perimetre` de la bulle) :
 - `etablissement` : détail pour sa propre bulle uniquement
 - `rectorat` : détail pour les établissements de sa région
 - `national` : détail pour toutes les bulles
 
-**Conséquence sur les calculs** : la médiane et la moyenne sont calculées sur tous les points calculables (incluant les bulles anonymes), comme partout ailleurs dans l'outil. L'anonymisation ne porte que sur la lisibilité individuelle.
+**Conséquence sur les calculs** : la médiane et la moyenne sont calculées sur tous les points calculables (incluant les bulles anonymes), à partir des vraies valeurs `x` et `y` qui restent exactes pour toutes les bulles. L'anonymisation ne porte que sur la lisibilité individuelle, pas sur les statistiques agrégées.
 
 ### Onglet par défaut
 

@@ -584,8 +584,13 @@ function dessinerQuadrant(data) {
     const couleur = couleurs[b.couleur_key] || "#888";
     const cx = xScale(b.x);
     const cy = yScale(b.y);
-    // Taille proportionnelle au dénominateur de X (avec borne min/max)
-    const rayon = Math.max(3, Math.min(25, Math.sqrt(b.denom_x) * 0.6));
+    // Bulles anonymes (vue=etablissements hors périmètre) : pas de denom_x/denom_y
+    // exposés, seulement un denom unique brouillé. details_accessibles=false dans
+    // tous les cas pour ces bulles.
+    const anonyme = b.details_accessibles === false;
+    const denomPourTaille = b.denom_x !== undefined ? b.denom_x : b.denom;
+    // Taille proportionnelle au dénominateur (avec borne min/max)
+    const rayon = Math.max(3, Math.min(25, Math.sqrt(denomPourTaille) * 0.6));
 
     let forme;
     if (b.forme === "rond") {
@@ -627,9 +632,15 @@ function dessinerQuadrant(data) {
     }
 
     if (forme) {
-      const titre = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      titre.textContent = `${b.libelle}\nX=${(b.x*100).toFixed(1)}% (denom ${b.denom_x})\nY=${(b.y*100).toFixed(1)}% (denom ${b.denom_y})`;
-      forme.appendChild(titre);
+      // Curseur actif uniquement sur les bulles détaillables. Tooltip omis pour
+      // les bulles anonymes (cf. cadrage §4 — pas d'infobulle pour les bulles
+      // non autorisées).
+      forme.style.cursor = anonyme ? "default" : "pointer";
+      if (!anonyme) {
+        const titre = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        titre.textContent = `${b.libelle}\nX=${(b.x*100).toFixed(1)}% (denom ${b.denom_x})\nY=${(b.y*100).toFixed(1)}% (denom ${b.denom_y})`;
+        forme.appendChild(titre);
+      }
       svg.appendChild(forme);
     }
   });
