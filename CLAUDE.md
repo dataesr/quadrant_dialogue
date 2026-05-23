@@ -184,6 +184,7 @@ quadrant-projet/
 **Livré et fonctionnel** :
 - BDD MySQL initialisée et chargée (572 180 lignes dans `stats_quadrant`)
 - API PHP : endpoints `/health`, `/quadrant` et `/referentiel/disciplinaire` opérationnels en mode dev
+  - `/health?check=full` : diagnostic de cohérence `dim_indicateur_cursus` ↔ `stats_quadrant` (indicateurs non référencés, indicateurs sans données, incohérences `declinable_delai`/`date_inser`). À déclencher après chaque import ETL.
 - Squelette `verify-session.php` (PHP 5.6) — requête SQL de jointure à compléter côté équipe site hôte
 - Composant `embed-quadrant.php` (PHP 5.6) prêt à utiliser
 - Page de test `test-api.html` fonctionnelle
