@@ -1,13 +1,14 @@
 import { useApp } from '../context/AppContext.jsx';
 
-// Le `key` est le libellé long (valeur attendue par l'API en `formation`),
-// le `short` est l'affichage compact côté UI. Le state porte toujours le
-// libellé long pour pouvoir être passé tel quel aux appels API.
-const CURSUS = [
-  { key: 'Licence générale',                        short: 'Licence générale' },
-  { key: 'Licence professionnelle',                 short: 'Licence pro'      },
-  { key: 'Bachelor universitaire de technologie',   short: 'BUT'              },
-  { key: 'Master',                                  short: 'Master'           },
+// Contrôle segmenté DSFR pour le cursus, à taille normale (uniforme avec
+// ViewTabs côté UI). Le `key` est le libellé long attendu par l'API en
+// `formation` ; le `short` est l'affichage compact côté UI.
+
+const CURSUS_OPTIONS = [
+  { key: 'Licence générale',                       short: 'Licence générale' },
+  { key: 'Licence professionnelle',                short: 'Licence pro'      },
+  { key: 'Bachelor universitaire de technologie',  short: 'BUT'              },
+  { key: 'Master',                                 short: 'Master'           },
 ];
 
 export default function CursusTabs() {
@@ -15,22 +16,28 @@ export default function CursusTabs() {
   const disabled = !etabContexte;
 
   return (
-    <nav className="cursus-tabs" aria-label="Cursus">
-      {CURSUS.map((c) => {
-        const active = cursus === c.key;
-        return (
-          <button
-            key={c.key}
-            type="button"
-            className={`cursus-tab${active ? ' cursus-tab--active' : ''}`}
-            onClick={() => setCursus(c.key)}
-            disabled={disabled}
-            aria-pressed={active}
-          >
-            {c.short}
-          </button>
-        );
-      })}
-    </nav>
+    <fieldset className="fr-segmented fr-mb-2w" disabled={disabled}>
+      <legend className="fr-segmented__legend">Cursus</legend>
+      <div className="fr-segmented__elements">
+        {CURSUS_OPTIONS.map((opt) => {
+          const id = `quadrant-cursus-${opt.short.replace(/\s+/g, '-').toLowerCase()}`;
+          return (
+            <div className="fr-segmented__element" key={opt.key}>
+              <input
+                type="radio"
+                name="quadrant-cursus"
+                id={id}
+                value={opt.key}
+                checked={cursus === opt.key}
+                onChange={() => setCursus(opt.key)}
+              />
+              <label className="fr-label" htmlFor={id}>
+                {opt.short}
+              </label>
+            </div>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

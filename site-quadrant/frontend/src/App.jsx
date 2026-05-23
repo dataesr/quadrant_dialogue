@@ -3,10 +3,11 @@ import EtabSelector from './components/EtabSelector.jsx';
 import ViewTabs from './components/ViewTabs.jsx';
 import CursusTabs from './components/CursusTabs.jsx';
 import EmptyState from './components/EmptyState.jsx';
-import './styles/components.css';
 
-// App = Provider + coquille. AppShell consomme le contexte pour décider
-// quoi afficher (chargement, erreur, ou contenu).
+// Coquille minimale : layout 1000px max (contrainte iframe), composants DSFR
+// pour tout le reste. Trois états d'affichage gérés par AppShell :
+// chargement, erreur, contenu.
+
 export default function App() {
   return (
     <AppProvider>
@@ -19,22 +20,25 @@ function AppShell() {
   const { loading, error, etabContexte } = useApp();
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>Quadrant</h1>
-      </header>
+    <div className="quadrant-app">
+      {/* Pas de <h1> ici : le titre figure déjà dans la page hôte qui embarque
+          l'iframe — éviter le doublon et préserver les 850px verticaux. */}
 
       {loading ? (
-        <p className="app-status">Chargement…</p>
+        <p className="fr-text--lead">Chargement…</p>
       ) : error ? (
-        <p className="app-status app-status--error">{error}</p>
+        <div className="fr-alert fr-alert--error" role="alert">
+          <p>{error}</p>
+        </div>
       ) : (
         <>
           <EtabSelector />
           <ViewTabs />
           <CursusTabs />
-          <main className="app-main">
-            <EmptyState variant={etabContexte ? 'placeholder' : 'no-selection'} />
+          <main className="fr-mt-3w">
+            <EmptyState
+              variant={etabContexte ? 'placeholder' : 'no-selection'}
+            />
           </main>
         </>
       )}

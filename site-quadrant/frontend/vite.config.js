@@ -12,6 +12,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // Le bundle JS du DSFR est déjà pré-minifié et n'a pas vocation à passer
+    // par l'optimizer Vite (esbuild). On l'exclut explicitement pour éviter
+    // un warning au démarrage.
+    optimizeDeps: {
+      exclude: ['@gouvfr/dsfr/dist/dsfr.module.min.js'],
+    },
     server: {
       port: 5173,
       ...(proxyTarget

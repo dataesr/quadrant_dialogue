@@ -6,7 +6,11 @@ Frontend React de l'application Quadrant. Servi depuis l'hébergement OVH dans
 ## Stack
 
 - **Vite** + **React 18** (JavaScript, pas de TypeScript)
-- **CSS pur** (`src/styles/global.css`) — pas de Tailwind ni CSS-in-JS
+- **DSFR** ([Système de Design de l'État](https://www.systeme-de-design.gouv.fr/))
+  pour tout l'habillage (couleurs, typographie Marianne, composants). On
+  utilise le DSFR **vanilla** (classes CSS dans le JSX) — pas de wrapper
+  React. Quelques règles custom dans `src/styles/global.css`, limitées au
+  cadre 1000px imposé par le site hôte (cf. `CLAUDE.md` §11).
 - **d3-scale / d3-array** pour les futurs calculs SVG
 - **SheetJS** pour l'export Excel généré côté navigateur — **pas encore
   installé**. Le paquet `xlsx` sur npm est obsolète (CVE non corrigées,
@@ -17,7 +21,32 @@ Frontend React de l'application Quadrant. Servi depuis l'hébergement OVH dans
   npm install https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz
   ```
 
-Pas de Redux, pas de framework UI : le strict nécessaire.
+Pas de Redux, pas de framework UI au-delà du DSFR.
+
+### À propos du DSFR — agrément DINUM
+
+L'usage du DSFR est soumis à un **agrément préalable de la DINUM** ;
+le périmètre d'application est défini sur
+[systeme-de-design.gouv.fr/utilisation-et-organisation/perimetre-d-application](https://www.systeme-de-design.gouv.fr/utilisation-et-organisation/perimetre-d-application/).
+Le projet relève du MESRE-SIES (service de l'État), donc éligible — mais
+la demande d'agrément formelle doit être déposée avant la mise en
+production. À faire suivre côté équipe.
+
+### Composants DSFR utilisés en phase 2
+
+| Composant DSFR | Classes principales | Usage |
+|---|---|---|
+| Alerte | `fr-alert`, `fr-alert--info`, `fr-alert--error` | Erreur globale + invite à sélectionner un étab + placeholder |
+| Contrôle segmenté | `fr-segmented`, `fr-segmented__elements`, `fr-segmented__element` | Onglets Vue (Mentions / Positionnement) et Cursus (LG / LP / BUT / Master) |
+| Liste déroulante | `fr-select-group`, `fr-label`, `fr-select` | Sélecteur d'établissement (modes rectorat / national) |
+| Texte d'aide | `fr-hint-text` | Sous-info Région · Typologie |
+| Utilitaires | `fr-mb-*w`, `fr-mt-*w`, `fr-text--bold` | Espacements, typographie |
+
+Pour les onglets, on a privilégié `fr-segmented` plutôt que `fr-tabs` :
+sémantiquement nos onglets sont des **filtres** (radios mutuellement
+exclusifs qui pilotent un même contenu) plutôt que des panneaux de
+contenu distincts. Le segmented gère nativement `disabled` via
+`<fieldset disabled>`.
 
 ## Lancer en développement
 

@@ -1,36 +1,42 @@
 import { useApp } from '../context/AppContext.jsx';
 
-const VIEW_TABS = [
-  { key: 'mentions',       label: "Mentions de l'établissement" },
-  { key: 'etablissements', label: 'Positionnement' },
-];
+// Contrôle segmenté DSFR pour la vue (Mentions / Positionnement).
+// Le composant `fr-segmented` est un fieldset de radios — quand on met le
+// fieldset à `disabled`, tous les radios deviennent disabled et le DSFR
+// applique automatiquement le style grisé sur le label sélectionné.
 
-// Onglets principaux (vue Mentions / vue Établissements).
-// Tant qu'aucun établissement n'est sélectionné, les onglets sont disabled —
-// le défaut visuel ("Mentions" active) reste affiché pour montrer où on
-// arrivera après sélection.
+const VIEW_OPTIONS = [
+  { key: 'mentions',       label: "Mentions de l'établissement" },
+  { key: 'etablissements', label: 'Positionnement'              },
+];
 
 export default function ViewTabs() {
   const { vue, setVue, etabContexte } = useApp();
   const disabled = !etabContexte;
 
   return (
-    <nav className="view-tabs" aria-label="Vue">
-      {VIEW_TABS.map((t) => {
-        const active = vue === t.key;
-        return (
-          <button
-            key={t.key}
-            type="button"
-            className={`view-tab${active ? ' view-tab--active' : ''}`}
-            onClick={() => setVue(t.key)}
-            disabled={disabled}
-            aria-pressed={active}
-          >
-            {t.label}
-          </button>
-        );
-      })}
-    </nav>
+    <fieldset className="fr-segmented fr-mb-2w" disabled={disabled}>
+      <legend className="fr-segmented__legend">Vue</legend>
+      <div className="fr-segmented__elements">
+        {VIEW_OPTIONS.map((opt) => {
+          const id = `quadrant-vue-${opt.key}`;
+          return (
+            <div className="fr-segmented__element" key={opt.key}>
+              <input
+                type="radio"
+                name="quadrant-vue"
+                id={id}
+                value={opt.key}
+                checked={vue === opt.key}
+                onChange={() => setVue(opt.key)}
+              />
+              <label className="fr-label" htmlFor={id}>
+                {opt.label}
+              </label>
+            </div>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

@@ -1,24 +1,28 @@
 import { useApp } from '../context/AppContext.jsx';
 
-// Affiche l'établissement de référence.
-//   - mode "etab" : libellé en lecture seule (pas de choix)
-//   - mode "rectorat_national" : combobox avec option neutre par défaut
-// Quand un étab est connu, on affiche dessous Région · Typologie en gris clair.
+// Sélecteur d'établissement, basé sur les classes form DSFR :
+//   - mode "etab" : libellé en lecture seule (pas de combobox)
+//   - mode "rectorat_national" : `fr-select-group` avec option neutre
+// La sous-info Région · Typologie utilise fr-hint-text quand etabInfo est connu.
 
 export default function EtabSelector() {
   const { mode, etabList, etabContexte, etabInfo, setEtabContexte } = useApp();
 
   return (
-    <div className="etab-selector">
+    <div className="fr-mb-3w">
       {mode === 'etab' ? (
-        <div className="etab-readonly">
-          <span className="etab-label">Établissement de référence :</span>
-          <strong>{etabInfo?.libelle || '—'}</strong>
-        </div>
+        <p className="fr-mb-1v">
+          <span className="fr-text--bold">Établissement de référence :</span>{' '}
+          {etabInfo?.libelle || '—'}
+        </p>
       ) : (
-        <label className="etab-combobox">
-          <span className="etab-label">Établissement de référence :</span>
+        <div className="fr-select-group fr-mb-0">
+          <label className="fr-label" htmlFor="quadrant-etab-select">
+            Établissement de référence
+          </label>
           <select
+            id="quadrant-etab-select"
+            className="fr-select"
             value={etabContexte || ''}
             onChange={(e) => setEtabContexte(e.target.value)}
           >
@@ -29,16 +33,16 @@ export default function EtabSelector() {
               </option>
             ))}
           </select>
-        </label>
+        </div>
       )}
 
       {etabInfo && (
-        <div className="etab-subinfo">
+        <p className="fr-hint-text fr-mt-1v fr-mb-0">
           Région :{' '}
           {etabInfo.region?.libelle || etabInfo.region?.code || '—'}
           {' · '}
           Typologie : {etabInfo.typologie || '—'}
-        </div>
+        </p>
       )}
     </div>
   );

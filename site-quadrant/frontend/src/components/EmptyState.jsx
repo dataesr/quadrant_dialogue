@@ -1,7 +1,6 @@
-// Bloc neutre affiché dans la zone principale tant que le contenu réel
-// (quadrant + filtres) n'est pas disponible. Deux variantes :
-//   - "no-selection" : aucun étab choisi (rôle rectorat/national au démarrage)
-//   - "placeholder"  : étab choisi, contenu phase 3 à venir
+// Bloc d'information neutre affiché dans la zone principale en l'absence de
+// contenu réel (quadrant + filtres pas encore branchés). Utilise l'alerte
+// info du DSFR — pas de couleur ni de typographie custom.
 
 const MESSAGES = {
   'no-selection': 'Sélectionner un établissement pour afficher le quadrant.',
@@ -11,8 +10,8 @@ const MESSAGES = {
 
 export default function EmptyState({ variant = 'placeholder' }) {
   return (
-    <div className="empty-state">
-      {MESSAGES[variant] || MESSAGES['placeholder']}
+    <div className="fr-alert fr-alert--info">
+      <p>{MESSAGES[variant] || MESSAGES['placeholder']}</p>
     </div>
   );
 }
