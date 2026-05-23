@@ -29,6 +29,24 @@
  *  - agregation        : 'mediane' (défaut) | 'moyenne'
  *
  * Headers requis : X-Connexion-Token, X-User-Token, X-Campagne-Token
+ *
+ * Codes d'erreur 400 :
+ *  - invalid_formation, invalid_vue, invalid_millesime, invalid_variables,
+ *    invalid_agregation, invalid_representativite, invalid_mention
+ *  - invalid_var1 / invalid_var2 : l'indicateur n'est pas autorisé pour ce cursus
+ *    (matrice de référence : dim_indicateur_cursus)
+ *  - invalid_order : ordre canonique non respecté (var1 doit précéder var2)
+ *  - invalid_date_inser : incohérence entre date_inser et declinable_delai
+ *    (valeur 6/12/18/24/30 requise si déclinable, vide sinon)
+ *
+ * Code d'erreur 500 :
+ *  - cursus_incoherent : le cursus demandé n'a aucun indicateur dans
+ *    dim_indicateur_cursus (devrait être impossible : alerte exploitation)
+ *
+ * Réponse de succès enrichie :
+ *  - quand `bulles` est vide, ajoute un champ `info` pour distinguer une
+ *    combinaison sans résultats d'une erreur (frontend : afficher un état
+ *    « pas de données » plutôt qu'une page vide muette).
  */
 
 require_once __DIR__ . '/../lib/Database.php';
@@ -103,6 +121,65 @@ if ($mention !== '' && !preg_match('/^[A-Za-z0-9]{1,20}$/', $mention)) {
 // on l'ignore silencieusement plutôt que de remonter une erreur.
 if ($vue !== 'etablissements') {
     $mention = '';
+}
+
+// =============================================================================
+// 2bis. Validation des indicateurs via dim_indicateur_cursus
+// =============================================================================
+//
+// dim_indicateur_cursus est la source de vérité de la matrice cursus × indicateur
+// (cf. cadrage §5). On y récupère pour chaque indicateur autorisé sur ce cursus
+// son ordre canonique et son drapeau de déclinabilité par délai. Cela permet de :
+//   - valider que var1 et var2 sont des indicateurs reconnus pour ce cursus ;
+//   - vérifier la contrainte d'ordre var1 < var2 (cf. cadrage §5) ;
+//   - vérifier la cohérence date_inser vs declinable_delai pour les deux variables.
+
+$indicateursAutorises = chargerIndicateursCursus($formation);
+if (empty($indicateursAutorises)) {
+    // Cursus reconnu côté formation mais inconnu de dim_indicateur_cursus :
+    // incohérence de configuration BDD, à corriger côté exploitation.
+    Response::error(
+        'cursus_incoherent',
+        "Aucun indicateur défini pour le cursus « $formation » dans dim_indicateur_cursus.",
+        500
+    );
+}
+
+if (!isset($indicateursAutorises[$var1])) {
+    Response::error('invalid_var1', "L'indicateur var1 « $var1 » n'est pas autorisé pour le cursus « $formation ».");
+}
+if (!isset($indicateursAutorises[$var2])) {
+    Response::error('invalid_var2', "L'indicateur var2 « $var2 » n'est pas autorisé pour le cursus « $formation ».");
+}
+
+// Ordre canonique : var1 doit strictement précéder var2.
+if ($indicateursAutorises[$var1]['ordre'] >= $indicateursAutorises[$var2]['ordre']) {
+    Response::error(
+        'invalid_order',
+        "L'ordre des variables est incorrect : var1 doit précéder var2 dans l'ordre canonique du cursus."
+    );
+}
+
+// Cohérence date_inser ↔ declinable_delai pour var1 ET var2.
+// On applique la règle aux deux variables car certains indicateurs
+// déclinables peuvent occuper la position var1 (ordres 60/70/80).
+$delaisAutorises = ['6', '12', '18', '24', '30'];
+foreach ([['var1', $var1, $dateInserVar1], ['var2', $var2, $dateInserVar2]] as $check) {
+    [$nom, $ind, $date] = $check;
+    $declinable = $indicateursAutorises[$ind]['declinable_delai'];
+
+    if ($declinable && !in_array($date, $delaisAutorises, true)) {
+        Response::error(
+            'invalid_date_inser',
+            "L'indicateur $nom (« $ind ») est déclinable par délai : date_inser_$nom doit valoir 6, 12, 18, 24 ou 30."
+        );
+    }
+    if (!$declinable && $date !== '') {
+        Response::error(
+            'invalid_date_inser',
+            "L'indicateur $nom (« $ind ») n'est pas déclinable par délai : date_inser_$nom doit être vide."
+        );
+    }
 }
 
 // =============================================================================
@@ -405,6 +482,13 @@ $reponse = [
     'reference' => $reference,
 ];
 
+// Distinguer le « pas de données » légitime (combinaison valide mais vide en BDD)
+// d'une erreur silencieuse côté frontend. Ce champ n'apparaît que quand la liste
+// est effectivement vide ; le frontend peut afficher un message d'état dédié.
+if (empty($bulles)) {
+    $reponse['info'] = 'Aucune donnée pour cette combinaison de filtres';
+}
+
 if ($vue === 'mentions') {
     $reponse['mentions_non_representees'] = $mentionsNonRepresentees;
 }
@@ -415,6 +499,31 @@ Response::json($reponse);
 // =============================================================================
 // Fonctions auxiliaires
 // =============================================================================
+
+/**
+ * Charge la matrice cursus × indicateur depuis dim_indicateur_cursus.
+ *
+ * Retourne un tableau associatif : indicateur => ['ordre' => int, 'declinable_delai' => bool].
+ * Tableau vide si le cursus n'a aucune entrée (incohérence de configuration).
+ */
+function chargerIndicateursCursus(string $formation): array
+{
+    $stmt = Database::get()->prepare("
+        SELECT indicateur, ordre, declinable_delai
+        FROM dim_indicateur_cursus
+        WHERE formation = :formation
+    ");
+    $stmt->execute([':formation' => $formation]);
+
+    $map = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $map[$r['indicateur']] = [
+            'ordre'            => (int)$r['ordre'],
+            'declinable_delai' => (int)$r['declinable_delai'] === 1,
+        ];
+    }
+    return $map;
+}
 
 /**
  * Calcule la médiane d'un tableau de nombres.

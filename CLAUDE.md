@@ -287,6 +287,14 @@ Pour éviter de fouiller dans le cadrage à chaque fois :
 
 **Déclinables par délai** : seulement les 3 derniers indicateurs d'insertion. Délais en BDD : `6`, `12`, `18`, `24`, `30` (chaîne vide pour les non déclinables).
 
+**Source de vérité** : la table `dim_indicateur_cursus` est le référentiel officiel de la matrice cursus × indicateur. Colonnes :
+- `formation` (lié à `stats_quadrant.formation`)
+- `indicateur` (lié à `stats_quadrant.indicateur`)
+- `ordre` (entier, ordre canonique pour la contrainte `var1 < var2`)
+- `declinable_delai` (0 ou 1, dicte si `date_inser` doit être renseigné)
+
+`/quadrant` valide var1/var2/contrainte d'ordre/cohérence `date_inser` contre cette table. Toute évolution de la liste d'indicateurs autorisés ou de leur déclinabilité passe par cette table — pas de constante en dur dans le code.
+
 ### Règles de diffusion statistique
 
 | Dénominateur | Affichage |
