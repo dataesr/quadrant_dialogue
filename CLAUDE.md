@@ -325,6 +325,16 @@ Cette dissymétrie est volontaire : sur la vue Établissements, chaque utilisate
 
 Le quadrant est l'élément central de l'application. **SVG natif sans wrapper de bibliothèque** (pas de Recharts, Chart.js, Plotly, ni D3 complet). Seuls les utilitaires d3-scale et d3-array peuvent être importés pour les échelles et calculs.
 
+### Contraintes d'intégration
+
+L'application est embarquée par iframe dans un site hôte qui impose les dimensions du conteneur :
+
+- **Largeur iframe : 1000px maximum, FIXE** (imposée par le site hôte). Pas de responsive en dessous de cette largeur — cohérent avec la décision "desktop only ≥ 1024px".
+- **Hauteur iframe : 850px par défaut, extensible vers le haut** si le contenu le justifie (la hauteur peut donc croître, jamais décroître sous 850px).
+- **Conséquence sur le layout** : penser le composant pour cette largeur fixe. Pas de sidebar large ; les sélecteurs vont en bandeau supérieur ou compacts à droite du quadrant.
+- **SVG du quadrant** : ~950-960px de large utiles après marges du composant.
+- **Répartition verticale indicative** : bandeau supérieur (~150-200px) + quadrant (~500-550px) + légende / mentions non représentées (~100-150px) = ~750-900px au total.
+
 ### Géométrie générale
 
 - **Axes X et Y fixes** : 0% à 100%, échelle linéaire

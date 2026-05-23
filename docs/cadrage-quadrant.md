@@ -483,6 +483,7 @@ Hors scope : géré par les admins en direct SQL.
 - Pas d'ornementation décorative
 - Cible : desktop uniquement (1024px et plus)
 - Sous 1024px : bandeau d'avertissement non bloquant, l'application reste utilisable
+- **Contrainte iframe** : le site hôte impose une largeur fixe de **1000px maximum** et une hauteur de **850px par défaut, extensible vers le haut** si le contenu le justifie. Le layout est donc dimensionné pour cette largeur fixe — pas de responsive sous 1000px (cohérent avec la cible desktop ≥ 1024px). Les sélecteurs prennent place en bandeau supérieur ou compacts à droite du quadrant ; pas de sidebar large.
 - Français uniquement (pas d'i18n)
 
 ### Erreurs
