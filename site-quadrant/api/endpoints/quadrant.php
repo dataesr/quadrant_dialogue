@@ -47,6 +47,13 @@
  *  - quand `bulles` est vide, ajoute un champ `info` pour distinguer une
  *    combinaison sans résultats d'une erreur (frontend : afficher un état
  *    « pas de données » plutôt qu'une page vide muette).
+ *  - en vue=mentions uniquement, chaque bulle expose en plus les valeurs
+ *    brutes : `numerateur_x`, `numerateur_y`, `taux_x`, `taux_y`. Sert à
+ *    générer l'export XLSX côté React (SheetJS) sans avoir besoin d'un
+ *    endpoint /export/xlsx côté PHP. Asymétrie volontaire avec vue=
+ *    etablissements : ces champs y sont absents même pour les bulles
+ *    détaillables, pour préserver l'anonymisation des bulles hors
+ *    périmètre (pas de fuite indirecte si l'anonymisation évolue).
  */
 
 require_once __DIR__ . '/../lib/Database.php';
@@ -419,7 +426,7 @@ foreach ($pointsBruts as $p) {
         $id      = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
         $libelle = $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'];
 
-        $bulles[] = [
+        $bulle = [
             'id'                  => $id,
             'libelle'             => $libelle,
             'x'                   => round($x, 4),
@@ -430,6 +437,27 @@ foreach ($pointsBruts as $p) {
             'couleur_key'         => $couleurKey,
             'details_accessibles' => $detailsAccessibles,
         ];
+
+        // En vue=mentions, on expose les valeurs brutes (numérateurs et taux
+        // non normalisés) pour alimenter l'export XLSX généré côté React.
+        // En vue=etablissements ces champs sont volontairement absents même
+        // pour les bulles détaillables, afin de préserver l'anonymisation
+        // des bulles hors périmètre (pas de fuite indirecte si elle évolue).
+        //
+        // Sécurité diffusion : à ce point du code denomX et denomY sont
+        // garantis >= SEUIL_DIFFUSION (5) par Diffusion::forme() plus haut
+        // (toute bulle non diffusable a été écartée par le `continue`).
+        // num/taux peuvent donc être exposés sans test supplémentaire.
+        if ($vue === 'mentions') {
+            $numX = (int)$p['num_x'];
+            $numY = (int)$p['num_y'];
+            $bulle['numerateur_x'] = $numX;
+            $bulle['numerateur_y'] = $numY;
+            $bulle['taux_x']       = round($numX / $denomX * 100, 1);
+            $bulle['taux_y']       = round($numY / $denomY * 100, 1);
+        }
+
+        $bulles[] = $bulle;
     }
 }
 

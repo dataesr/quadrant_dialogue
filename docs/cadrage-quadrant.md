@@ -242,16 +242,24 @@ Calculées sur tous les points où les taux sont calculables, y compris ceux non
 
 ## 7. Exports
 
-| Onglet | Export PNG | Export CSV |
+| Onglet | Export PNG | Export XLSX |
 |---|---|---|
 | Mentions (1-3) | Oui | Oui |
 | Établissements (4-6) | Oui | Non |
 
-### CSV (onglets Mentions uniquement)
+### XLSX (onglets Mentions uniquement)
 
-- Une ligne par mention de l'établissement de contexte (toutes les mentions, pas seulement celles avec bulle)
-- Une colonne par variable disponible
-- Cellule = valeur du taux si dénominateur ≥ 5, « non diffusable » si < 5, vide si indicateur indisponible
+Généré **côté React** via SheetJS à partir des données déjà renvoyées par `/quadrant`. Pas d'endpoint d'export côté PHP — évite d'embarquer une bibliothèque type PhpSpreadsheet sur l'hébergement OVH mutualisé.
+
+Pour permettre cet export, les bulles renvoyées par `/quadrant` en vue Mentions exposent les valeurs brutes en plus de la position normalisée :
+
+- `numerateur_x`, `numerateur_y` : effectifs bruts de chaque axe
+- `taux_x`, `taux_y` : taux arrondis à 1 décimale (`round(num/denom × 100, 1)`)
+- `denom_x`, `denom_y` : dénominateurs (déjà présents)
+
+Contenu typique du fichier : une ligne par mention de l'établissement de contexte (toutes les mentions présentes dans la réponse), une colonne par valeur (libellé, dénominateur, numérateur, taux pour chaque variable). Cellule vide ou « non diffusable » si la bulle n'a pas atteint le seuil de diffusion — en pratique les bulles renvoyées par l'API ont déjà filtré ce cas, donc l'export ne porte que des valeurs diffusables.
+
+**Asymétrie volontaire avec la vue Établissements** : ces 4 champs ne sont pas exposés sur la vue Établissements, même pour les bulles détaillables — l'anonymisation des bulles hors périmètre s'appuie sur le masquage de ces données, et toute exposition partielle ouvrirait une fuite indirecte.
 
 ### PNG (tous les onglets)
 
@@ -401,9 +409,10 @@ Toutes les agrégations (au niveau établissement sur les onglets Établissement
 | `GET` | `/quadrant` | Tokens | Bulles de l'onglet courant |
 | `GET` | `/quadrant/details` | Tokens | Détails d'une bulle |
 | `GET` | `/quadrant/mentions-non-representees` | Tokens | Mentions absentes du quadrant (Mentions uniquement) |
-| `GET` | `/referentiel/disciplinaire` | Tokens | Référentiel à 3 niveaux |
-| `GET` | `/export/csv` | Tokens | Export CSV (Mentions uniquement) |
-| `GET` | `/health` | Aucune | Health check |
+| `GET` | `/referentiel/disciplinaire` | Tokens | Référentiel à 4 niveaux (domaines, disciplines, secteurs, mentions) |
+| `GET` | `/health` | Aucune | Health check (cohérence indicateurs sur `?check=full`) |
+
+L'export XLSX est généré côté React à partir des valeurs brutes renvoyées par `/quadrant` (vue Mentions) ; pas d'endpoint d'export côté PHP — cf. §7.
 
 L'iframe transmet à chaque appel les trois identifiants (`tokenConnexion`, `token`, `token_campagne_utilisateurs`) dans des headers HTTP (par exemple `X-Connexion-Token`, `X-User-Token`, `X-Campagne-Token`).
 

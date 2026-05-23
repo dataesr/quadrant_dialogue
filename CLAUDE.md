@@ -193,10 +193,9 @@ quadrant-projet/
 
 **À faire (par ordre logique)** :
 1. Setup React + Vite (sera lancé avec un prompt dédié)
-2. Endpoint `/export/csv` (export sur onglets Mentions)
-3. Composants React un par un
-4. Intégration complète et tests bout en bout
-5. Désactivation du mode dev, mise en production
+2. Composants React un par un (inclut export XLSX côté navigateur via SheetJS, à partir des valeurs brutes renvoyées par `/quadrant` en vue Mentions — pas d'endpoint d'export côté PHP)
+3. Intégration complète et tests bout en bout
+4. Désactivation du mode dev, mise en production
 
 **Migrations BDD à jouer manuellement sur OVH** :
 - `docs/migrations/002_rate_limit.sql` — création de `app_rate_limit` (requis avant le déploiement de `/quadrant/details`).
@@ -317,7 +316,7 @@ Une bulle s'affiche uniquement si les **deux** dénominateurs (var1 et var2) son
 
 Le `contexte_id` est un identifiant 5 caractères alphanumériques (a-z + A-Z + 0-9), casse mixte. Le filtrage par `filtre_perimetre LIKE '%;<contexte_id>;%'` n'est pas appliqué uniformément sur tous les endpoints :
 
-- **Vue Mentions** (`vue=mentions`) : filtrage SQL classique sur `filtre_perimetre`. Toutes les bulles renvoyées sont autorisées (`details_accessibles = true` partout).
+- **Vue Mentions** (`vue=mentions`) : filtrage SQL classique sur `filtre_perimetre`. Toutes les bulles renvoyées sont autorisées (`details_accessibles = true` partout). Chaque bulle expose en plus les **valeurs brutes** `numerateur_x`, `numerateur_y`, `taux_x`, `taux_y` (taux arrondi à 1 décimale). Sert à générer l'export XLSX côté React (SheetJS) — il n'y a pas d'endpoint `/export/xlsx` côté PHP. Asymétrie volontaire avec la vue Établissements : ces 4 champs y sont absents même pour les bulles détaillables, pour éviter toute fuite indirecte si l'anonymisation évolue.
 - **Vue Établissements** (`vue=etablissements`) : **pas** de filtrage SQL sur `filtre_perimetre`. Toutes les bulles de France remontent. Pour chaque bulle, l'API calcule un drapeau `details_accessibles` en testant si `filtre_perimetre` contient le `contexte_id` de l'utilisateur. Les bulles non accessibles sont **anonymisées** dans la réponse — la bulle reste affichée (position, couleur, forme) mais toute donnée rapprochable d'un établissement réel est masquée :
   - `id` remplacé par `"anon_<N>"` (compteur local à la réponse)
   - `libelle` = `""`
