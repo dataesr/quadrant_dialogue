@@ -11,6 +11,8 @@
  *   GET  /quadrant/mentions-non-representees → endpoints/quadrant-mentions-non-representees.php
  *   GET  /etablissements-visibles           → endpoints/etablissements-visibles.php
  *   GET  /referentiel/disciplinaire         → endpoints/referentiel-disciplinaire.php
+ *   GET  /referentiel/millesimes            → endpoints/referentiel-millesimes.php
+ *   GET  /referentiel/variables             → endpoints/referentiel-variables.php
  *   GET  /export/csv                        → endpoints/export-csv.php
  *   GET  /health                            → endpoints/health.php
  */
@@ -38,6 +40,8 @@ $routes = [
     '/quadrant/mentions-non-representees'  => 'quadrant-mentions-non-representees.php',
     '/etablissements-visibles'             => 'etablissements-visibles.php',
     '/referentiel/disciplinaire'           => 'referentiel-disciplinaire.php',
+    '/referentiel/millesimes'              => 'referentiel-millesimes.php',
+    '/referentiel/variables'               => 'referentiel-variables.php',
     '/export/csv'                          => 'export-csv.php',
     '/health'                              => 'health.php',
 ];

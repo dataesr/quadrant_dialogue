@@ -47,13 +47,16 @@
  *  - quand `bulles` est vide, ajoute un champ `info` pour distinguer une
  *    combinaison sans résultats d'une erreur (frontend : afficher un état
  *    « pas de données » plutôt qu'une page vide muette).
- *  - en vue=mentions uniquement, chaque bulle expose en plus les valeurs
- *    brutes : `numerateur_x`, `numerateur_y`, `taux_x`, `taux_y`. Sert à
- *    générer l'export XLSX côté React (SheetJS) sans avoir besoin d'un
- *    endpoint /export/xlsx côté PHP. Asymétrie volontaire avec vue=
- *    etablissements : ces champs y sont absents même pour les bulles
- *    détaillables, pour préserver l'anonymisation des bulles hors
- *    périmètre (pas de fuite indirecte si l'anonymisation évolue).
+ *  - en vue=mentions uniquement, chaque bulle expose en plus :
+ *      * `numerateur_x`, `numerateur_y`, `taux_x`, `taux_y` — valeurs brutes
+ *        et taux arrondis à 1 décimale, pour l'export XLSX côté React ;
+ *      * `dom`, `dom_lib` — code et libellé du grand domaine, pour la
+ *        coloration par domaine et l'export.
+ *    Asymétrie volontaire avec vue=etablissements : ces champs y sont
+ *    absents même pour les bulles détaillables, pour préserver
+ *    l'anonymisation des bulles hors périmètre (pas de fuite indirecte
+ *    si l'anonymisation évolue) et parce qu'un agrégat d'établissement
+ *    n'a pas de domaine unique.
  */
 
 require_once __DIR__ . '/../lib/Database.php';
@@ -272,6 +275,8 @@ $sql = "
         m1.reg_id,
         m1.typologie_d_universites_et_assimiles AS typologie,
         m1.secteur_disciplinaire_quadrant,
+        m1.dom,
+        m1.dom_lib,
         m1.filtre_perimetre,
         m1.numerateur   AS num_x,
         m1.denominateur AS denom_x,
@@ -455,6 +460,13 @@ foreach ($pointsBruts as $p) {
             $bulle['numerateur_y'] = $numY;
             $bulle['taux_x']       = round($numX / $denomX * 100, 1);
             $bulle['taux_y']       = round($numY / $denomY * 100, 1);
+
+            // Domaine grand (code + libellé) : utile au frontend pour la coloration
+            // par domaine et l'export XLSX. Non exposé en vue=etablissements — pas
+            // de notion de domaine pour un agrégat d'établissement (un étab couvre
+            // plusieurs domaines simultanément).
+            $bulle['dom']     = (string)($p['dom']     ?? '');
+            $bulle['dom_lib'] = (string)($p['dom_lib'] ?? '');
         }
 
         $bulles[] = $bulle;

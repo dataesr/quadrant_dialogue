@@ -183,7 +183,7 @@ quadrant-projet/
 
 **Livré et fonctionnel** :
 - BDD MySQL initialisée et chargée (572 180 lignes dans `stats_quadrant`)
-- API PHP : endpoints `/health`, `/quadrant`, `/quadrant/details`, `/referentiel/disciplinaire` et `/etablissements-visibles` opérationnels en mode dev
+- API PHP : endpoints `/health`, `/quadrant`, `/quadrant/details`, `/referentiel/disciplinaire`, `/referentiel/millesimes`, `/referentiel/variables` et `/etablissements-visibles` opérationnels en mode dev
 - Frontend React : projet Vite initialisé dans `site-quadrant/frontend/`.
   - Phase 1 — structure de dossiers, couche service `src/services/api.js` avec wrapper `fetch` + `ApiError`. Proxy Vite optionnel via `VITE_API_PROXY_TARGET` pour contourner CORS en dev.
   - Phase 2 — squelette UI : `src/context/AppContext.jsx` (Provider + `useApp()` hook ; charge `/etablissements-visibles` au montage et déduit `mode` = `"etab"` | `"rectorat_national"`), composants `EtabSelector`, `ViewTabs`, `CursusTabs`, `EmptyState`. Trois états gérés : chargement / établissement unique auto-sélectionné / sélection requise. Onglets désactivés tant qu'aucun étab n'est sélectionné. Millésime hardcodé `"2022"` jusqu'à la phase 3.
