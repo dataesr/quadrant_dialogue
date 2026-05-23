@@ -2,11 +2,15 @@ import { AppProvider, useApp } from './context/AppContext.jsx';
 import EtabSelector from './components/EtabSelector.jsx';
 import ViewTabs from './components/ViewTabs.jsx';
 import CursusTabs from './components/CursusTabs.jsx';
+import FilterBar from './components/FilterBar.jsx';
+import AdvancedFilters from './components/AdvancedFilters.jsx';
 import EmptyState from './components/EmptyState.jsx';
 
-// Coquille minimale : layout 1000px max (contrainte iframe), composants DSFR
-// pour tout le reste. Trois états d'affichage gérés par AppShell :
-// chargement, erreur, contenu.
+// Coquille minimale : layout 1000px max (contrainte iframe), composants
+// DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
+// chargement, erreur, contenu (phase 3 = sélection étab + onglets +
+// filtres essentiels + panneau avancé + placeholder pour le quadrant SVG
+// à venir en phase 4).
 
 export default function App() {
   return (
@@ -35,7 +39,9 @@ function AppShell() {
           <EtabSelector />
           <ViewTabs />
           <CursusTabs />
-          <main className="fr-mt-3w">
+          <FilterBar />
+          <AdvancedFilters />
+          <main className="fr-mt-2w">
             <EmptyState
               variant={etabContexte ? 'placeholder' : 'no-selection'}
             />

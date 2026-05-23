@@ -104,6 +104,14 @@ export function getReferentielDisciplinaire(params) {
   return request('/referentiel/disciplinaire', params);
 }
 
+export function getReferentielMillesimes(params) {
+  return request('/referentiel/millesimes', params);
+}
+
+export function getReferentielVariables(params) {
+  return request('/referentiel/variables', params);
+}
+
 export function getEtablissementsVisibles(params) {
   return request('/etablissements-visibles', params);
 }
