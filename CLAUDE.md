@@ -183,7 +183,7 @@ quadrant-projet/
 
 **Livré et fonctionnel** :
 - BDD MySQL initialisée et chargée (572 180 lignes dans `stats_quadrant`)
-- API PHP : endpoints `/health` et `/quadrant` opérationnels en mode dev
+- API PHP : endpoints `/health`, `/quadrant` et `/referentiel/disciplinaire` opérationnels en mode dev
 - Squelette `verify-session.php` (PHP 5.6) — requête SQL de jointure à compléter côté équipe site hôte
 - Composant `embed-quadrant.php` (PHP 5.6) prêt à utiliser
 - Page de test `test-api.html` fonctionnelle
@@ -192,12 +192,11 @@ quadrant-projet/
 **À faire (par ordre logique)** :
 1. Setup React + Vite (sera lancé avec un prompt dédié)
 2. Endpoint `/etablissements-visibles` (combobox rectorat/national)
-3. Endpoint `/referentiel/disciplinaire` (alimente les sélecteurs)
-4. Endpoint `/quadrant/details` (tooltip enrichi au clic)
-5. Endpoint `/export/csv` (export sur onglets Mentions)
-6. Composants React un par un
-7. Intégration complète et tests bout en bout
-8. Désactivation du mode dev, mise en production
+3. Endpoint `/quadrant/details` (tooltip enrichi au clic)
+4. Endpoint `/export/csv` (export sur onglets Mentions)
+5. Composants React un par un
+6. Intégration complète et tests bout en bout
+7. Désactivation du mode dev, mise en production
 
 ---
 
