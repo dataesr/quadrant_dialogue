@@ -203,6 +203,7 @@ quadrant-projet/
 
 **Migrations BDD à jouer manuellement sur OVH** :
 - `docs/migrations/002_rate_limit.sql` — création de `app_rate_limit` (requis avant le déploiement de `/quadrant/details`).
+- `docs/migrations/003_defaut_cursus.sql` — création de `dim_defaut_cursus` (lue par `/referentiel/variables` pour fournir les défauts métier au frontend). Initialise une ligne par cursus avec toutes valeurs à NULL — à compléter par UPDATE selon les choix métier.
 
 ---
 
