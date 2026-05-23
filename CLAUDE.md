@@ -184,7 +184,9 @@ quadrant-projet/
 **Livré et fonctionnel** :
 - BDD MySQL initialisée et chargée (572 180 lignes dans `stats_quadrant`)
 - API PHP : endpoints `/health`, `/quadrant`, `/quadrant/details`, `/referentiel/disciplinaire` et `/etablissements-visibles` opérationnels en mode dev
-- Frontend React : projet Vite initialisé dans `site-quadrant/frontend/` (phase 1 — structure de dossiers, couche service `src/services/api.js` avec wrapper `fetch` + `ApiError`, App de test avec deux boutons `/health` et `/referentiel/disciplinaire`). Pas encore de composants métier. Proxy Vite optionnel via `VITE_API_PROXY_TARGET` pour contourner CORS en dev.
+- Frontend React : projet Vite initialisé dans `site-quadrant/frontend/`.
+  - Phase 1 — structure de dossiers, couche service `src/services/api.js` avec wrapper `fetch` + `ApiError`. Proxy Vite optionnel via `VITE_API_PROXY_TARGET` pour contourner CORS en dev.
+  - Phase 2 — squelette UI : `src/context/AppContext.jsx` (Provider + `useApp()` hook ; charge `/etablissements-visibles` au montage et déduit `mode` = `"etab"` | `"rectorat_national"`), composants `EtabSelector`, `ViewTabs`, `CursusTabs`, `EmptyState`, styles `src/styles/components.css`. Trois états gérés : chargement / établissement unique auto-sélectionné / sélection requise. Onglets désactivés tant qu'aucun étab n'est sélectionné. Millésime hardcodé `"2022"` jusqu'à la phase 3.
   - `/health?check=full` : diagnostic de cohérence `dim_indicateur_cursus` ↔ `stats_quadrant` (indicateurs non référencés, indicateurs sans données, incohérences `declinable_delai`/`date_inser`). À déclencher après chaque import ETL.
   - `/quadrant/details` : tooltip enrichi au clic. Vérifie l'autorisation via `filtre_perimetre`, rate-limité à 30 appels/min/contexte via `lib/RateLimit.php` (table `app_rate_limit`, cf. migration `002_rate_limit.sql`). Renvoie identité + données courantes + historique multi-millésimes, normalisés contre `dim_indicateur_cursus` avec règles de diffusion (denom < 5 → non_diffusable).
 - Squelette `verify-session.php` (PHP 5.6) — requête SQL de jointure à compléter côté équipe site hôte

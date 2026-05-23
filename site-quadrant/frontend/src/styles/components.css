@@ -1,0 +1,160 @@
+/* Styles spécifiques aux composants de phase 2.
+   Chargés après global.css → priorité d'application normale (cascade). */
+
+/* ---------------------------------------------------------------------------
+   Layout général
+   --------------------------------------------------------------------------- */
+
+.app-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.app-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.app-status {
+  color: #555;
+  margin: 16px 0;
+}
+
+.app-status--error {
+  color: #7a2222;
+  background: #fdf2f2;
+  border: 1px solid #cc6666;
+  padding: 10px 12px;
+  border-radius: 4px;
+}
+
+.app-main {
+  margin-top: 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   Sélecteur d'établissement
+   --------------------------------------------------------------------------- */
+
+.etab-selector {
+  margin-bottom: 16px;
+}
+
+.etab-readonly,
+.etab-combobox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.etab-label {
+  font-weight: 500;
+}
+
+.etab-combobox select {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  background: #fff;
+  min-width: 320px;
+}
+
+.etab-subinfo {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Onglets de vue (Mentions / Positionnement)
+   --------------------------------------------------------------------------- */
+
+.view-tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 12px;
+}
+
+.view-tab {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 12px;
+  margin-bottom: -1px;
+  font: inherit;
+  color: #333;
+  cursor: pointer;
+  text-align: center;
+}
+
+.view-tab:hover:not(:disabled) {
+  background: #f4f4f4;
+}
+
+.view-tab--active {
+  border-bottom-color: #185FA5;
+  color: #185FA5;
+  font-weight: 600;
+}
+
+.view-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Onglets cursus (pilules)
+   --------------------------------------------------------------------------- */
+
+.cursus-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.cursus-tab {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.cursus-tab:hover:not(:disabled) {
+  background: #f4f4f4;
+}
+
+.cursus-tab--active {
+  background: #185FA5;
+  border-color: #185FA5;
+  color: #fff;
+}
+
+.cursus-tab--active:hover:not(:disabled) {
+  background: #14528d;
+}
+
+.cursus-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Empty state / placeholder
+   --------------------------------------------------------------------------- */
+
+.empty-state {
+  background: #f7f7f7;
+  padding: 60px 24px;
+  text-align: center;
+  border-radius: 8px;
+  color: #666;
+}
