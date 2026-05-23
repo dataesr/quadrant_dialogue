@@ -20,6 +20,11 @@
  *  - secteur           : optionnel, secteur quadrant
  *  - master            : optionnel, 'Master enseignement' | 'Master hors enseignement'
  *  - etab_contexte     : id_paysage de l'établissement sélectionné
+ *  - mention           : optionnel, diplom d'une mention précise (vue=etablissements
+ *                        uniquement). Cible une comparaison « tous les étabs sur cette
+ *                        mention » : chaque bulle reste un établissement, mais x/y sont
+ *                        ceux de la mention demandée (pas d'agrégation). Silencieusement
+ *                        ignoré sur vue=mentions (chaque bulle y est déjà une mention).
  *  - representativite  : 'toutes' (défaut) | 'representatif'
  *  - agregation        : 'mediane' (défaut) | 'moyenne'
  *
@@ -60,6 +65,7 @@ $discipli         = $_GET['discipli']         ?? '';
 $secteur          = $_GET['secteur']          ?? '';
 $master           = $_GET['master']           ?? '';
 $etabContexte     = $_GET['etab_contexte']    ?? '';
+$mention          = $_GET['mention']          ?? '';
 $representativite = $_GET['representativite'] ?? 'toutes';
 $agregation       = $_GET['agregation']       ?? 'mediane';
 
@@ -87,6 +93,16 @@ if (!in_array($agregation, ['mediane', 'moyenne'], true)) {
 }
 if (!in_array($representativite, ['toutes', 'representatif'], true)) {
     Response::error('invalid_representativite', 'Paramètre representativite invalide.');
+}
+if ($mention !== '' && !preg_match('/^[A-Za-z0-9]{1,20}$/', $mention)) {
+    Response::error('invalid_mention', 'Paramètre mention invalide.');
+}
+
+// Le filtre mention n'est applicable qu'à la vue Établissements. Sur la vue
+// Mentions chaque bulle est déjà une mention, donc le filtre serait inopérant :
+// on l'ignore silencieusement plutôt que de remonter une erreur.
+if ($vue !== 'etablissements') {
+    $mention = '';
 }
 
 // =============================================================================
@@ -143,6 +159,14 @@ if ($secteur !== '') {
     $params[':secteur'] = $secteur;
 }
 
+// Filtre mention (vue=etablissements uniquement, déjà court-circuité ailleurs) :
+// restreint à une mention précise, ramenant chaque établissement à une seule
+// ligne — l'agrégation par étab est alors court-circuitée plus bas.
+if ($mention !== '') {
+    $conditions[] = 'm1.diplom = :mention';
+    $params[':mention'] = $mention;
+}
+
 // Filtre type de Master (Masters uniquement)
 if ($formation === 'Master' && $master !== '') {
     $conditions[] = 'm1.master = :master';
@@ -196,8 +220,17 @@ if ($vue === 'mentions') {
         }
         $pointsBruts[] = $l;
     }
+} elseif ($mention !== '') {
+    // vue = etablissements AVEC filtre mention.
+    // La contrainte SQL `m1.diplom = :mention` garantit déjà qu'on a au plus
+    // une ligne par établissement pour la mention demandée — pas d'agrégation
+    // à faire. Les coordonnées x/y reflètent les indicateurs de cette mention
+    // précise pour chaque établissement, ce qui est exactement le but du filtre.
+    // Les lignes SQL contiennent déjà toutes les clés attendues plus bas
+    // (id_paysage, uo_lib, reg_id, typologie, filtre_perimetre, num_x/y, denom_x/y).
+    $pointsBruts = $lignes;
 } else {
-    // vue = etablissements. On agrège par établissement.
+    // vue = etablissements sans filtre mention. On agrège par établissement.
     // Toutes les lignes d'un même id_paysage portent le même filtre_perimetre
     // (forme `;<id_nat>;<id_reg>;<id_paysage>;`) : on le mémorise une fois.
     $parEtab = [];

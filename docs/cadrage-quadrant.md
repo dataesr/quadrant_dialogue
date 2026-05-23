@@ -133,6 +133,8 @@ Le contexte de session ne change pas pendant la vie de l'iframe. Si l'utilisateu
 
 **Une bulle = un établissement**. Toutes les bulles de tous les établissements de France sont affichées dans le graphique, indépendamment du rôle de l'utilisateur. Cela permet à chacun de situer son périmètre dans le paysage national complet.
 
+**Filtre mention** (optionnel sur cette vue) : permet de comparer les établissements **sur une mention précise** (par exemple « tous les Masters d'Informatique de France »). Quand le filtre est actif, chaque bulle reste un établissement, mais ses coordonnées x/y portent sur cette mention seule — il n'y a plus d'agrégation toutes mentions confondues. La coloration région/typologie, l'anonymisation et le calcul de médiane/moyenne fonctionnent à l'identique. Sans filtre mention : comportement par défaut, agrégat de toutes les mentions de l'établissement.
+
 **Coloration** : 5 catégories selon la relation région/typologie avec l'établissement de contexte :
 1. L'établissement sélectionné lui-même
 2. Même région ET même typologie
@@ -183,7 +185,9 @@ Rationnel : l'insertion professionnelle ne se mesure correctement qu'à la sorti
     
     Les trois nomenclatures ne sont **pas strictement imbriquées** : le secteur quadrant peut traverser plusieurs disciplines, et plusieurs disciplines peuvent contribuer à un même secteur quadrant. Effet de chaque filtre : restreindre le périmètre de calcul des bulles à l'intersection des trois critères actifs.
   
-  - **Sur les onglets Établissements** (5-8) : un seul filtre **Secteur quadrant**, dont la liste **s'adapte dynamiquement à l'établissement de référence**. Un secteur n'apparaît dans le sélecteur que si l'établissement de référence a au moins une mention dont les dénominateurs des deux variables actuellement choisies (X et Y) sont ≥ 5 sur le millésime sélectionné. La liste se recalcule à chaque changement d'établissement, de millésime, ou de variables.
+  - **Sur les onglets Établissements** (5-8) : deux filtres disponibles :
+    - **Secteur quadrant**, dont la liste **s'adapte dynamiquement à l'établissement de référence**. Un secteur n'apparaît dans le sélecteur que si l'établissement de référence a au moins une mention dont les dénominateurs des deux variables actuellement choisies (X et Y) sont ≥ 5 sur le millésime sélectionné. La liste se recalcule à chaque changement d'établissement, de millésime, ou de variables.
+    - **Mention** : permet de comparer tous les établissements **sur une mention précise** (cf. §4 — Groupe 2). Liste alimentée par `/referentiel/disciplinaire` (champ `mentions`). Quand actif, l'API ne renvoie plus un agrégat par établissement mais une bulle par étab pour cette mention. Filtre indépendant de Secteur quadrant.
 - **Variables des axes X et Y** : liste ordonnée canonique d'indicateurs organisée par thématique (Réussite, Insertion). Contrainte `var1 < var2` (l'UI empêche l'inverse). Pour 3 indicateurs d'insertion (Taux sortants emploi salarié en France, non salarié, stable), un **sélecteur de délai dynamique** apparaît à côté de l'indicateur, proposant les valeurs 6, 12, 18, 24, 30 mois. Pour les autres indicateurs, ce sélecteur est masqué.
 - La matrice cursus × indicateur (quels indicateurs sont proposés sur quels onglets) est stockée en BDD comme une table de configuration, à finaliser avec l'équipe métier au fil de la livraison des données.
 - **Filtre Type de formation** (onglets Master uniquement, 4 et 8) : trois valeurs `Tous` (défaut), `Master enseignement`, `Master hors enseignement`. Le champ `formation` de la source identifie le cursus (LG, LP, BUT, Master). Le filtre s'appuie sur le champ `master` (Master enseignement / Master hors enseignement / vide), qui n'est renseigné que pour les Masters. N'apparaît pas sur les autres onglets. À envisager : renommage du filtre en « Type de Master » au moment des maquettes pour clarification UX.

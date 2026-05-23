@@ -318,6 +318,14 @@ Le `contexte_id` est un identifiant 5 caractères alphanumériques (a-z + A-Z + 
 
 Cette dissymétrie est volontaire : sur la vue Établissements, chaque utilisateur doit pouvoir situer son périmètre dans le paysage national complet, tout en respectant les restrictions d'accès au détail.
 
+### Filtre mention (vue Établissements uniquement)
+
+`/quadrant` accepte un paramètre optionnel `mention` (un `diplom`) **uniquement sur vue=etablissements**. Quand il est passé :
+- L'API ajoute `m1.diplom = :mention` dans le WHERE et court-circuite l'agrégation par établissement.
+- Chaque bulle reste un établissement, mais ses x/y portent sur **cette seule mention** (pas un agrégat toutes mentions confondues).
+- Anonymisation, catégorisation région/typologie et calcul de médiane/moyenne fonctionnent à l'identique.
+- Sur `vue=mentions` le paramètre est silencieusement ignoré (chaque bulle y est déjà une mention).
+
 ---
 
 ## 11. Quadrant SVG — spécifications techniques
