@@ -110,19 +110,37 @@ export function AppProvider({ children }) {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Auto-default du millésime : premier (le plus récent) dès qu'on a la liste.
+  // Auto-default du millésime. Priorité au défaut métier de l'API
+  // (referentiels.variables.data.defauts.millesime, lu dans dim_defaut_cursus)
+  // si présent ET cohérent avec la liste des millésimes disponibles.
+  // Fallback : premier de la liste (le plus récent).
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (millesime !== null) return;
     const list = referentiels.millesimes.data?.millesimes;
-    if (Array.isArray(list) && list.length > 0) {
+    if (!Array.isArray(list) || list.length === 0) return;
+
+    const defautMillesime = referentiels.variables.data?.defauts?.millesime;
+    if (defautMillesime && list.includes(defautMillesime)) {
+      setMillesimeState(defautMillesime);
+    } else {
       setMillesimeState(list[0]);
     }
-  }, [referentiels.millesimes.data, millesime]);
+  }, [referentiels.millesimes.data, referentiels.variables.data, millesime]);
 
   // ---------------------------------------------------------------------------
-  // Auto-default des variables X/Y : premier couple autorisé dès qu'on a les
-  // variables. Initialise aussi date_inserX/Y selon declinable_delai.
+  // Auto-default des variables X/Y. Priorité au couple (indicateur_x,
+  // indicateur_y) renvoyé par l'API (dim_defaut_cursus) si présent ET formant
+  // un couple autorisé. Fallback : premier de couples_autorises.
+  //
+  // Dates d'insertion : pour chaque axe déclinable, on prend la date du défaut
+  // API si non-null, sinon DEFAULT_DATE_INSER ('12'). Pour un axe non
+  // déclinable, on force '' (l'API rejette une date sur indicateur non
+  // déclinable).
+  //
+  // Note : ce traitement ne concerne QUE l'initialisation. Les setters
+  // setVariableX/Y publics restent sur la logique simple DEFAULT_DATE_INSER —
+  // un changement utilisateur ne ré-applique pas les défauts API.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (variableX !== null || variableY !== null) return;
@@ -131,7 +149,23 @@ export function AppProvider({ children }) {
 
     const couples = data.couples_autorises || [];
     if (couples.length === 0) return;
-    const [defX, defY] = couples[0];
+
+    const defauts = data.defauts;
+    let defX = null;
+    let defY = null;
+
+    if (defauts?.indicateur_x && defauts?.indicateur_y) {
+      const autorise = couples.some(
+        ([x, y]) => x === defauts.indicateur_x && y === defauts.indicateur_y
+      );
+      if (autorise) {
+        defX = defauts.indicateur_x;
+        defY = defauts.indicateur_y;
+      }
+    }
+    if (defX === null || defY === null) {
+      [defX, defY] = couples[0];
+    }
 
     const vars = data.variables || [];
     const declX = vars.find((v) => v.libelle === defX)?.declinable_delai ?? false;
@@ -139,8 +173,8 @@ export function AppProvider({ children }) {
 
     setVariableXState(defX);
     setVariableYState(defY);
-    setDateInserX(declX ? DEFAULT_DATE_INSER : '');
-    setDateInserY(declY ? DEFAULT_DATE_INSER : '');
+    setDateInserX(declX ? (defauts?.date_inser_x ?? DEFAULT_DATE_INSER) : '');
+    setDateInserY(declY ? (defauts?.date_inser_y ?? DEFAULT_DATE_INSER) : '');
   }, [referentiels.variables.data, variableX, variableY]);
 
   // ---------------------------------------------------------------------------
