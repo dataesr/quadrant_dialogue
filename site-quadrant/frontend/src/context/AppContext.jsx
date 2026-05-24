@@ -59,10 +59,17 @@ export function AppProvider({ children }) {
   // Highlight de mention par recherche (distinct du filtre `mention` qui,
   // lui, réduit la liste des bulles côté API en vue=etablissements).
   const [rechercheMention, setRechercheMention] = useState('');
-  // Liste des libellés de mentions effectivement affichés — publiée par
-  // <Quadrant> dès que les data sont fetchées, consommée par la barre de
-  // recherche pour alimenter la datalist d'autocomplétion.
+  // Liste des libellés effectivement affichés (mentions OU établissements
+  // selon la vue) — publiée par <Quadrant> dès que les data sont fetchées,
+  // consommée par la barre de recherche pour alimenter ses suggestions.
   const [mentionsAffichees, setMentionsAffichees] = useState([]);
+  // Bascule graphique <-> tableau. NE PAS reset au changement de cursus
+  // (préférence d'affichage indépendante du cursus).
+  const [affichage, setAffichage] = useState('graphique'); // 'graphique' | 'tableau'
+  // Nombre de bulles avec details_accessibles=true dans le rendu courant —
+  // publié par <Quadrant>, consommé par AffichageSelector / MentionSearch
+  // pour conditionner leur visibilité en vue=etablissements.
+  const [nbBullesAccessibles, setNbBullesAccessibles] = useState(0);
 
   // --- Initialisation : /etablissements-visibles ---
   const [loading, setLoading] = useState(true);
@@ -300,6 +307,8 @@ export function AppProvider({ children }) {
     scaleMode,
     rechercheMention,
     mentionsAffichees,
+    affichage,
+    nbBullesAccessibles,
     // Référentiels chargés
     referentiels,
     // État global
@@ -316,6 +325,8 @@ export function AppProvider({ children }) {
     setScaleMode,
     setRechercheMention,
     setMentionsAffichees,
+    setAffichage,
+    setNbBullesAccessibles,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

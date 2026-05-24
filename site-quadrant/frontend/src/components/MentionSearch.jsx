@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 
-// Combobox custom de recherche de mention. Remplace la datalist HTML5
-// initiale (qui tronque les libellés longs : les libellés MEN tels que
-// « MÉTIERS DE L'ENSEIGNEMENT, DE… » étaient illisibles).
+// Combobox custom de recherche dans les libellés affichés au quadrant.
+// Remplace la datalist HTML5 initiale (qui tronque les libellés longs :
+// les libellés MEN tels que « MÉTIERS DE L'ENSEIGNEMENT, DE… »
+// étaient illisibles).
+//
+// S'adapte à la vue active :
+//   - Vue Mentions       : recherche une mention.
+//   - Vue Positionnement : recherche un établissement (parmi les
+//                          bulles avec details_accessibles=true ;
+//                          les bulles anonymes n'ont pas de libellé
+//                          utile).
+//
+// Visibilité :
+//   - Vue Mentions       : toujours visible.
+//   - Vue Positionnement : visible ssi nbBullesAccessibles >= 2.
+//     En dessous (1 seule bulle accessible pour un user étab), la
+//     barre de recherche n'apporte rien.
 //
 // Choix d'implémentation :
 //   - panneau de suggestions HTML positionné en absolu sous l'input,
@@ -20,10 +34,12 @@ const MAX_SUGGESTIONS = 100;
 
 export default function MentionSearch() {
   const {
+    vue,
     etabContexte,
     rechercheMention,
     setRechercheMention,
     mentionsAffichees,
+    nbBullesAccessibles,
   } = useApp();
 
   const [open, setOpen]   = useState(false);
@@ -31,6 +47,12 @@ export default function MentionSearch() {
   const wrapperRef = useRef(null);
 
   const disabled = !etabContexte;
+  const visible = vue === 'mentions' || nbBullesAccessibles >= 2;
+
+  // Libellés et identifiants adaptés à la vue. On garde le même id
+  // d'input ; seul le texte change. L'aria-label suit le libellé.
+  const label       = vue === 'mentions' ? 'Rechercher une mention' : 'Rechercher un établissement';
+  const placeholder = vue === 'mentions' ? 'Rechercher une mention…' : 'Rechercher un établissement…';
 
   // Si le contexte global pousse une nouvelle valeur (reset depuis
   // un bouton « Réinitialiser », par exemple), l'input doit suivre.
@@ -76,17 +98,19 @@ export default function MentionSearch() {
     setOpen(false);
   }
 
+  if (!visible) return null;
+
   return (
     <div ref={wrapperRef} className="recherche-mention-combobox">
       <label className="fr-label" htmlFor="quadrant-recherche-mention">
-        Rechercher une mention
+        {label}
       </label>
       <div className="combobox-input-wrapper">
         <input
           id="quadrant-recherche-mention"
           type="text"
           value={texte}
-          placeholder="Rechercher une mention…"
+          placeholder={placeholder}
           autoComplete="off"
           disabled={disabled}
           onChange={(e) => {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { select } from 'd3-selection';
-import { quantile } from 'd3-array';
 
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
@@ -11,18 +10,22 @@ import LignesReference from './quadrant/LignesReference.jsx';
 import {
   WIDTH, HEIGHT, MARGIN, PLOT_WIDTH, PLOT_HEIGHT,
   xScaleBase, yScaleBase,
-  rayonBulle,
 } from './quadrant/geometry.js';
 import { COLORS_DOMAINE } from '../utils/colors.js';
 
 // Composant principal du quadrant. Orchestrateur :
 //   1. fetch des bulles via useQuadrant
-//   2. publication des libellés de mentions dans AppContext (pour la
-//      barre de recherche)
-//   3. gestion du zoom (d3-zoom : wheel/drag/double-clic, boutons UI)
-//   4. gestion du tooltip de survol (overlay HTML)
-//   5. rendu du SVG (axes / lignes ref / bulles) avec scales transformées
-//   6. rendu des légendes (couleurs des domaines présents + tailles)
+//   2. publication des libellés affichés dans AppContext (pour la barre
+//      de recherche) — mentions en vue=mentions, libellés d'étabs
+//      accessibles en vue=etablissements
+//   3. publication de nbBullesAccessibles pour conditionner la
+//      visibilité du toggle Graphique/Tableau et de la recherche
+//   4. gestion du zoom (d3-zoom : wheel/drag/double-clic, boutons UI)
+//   5. gestion du tooltip de survol (overlay HTML)
+//   6. rendu du SVG (axes / lignes ref / bulles) avec scales transformées
+//   7. rendu de la légende des couleurs (pas de légende de taille — la
+//      taille des bulles reflète une moyenne d'effectifs, non
+//      interprétable en valeur absolue)
 
 const LIBELLES_DOMAINES = {
   DEG:    'Droit, économie, gestion (DEG)',
@@ -51,6 +54,7 @@ export default function Quadrant() {
     scaleMode,
     rechercheMention,
     setMentionsAffichees,
+    setNbBullesAccessibles,
   } = useApp();
 
   const { loading, data, error } = useQuadrant({
@@ -142,43 +146,41 @@ export default function Quadrant() {
     return ORDRE_DOMAINES.filter((d) => set.has(d));
   }, [bulles, vue]);
 
-  // Quartiles des denoms pour la légende de taille. Si l'échantillon
-  // est trop petit ou identique, on retombe sur des valeurs indicatives.
-  const taillesLegende = useMemo(() => {
-    if (allDenoms.length === 0) return [];
-    const sorted = [...allDenoms].sort((a, b) => a - b);
-    const p25 = Math.round(quantile(sorted, 0.25) || 0);
-    const p50 = Math.round(quantile(sorted, 0.50) || 0);
-    const p75 = Math.round(quantile(sorted, 0.75) || 0);
-    // Élimine les doublons (cas de datasets très resserrés) en gardant
-    // l'ordre.
-    const seen = new Set();
-    return [p25, p50, p75].filter((v) => v > 0 && !seen.has(v) && seen.add(v));
-  }, [allDenoms]);
-
-  // Publier la liste des libellés de mentions affichées (pour la
-  // datalist / combobox de recherche). On compare avant de setter pour
-  // garantir une no-op si la liste est inchangée — un setState avec
-  // un nouveau tableau de même contenu déclencherait quand même un
-  // re-render chez les abonnés.
+  // Publier la liste des libellés affichés (pour la combobox de
+  // recherche) :
+  //   - vue=mentions       : toutes les bulles (chaque bulle est une
+  //                          mention détaillable par construction du
+  //                          filtre SQL côté API)
+  //   - vue=etablissements : uniquement les bulles avec
+  //                          details_accessibles=true (les bulles
+  //                          anonymes ont libelle="" et n'ont aucun
+  //                          intérêt dans la recherche).
+  //
+  // On compare avant de setter pour garantir une no-op si la liste est
+  // inchangée — un setState avec un nouveau tableau de même contenu
+  // déclencherait quand même un re-render chez les abonnés.
   useEffect(() => {
-    if (vue !== 'mentions') {
-      setMentionsAffichees((prev) => (prev.length === 0 ? prev : []));
-      return;
-    }
-    const libelles = bulles
+    const source = vue === 'mentions'
+      ? bulles
+      : bulles.filter((b) => b.details_accessibles);
+    const libelles = source
       .map((b) => b.libelle)
       .filter((l) => typeof l === 'string' && l.length > 0);
-    setMentionsAffichees((prev) => {
-      if (
-        prev.length === libelles.length &&
-        prev.every((l, i) => l === libelles[i])
-      ) {
-        return prev;
-      }
-      return libelles;
-    });
+    setMentionsAffichees((prev) => (
+      prev.length === libelles.length && prev.every((l, i) => l === libelles[i])
+        ? prev
+        : libelles
+    ));
   }, [bulles, vue, setMentionsAffichees]);
+
+  // Publier le nombre de bulles accessibles (= avec details_accessibles).
+  // Sert à conditionner la visibilité du toggle Graphique/Tableau et
+  // de la barre de recherche en vue=etablissements (un user étab ne voit
+  // qu'une seule bulle accessible — pas la peine d'afficher ces UI).
+  useEffect(() => {
+    const nbAccess = bulles.filter((b) => b.details_accessibles).length;
+    setNbBullesAccessibles((prev) => (prev === nbAccess ? prev : nbAccess));
+  }, [bulles, setNbBullesAccessibles]);
 
   // ---------------- États d'affichage non-data ----------------
   if (loading) {
@@ -298,9 +300,12 @@ export default function Quadrant() {
         </div>
       )}
 
-      {/* Légendes (couleurs des grands domaines + tailles de bulles) */}
-      <div className="legende-bloc">
-        {domainesPresents.length > 0 && (
+      {/* Légende des couleurs des grands domaines (uniquement vue Mentions).
+          Pas de légende de taille : la taille d'une bulle est dérivée d'une
+          moyenne d'entrants/sortants sur plusieurs cohortes, non
+          interprétable comme une grandeur métier en valeur absolue. */}
+      {domainesPresents.length > 0 && (
+        <div className="legende-bloc">
           <div className="legende-domaines" aria-label="Couleurs par grand domaine">
             {domainesPresents.map((d) => (
               <span key={d}>
@@ -309,34 +314,8 @@ export default function Quadrant() {
               </span>
             ))}
           </div>
-        )}
-        {taillesLegende.length > 0 && (
-          <div className="legende-tailles" aria-label="Taille des bulles">
-            <span className="titre">Taille des bulles :</span>
-            {taillesLegende.map((d) => {
-              const r = rayonBulle(d, scaleMode, allDenoms);
-              const dim = Math.ceil(r * 2 + 2);
-              return (
-                <span key={d}>
-                  <svg width={dim} height={dim}>
-                    <circle
-                      cx={dim / 2}
-                      cy={dim / 2}
-                      r={r}
-                      fill="#888"
-                      fillOpacity={0.4}
-                      stroke="#888"
-                      strokeWidth={1}
-                    />
-                  </svg>
-                  {d}
-                </span>
-              );
-            })}
-            <span style={{ color: '#777' }}>(effectif)</span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

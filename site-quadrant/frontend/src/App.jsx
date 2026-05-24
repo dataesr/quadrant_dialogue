@@ -6,7 +6,9 @@ import FilterBar from './components/FilterBar.jsx';
 import AdvancedFilters from './components/AdvancedFilters.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import Quadrant from './components/Quadrant.jsx';
+import QuadrantTable from './components/QuadrantTable.jsx';
 import MentionSearch from './components/MentionSearch.jsx';
+import AffichageSelector from './components/AffichageSelector.jsx';
 
 // Coquille minimale : layout 1000px max (contrainte iframe), composants
 // DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
@@ -23,7 +25,7 @@ export default function App() {
 }
 
 function AppShell() {
-  const { loading, error, etabContexte } = useApp();
+  const { loading, error, etabContexte, affichage } = useApp();
 
   return (
     <div className="quadrant-app">
@@ -48,12 +50,13 @@ function AppShell() {
           <div className="quadrant-grille">
             <aside className="panneau-filtres">
               <FilterBar />
+              <AffichageSelector />
               <MentionSearch />
               <AdvancedFilters />
             </aside>
             <main className="zone-quadrant">
               {etabContexte ? (
-                <Quadrant />
+                affichage === 'graphique' ? <Quadrant /> : <QuadrantTable />
               ) : (
                 <EmptyState variant="no-selection" />
               )}

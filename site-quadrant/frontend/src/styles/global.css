@@ -229,3 +229,23 @@
 .liste-filtres-avances .fr-select-group {
   margin-bottom: 0;
 }
+
+/* Vue tableau alternative au quadrant. Une <section> par cadran, plus
+   éventuellement une section finale « Mentions non représentées ». */
+.tableau-cadran {
+  margin-bottom: 2rem;
+}
+.tableau-cadran h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.tableau-cadran .fr-table {
+  margin-bottom: 0;
+}
+.cellule-fragile {
+  background-color: #FFF4E5;
+}
+.cellule-non-diffusable {
+  color: #888;
+  font-style: italic;
+}
