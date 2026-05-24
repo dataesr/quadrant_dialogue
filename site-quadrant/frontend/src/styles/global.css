@@ -259,7 +259,11 @@
 .tableau-cadran .fr-table th:first-child {
   text-align: left;
 }
-.tableau-cadran .fr-table td.cellule-valeur {
+/* Toutes les cellules de valeur (taux + effectif, mais aussi les statuts
+   textuels « Non diffusable » / « Pas de donnée ») sont alignées à
+   droite — cohérence dans une même colonne. */
+.tableau-cadran .fr-table td.cellule-valeur,
+.tableau-cadran .fr-table td.cellule-non-diffusable {
   text-align: right;
 }
 
