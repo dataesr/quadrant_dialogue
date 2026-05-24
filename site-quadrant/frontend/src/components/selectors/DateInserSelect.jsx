@@ -5,8 +5,8 @@
 const DATES_FALLBACK = ['6', '12', '18', '24', '30'];
 
 const LABEL_AXE = {
-  X: "Délai de l'axe horizontal (mois)",
-  Y: "Délai de l'axe vertical (mois)",
+  X: 'Axe horizontal : situation à',
+  Y: 'Axe vertical : situation à',
 };
 
 export default function DateInserSelect({
@@ -31,9 +31,12 @@ export default function DateInserSelect({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
       >
+        {/* `value` reste le nombre seul (envoyé tel quel à l'API
+            sous le paramètre date_inser_var1/var2). Seul le texte
+            affiché à l'utilisateur change. */}
         {list.map((d) => (
           <option key={d} value={d}>
-            {d}
+            {d} mois
           </option>
         ))}
       </select>
