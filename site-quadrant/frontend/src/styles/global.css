@@ -98,6 +98,17 @@
   max-width: 280px;
   white-space: normal;
 }
+/* Catégorie d'établissement (vue Positionnement) — ligne discrète sous
+   le libellé, ou seule pour les bulles anonymes. Blanc légèrement
+   transparent : reste lisible sur le fond sombre du tooltip mais
+   visiblement secondaire par rapport au libellé. */
+.quadrant-tooltip .categorie {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 4px;
+  max-width: 280px;
+  white-space: normal;
+}
 
 /* Boutons de zoom (+ / − / ⌂) ancrés en surimpression du SVG, coin
    haut-droit. Sobre, compatibles avec le style DSFR. */

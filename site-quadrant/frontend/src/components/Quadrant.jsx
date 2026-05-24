@@ -11,7 +11,12 @@ import {
   WIDTH, HEIGHT, MARGIN, PLOT_WIDTH, PLOT_HEIGHT,
   xScaleBase, yScaleBase,
 } from './quadrant/geometry.js';
-import { COLORS_DOMAINE } from '../utils/colors.js';
+import {
+  COLORS_DOMAINE,
+  COULEUR_ETAB_PAR_KEY,
+  LIBELLES_CATEGORIES_ETAB,
+  ORDRE_CATEGORIES_ETAB,
+} from '../utils/colors.js';
 
 // Composant principal du quadrant. Orchestrateur :
 //   1. fetch des bulles via useQuadrant
@@ -67,7 +72,10 @@ export default function Quadrant() {
     scaleMode,
     rechercheMention,
     setMentionsAffichees,
+    nbBullesAccessibles,
     setNbBullesAccessibles,
+    affichage,
+    setAffichage,
   } = useApp();
 
   const { loading, data, error } = useQuadrant({
@@ -174,6 +182,17 @@ export default function Quadrant() {
     return ORDRE_DOMAINES.filter((d) => set.has(d));
   }, [bulles, vue]);
 
+  // Pendant vue=etablissements : catégories d'établissement effectivement
+  // présentes (au moins une bulle). Sert à filtrer la légende — un user
+  // qui n'a pas de pair « même région et même typologie » dans la
+  // requête n'a pas besoin de voir cette puce.
+  const categoriesEtabPresentes = useMemo(() => {
+    if (vue !== 'etablissements') return [];
+    const set = new Set();
+    for (const b of bulles) if (b.couleur_key) set.add(b.couleur_key);
+    return ORDRE_CATEGORIES_ETAB.filter((c) => set.has(c));
+  }, [bulles, vue]);
+
   // Publier la liste des libellés affichés (pour la combobox de
   // recherche) :
   //   - vue=mentions       : toutes les bulles (chaque bulle est une
@@ -209,6 +228,18 @@ export default function Quadrant() {
     const nbAccess = bulles.filter((b) => b.details_accessibles).length;
     setNbBullesAccessibles((prev) => (prev === nbAccess ? prev : nbAccess));
   }, [bulles, setNbBullesAccessibles]);
+
+  // Garde-fou cohérence affichage/contexte : en vue Positionnement, si
+  // l'utilisateur est au niveau étab (1 seule bulle accessible),
+  // AffichageSelector est masqué — mais si `affichage` est resté à
+  // 'tableau' suite à un passage par la vue Mentions, le tableau
+  // s'afficherait quand même avec une seule ligne, sans toggle pour
+  // en sortir. On force le retour à 'graphique' dans ce cas.
+  useEffect(() => {
+    if (vue === 'etablissements' && nbBullesAccessibles < 2 && affichage === 'tableau') {
+      setAffichage('graphique');
+    }
+  }, [vue, nbBullesAccessibles, affichage, setAffichage]);
 
   // ---------------- États d'affichage non-data ----------------
   if (loading) {
@@ -307,7 +338,13 @@ export default function Quadrant() {
         <button type="button" onClick={zoomReset}           aria-label="Réinitialiser le zoom">⌂</button>
       </div>
 
-      {/* Tooltip flottant */}
+      {/* Tooltip flottant.
+          Vue Mentions : libellé de la mention (gras) + valeurs X/Y.
+          Vue Positionnement : libellé de l'étab si disponible, +
+            ligne discrète indiquant la catégorie (« Établissement de
+            la même région… »). Pour les bulles anonymes (libelle
+            vide), seule la catégorie subsiste — c'est ce qui rend
+            le tooltip informatif sans révéler l'identité. */}
       {hovered && (
         <div
           className="quadrant-tooltip"
@@ -315,6 +352,11 @@ export default function Quadrant() {
         >
           {hovered.bulle.libelle && (
             <div className="libelle">{hovered.bulle.libelle}</div>
+          )}
+          {vue === 'etablissements' && LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key] && (
+            <div className="categorie">
+              {LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key]}
+            </div>
           )}
           <div>Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %</div>
           <div>Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %</div>
@@ -328,9 +370,14 @@ export default function Quadrant() {
         </div>
       )}
 
-      {/* Légende des couleurs des grands domaines (uniquement vue Mentions).
-          Pas de légende de taille : la taille d'une bulle est dérivée d'une
-          moyenne d'entrants/sortants sur plusieurs cohortes, non
+      {/* Légende des couleurs.
+          Vue Mentions : par grand domaine (5 catégories).
+          Vue Positionnement : par catégorie d'étab relative au contexte
+            (5 catégories : sélectionné / même région+typo / même
+            région / même typo / autres).
+          Filtrée dans les deux cas aux entrées effectivement présentes.
+          Pas de légende de taille : la taille d'une bulle est dérivée
+          d'une moyenne d'entrants/sortants sur plusieurs cohortes, non
           interprétable comme une grandeur métier en valeur absolue. */}
       {domainesPresents.length > 0 && (
         <div className="legende-bloc">
@@ -339,6 +386,18 @@ export default function Quadrant() {
               <span key={d}>
                 <span className="puce" style={{ background: COLORS_DOMAINE[d] }} />
                 {LIBELLES_DOMAINES[d] || d}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {categoriesEtabPresentes.length > 0 && (
+        <div className="legende-bloc">
+          <div className="legende-domaines" aria-label="Catégories d'établissements">
+            {categoriesEtabPresentes.map((c) => (
+              <span key={c}>
+                <span className="puce" style={{ background: COULEUR_ETAB_PAR_KEY[c] }} />
+                {LIBELLES_CATEGORIES_ETAB[c]}
               </span>
             ))}
           </div>

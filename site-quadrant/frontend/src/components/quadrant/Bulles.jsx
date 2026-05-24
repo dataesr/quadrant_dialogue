@@ -1,5 +1,5 @@
 import { toPercent, rayonBulle } from './geometry.js';
-import { COLORS_DOMAINE, COLORS_ETAB } from '../../utils/colors.js';
+import { COLORS_DOMAINE, COULEUR_ETAB_PAR_KEY } from '../../utils/colors.js';
 
 // Rendu SVG des bulles.
 //
@@ -17,14 +17,7 @@ import { COLORS_DOMAINE, COLORS_ETAB } from '../../utils/colors.js';
 // Conventions de couleur :
 //  - vue=mentions : couleur par grand domaine (champ `dom` côté API)
 //  - vue=etablissements : couleur par `couleur_key` calculé côté API
-
-const COULEUR_ETAB_PAR_KEY = {
-  selectionne:                  COLORS_ETAB.SELECTIONNE,
-  meme_region_et_typologie:     COLORS_ETAB.MEME_REGION_MEME_TYPOLOGIE,
-  meme_region_autre_typologie:  COLORS_ETAB.MEME_REGION_AUTRE_TYPOLOGIE,
-  meme_typologie_autre_region:  COLORS_ETAB.AUTRE_REGION_MEME_TYPOLOGIE,
-  autres:                       COLORS_ETAB.AUTRES,
-};
+//    (mapping partagé avec la légende — cf. utils/colors.js).
 
 const COULEUR_INCONNUE = '#999';
 const COULEUR_HIGHLIGHT = '#E91719'; // rouge d'accent, cohérent avec selectionne
