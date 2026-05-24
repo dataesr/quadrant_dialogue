@@ -290,10 +290,26 @@
   margin-top: 2px;
 }
 
-.cellule-fragile {
-  background-color: #FFF4E5;
-}
 .cellule-non-diffusable {
   color: #888;
   font-style: italic;
+}
+
+/* Mise en évidence de la ligne de l'établissement de contexte en vue
+   Positionnement (couleur_key === 'selectionne'). Fond pastel rouge
+   qui rappelle le rouge #E91719 utilisé pour la bulle correspondante
+   dans le SVG → cohérence chromatique entre les deux affichages. */
+.tableau-cadran .fr-table tr.ligne-selectionne th,
+.tableau-cadran .fr-table tr.ligne-selectionne td {
+  background-color: #FEF1F1;
+}
+
+/* La cellule fragile (denom 5-19) garde sa couleur propre, y compris
+   sur une ligne sélectionnée. La 2e sélecteur (avec ligne-selectionne)
+   prend +1 classe de spécificité par rapport à la règle de fond rouge
+   ci-dessus → l'information « donnée fragile » prime visuellement
+   sur « ligne de l'étab de contexte ». */
+.tableau-cadran .fr-table td.cellule-fragile,
+.tableau-cadran .fr-table tr.ligne-selectionne td.cellule-fragile {
+  background-color: #FFF4E5;
 }

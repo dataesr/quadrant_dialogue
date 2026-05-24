@@ -37,6 +37,19 @@ const LIBELLES_DOMAINES = {
 
 const ORDRE_DOMAINES = ['DEG', 'LLA', 'SHS', 'STS', 'INTERD'];
 
+// Z-index sémantique des bulles en vue=etablissements (du fond vers
+// le premier plan). La bulle de l'établissement de contexte
+// (couleur_key=selectionne) est TOUJOURS rendue au-dessus pour ne
+// jamais être masquée par un cluster. Les bulles « autres » (gris
+// neutre, gros volume) servent de toile de fond.
+const ORDRE_RENDU_ETAB = {
+  autres:                      0,
+  meme_typologie_autre_region: 1,
+  meme_region_autre_typologie: 2,
+  meme_region_et_typologie:    3,
+  selectionne:                 4,
+};
+
 // Marge de débordement autorisée pour les bulles autour du plot strict.
 // Le clipPath dédié aux bulles englobe (plot ± OVERFLOW), de sorte qu'une
 // grosse bulle centrée près du bord puisse mordre légèrement dehors —
@@ -127,7 +140,22 @@ export default function Quadrant() {
   // Memoize : sans ça, `bulles` change de référence à chaque render et
   // tous les useMemo/useEffect en aval s'invalident inutilement
   // → boucle infinie via setMentionsAffichees.
-  const bulles = useMemo(() => data?.bulles || [], [data?.bulles]);
+  //
+  // En vue=etablissements, on trie en plus par z-index sémantique (cf.
+  // ORDRE_RENDU_ETAB) : le SVG dessine les éléments dans l'ordre de
+  // déclaration → le dernier élément est rendu AU-DESSUS. On veut donc
+  // « autres » en tête de tableau (= en fond visuel) et « selectionne »
+  // en queue (= au premier plan, jamais masqué par un cluster).
+  // En vue=mentions, pas de tri (ordre API préservé).
+  const bulles = useMemo(() => {
+    const list = data?.bulles || [];
+    if (vue !== 'etablissements') return list;
+    return [...list].sort((a, b) => {
+      const za = ORDRE_RENDU_ETAB[a.couleur_key] ?? 0;
+      const zb = ORDRE_RENDU_ETAB[b.couleur_key] ?? 0;
+      return za - zb; // z faibles en premier = au fond
+    });
+  }, [data?.bulles, vue]);
 
   // Dénominateurs pour le calcul du rayon : on prend denom_x pour les
   // bulles autorisées et denom (bruité) pour les bulles anonymes.

@@ -169,7 +169,10 @@ export default function QuadrantTable() {
               </thead>
               <tbody>
                 {groupes[cadran].map((b) => (
-                  <tr key={b.id}>
+                  <tr
+                    key={b.id}
+                    className={b.couleur_key === 'selectionne' ? 'ligne-selectionne' : undefined}
+                  >
                     <th scope="row">{b.libelle || '—'}</th>
                     <CellulePourcentage
                       taux={b.x}
