@@ -41,6 +41,17 @@
   margin-bottom: 0;
 }
 
+/* Uniformiser la taille des labels dans le panneau de filtres : la
+   <legend> du fr-segmented DSFR est volontairement discrète, mais ici
+   les choix qu'elle introduit (« Affichage », « Ligne de référence »)
+   sont aussi structurants que les <label> des selects voisins. */
+.panneau-filtres .fr-segmented__legend {
+  font-size: 1rem;
+  font-weight: 400;
+  color: inherit;
+  margin-bottom: 0.25rem;
+}
+
 /* Conteneur du quadrant. Le SVG porte son viewBox et se met à l'échelle
    via width:100% height:auto, donc pas de hauteur fixe ici. */
 .zone-quadrant {

@@ -103,9 +103,15 @@ export default function QuadrantTable() {
                                        'bas_gauche';
       g[cadran].push(b);
     }
-    // Tri par libellé pour parcours stable et lisible.
+    // Tri par distance euclidienne au point idéal (1, 1) croissante :
+    // la mention la mieux placée sur les DEUX axes remonte en tête.
+    // Dans le cadran haut-droite, ça met en avant la combinaison
+    // réussite × insertion la plus forte. Dans les autres cadrans le
+    // tri reste cohérent — plus proche du haut-droite = mieux — sans
+    // préjuger d'une hiérarchie métier entre cadrans (un « taux de
+    // poursuite faible » n'est pas forcément « moins bon »).
     for (const k of ORDRE_CADRANS) {
-      g[k].sort((a, b) => (a.libelle || '').localeCompare(b.libelle || '', 'fr'));
+      g[k].sort((a, b) => distanceAuPointIdeal(a) - distanceAuPointIdeal(b));
     }
     return g;
   }, [data]);
@@ -274,6 +280,15 @@ function CelluleMentionNonRep({ mention, axe }) {
       {LIBELLE_STATUT[statut] || '—'}
     </td>
   );
+}
+
+// Distance euclidienne au coin (1, 1) du quadrant — point « 100 % × 100 % ».
+// Sert au tri intra-cadran : plus une bulle est proche de l'idéal, plus elle
+// remonte en tête.
+function distanceAuPointIdeal(b) {
+  const dx = 1 - b.x;
+  const dy = 1 - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 function formatLibelle(variable, dateInser) {
