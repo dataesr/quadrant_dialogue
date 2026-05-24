@@ -280,8 +280,10 @@ $sql = "
         m1.filtre_perimetre,
         m1.numerateur   AS num_x,
         m1.denominateur AS denom_x,
+        m1.population   AS population_x,
         m2.numerateur   AS num_y,
-        m2.denominateur AS denom_y
+        m2.denominateur AS denom_y,
+        m2.population   AS population_y
     FROM stats_quadrant m1
     INNER JOIN stats_quadrant m2
         ON m1.diplom    = m2.diplom
@@ -326,12 +328,19 @@ if ($vue === 'mentions') {
     foreach ($lignes as $l) {
         $uai = $l['id_paysage'];
         if (!isset($parEtab[$uai])) {
+            // population_x / population_y sont des libellés métier
+            // (« inscrits 2021 », « sortants 2020 »…) dépendant de
+            // l'indicateur, pas de l'étab/mention. Sur toutes les
+            // lignes d'un même indicateur ils sont identiques — on
+            // les recopie une fois, au premier insert.
             $parEtab[$uai] = [
                 'id_paysage'       => $uai,
                 'uo_lib'           => $l['uo_lib'],
                 'reg_id'           => $l['reg_id'],
                 'typologie'        => $l['typologie'],
                 'filtre_perimetre' => $l['filtre_perimetre'],
+                'population_x'     => $l['population_x'],
+                'population_y'     => $l['population_y'],
                 'num_x'            => 0,
                 'denom_x'          => 0,
                 'num_y'            => 0,
@@ -431,6 +440,15 @@ foreach ($pointsBruts as $p) {
         $id      = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
         $libelle = $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'];
 
+        // Libellé de population (« inscrits », « sortants »…) — string
+        // ou null. La colonne est VARCHAR(50) nullable ; on force à null
+        // les valeurs vides pour que le frontend puisse simplement
+        // tester l'absence (== null) sans gérer aussi la chaîne vide.
+        $popX = $p['population_x'] ?? null;
+        $popY = $p['population_y'] ?? null;
+        if ($popX === '') $popX = null;
+        if ($popY === '') $popY = null;
+
         $bulle = [
             'id'                  => $id,
             'libelle'             => $libelle,
@@ -438,6 +456,8 @@ foreach ($pointsBruts as $p) {
             'y'                   => round($y, 4),
             'denom_x'             => $denomX,
             'denom_y'             => $denomY,
+            'population_x'        => $popX,
+            'population_y'        => $popY,
             'forme'               => $forme,
             'couleur_key'         => $couleurKey,
             'details_accessibles' => $detailsAccessibles,
