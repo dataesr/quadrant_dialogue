@@ -14,7 +14,10 @@ import { useApp } from '../context/AppContext.jsx';
 //                          utile).
 //
 // Visibilité :
-//   - Vue Mentions       : toujours visible.
+//   - Affichage Tableau  : jamais visible — le highlight cible une
+//     bulle SVG (rayon ×1.5, contour rouge), il n'a aucun effet sur
+//     les lignes d'un tableau.
+//   - Vue Mentions       : toujours visible en mode graphique.
 //   - Vue Positionnement : visible ssi nbBullesAccessibles >= 2.
 //     En dessous (1 seule bulle accessible pour un user étab), la
 //     barre de recherche n'apporte rien.
@@ -35,6 +38,7 @@ const MAX_SUGGESTIONS = 100;
 export default function MentionSearch() {
   const {
     vue,
+    affichage,
     etabContexte,
     rechercheMention,
     setRechercheMention,
@@ -47,7 +51,9 @@ export default function MentionSearch() {
   const wrapperRef = useRef(null);
 
   const disabled = !etabContexte;
-  const visible = vue === 'mentions' || nbBullesAccessibles >= 2;
+  const visible =
+    affichage === 'graphique' &&
+    (vue === 'mentions' || nbBullesAccessibles >= 2);
 
   // Libellés et identifiants adaptés à la vue. On garde le même id
   // d'input ; seul le texte change. L'aria-label suit le libellé.

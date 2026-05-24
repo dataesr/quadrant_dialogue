@@ -39,17 +39,31 @@ const SEMANTIQUE = {
   bas_gauche:  { x: 'faible', y: 'faible' },
 };
 
-// Mapping des raisons API → libellé court affiché dans le tableau
-// « Mentions non représentées ». L'API distingue 6 raisons fines, ici
-// agrégées en 2 statuts métier (cf. cadrage : seuil de diffusion vs
-// absence de donnée).
-const STATUT_RAISON = {
-  pas_de_matching:                 'Pas de donnée',
-  pas_de_donnee_var1:              'Pas de donnée',
-  pas_de_donnee_var2:              'Pas de donnée',
-  denom_var1_et_var2_insuffisants: 'Non diffusable',
-  denom_var1_insuffisant:          'Non diffusable',
-  denom_var2_insuffisant:          'Non diffusable',
+// Pour chaque raison API, donne le statut à afficher dans la cellule
+// X et la cellule Y de la ligne « mention non représentée ». L'API
+// expose en plus, pour chaque axe dont la donnée est diffusable, les
+// champs `x`/`y`, `denom_x`/`denom_y`, `population_x`/`population_y`
+// — la cellule rend alors la valeur (via CellulePourcentage) plutôt
+// qu'un statut texte.
+//
+// Conventions :
+//   - 'pas_de_donnee' : ligne absente en base pour cet axe.
+//   - 'non_diffusable' : ligne présente mais denom < SEUIL_DIFFUSION.
+//   - 'valeur'         : l'axe a une donnée diffusable — on s'appuie
+//                         sur la présence des champs `x`/`denom_x`,
+//                         pas sur la raison.
+const STATUT_PAR_RAISON = {
+  pas_de_matching:                 { x: 'pas_de_donnee',  y: 'pas_de_donnee'  },
+  pas_de_donnee_var1:              { x: 'pas_de_donnee',  y: 'valeur'         },
+  pas_de_donnee_var2:              { x: 'valeur',         y: 'pas_de_donnee'  },
+  denom_var1_et_var2_insuffisants: { x: 'non_diffusable', y: 'non_diffusable' },
+  denom_var1_insuffisant:          { x: 'non_diffusable', y: 'valeur'         },
+  denom_var2_insuffisant:          { x: 'valeur',         y: 'non_diffusable' },
+};
+
+const LIBELLE_STATUT = {
+  pas_de_donnee:  'Pas de donnée',
+  non_diffusable: 'Non diffusable',
 };
 
 export default function QuadrantTable() {
@@ -96,7 +110,13 @@ export default function QuadrantTable() {
     return g;
   }, [data]);
 
-  const mentionsNonRepresentees = data?.mentions_non_representees || [];
+  // Mentions non représentées triées par libellé (stable, lisible).
+  const mentionsNonRepresentees = useMemo(() => {
+    const list = data?.mentions_non_representees || [];
+    return [...list].sort(
+      (a, b) => (a.libelle || '').localeCompare(b.libelle || '', 'fr')
+    );
+  }, [data]);
 
   if (loading) {
     return (
@@ -162,8 +182,9 @@ export default function QuadrantTable() {
       ))}
 
       {/* Mentions non représentées — vue=mentions uniquement. L'API
-          renvoie ce champ dans la réponse de /quadrant, donc pas
-          d'endpoint supplémentaire à appeler. */}
+          expose ce champ dans /quadrant ; chaque entrée porte la raison
+          + éventuellement la valeur diffusable d'un des axes (cf.
+          calculerMentionsNonRepresentees dans quadrant.php). */}
       {vue === 'mentions' && (
         <section className="tableau-cadran">
           <h3>Mentions non représentées</h3>
@@ -176,16 +197,16 @@ export default function QuadrantTable() {
               <thead>
                 <tr>
                   <th scope="col">Mention</th>
-                  <th scope="col">Statut</th>
+                  <th scope="col">{libelleX}</th>
+                  <th scope="col">{libelleY}</th>
                 </tr>
               </thead>
               <tbody>
                 {mentionsNonRepresentees.map((m) => (
                   <tr key={m.diplom}>
                     <th scope="row">{m.libelle || m.diplom}</th>
-                    <td className="cellule-non-diffusable">
-                      {STATUT_RAISON[m.raison] || m.raison}
-                    </td>
+                    <CelluleMentionNonRep mention={m} axe="x" />
+                    <CelluleMentionNonRep mention={m} axe="y" />
                   </tr>
                 ))}
               </tbody>
@@ -221,6 +242,32 @@ function CellulePourcentage({ taux, denom, population }) {
       <div className="valeur-population">
         sur {denom}{population ? ` ${population}` : ''}
       </div>
+    </td>
+  );
+}
+
+// Rend une cellule X ou Y pour une mention non représentée. Trois cas
+// possibles selon la raison API et la présence des champs de valeur :
+//   - 'valeur'         : l'axe a une donnée diffusable (denom >= 5) →
+//                         on rend avec CellulePourcentage, comme pour
+//                         les bulles du tableau principal.
+//   - 'non_diffusable' : denom < 5 → italique gris.
+//   - 'pas_de_donnee'  : pas de ligne en base pour cet axe → idem.
+function CelluleMentionNonRep({ mention, axe }) {
+  const statut = STATUT_PAR_RAISON[mention.raison]?.[axe];
+
+  if (statut === 'valeur') {
+    return (
+      <CellulePourcentage
+        taux={mention[axe]}
+        denom={mention[`denom_${axe}`]}
+        population={mention[`population_${axe}`]}
+      />
+    );
+  }
+  return (
+    <td className="cellule-non-diffusable">
+      {LIBELLE_STATUT[statut] || '—'}
     </td>
   );
 }

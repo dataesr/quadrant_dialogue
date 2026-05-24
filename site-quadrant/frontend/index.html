@@ -1,9 +1,20 @@
 <!doctype html>
-<html lang="fr" data-fr-scheme="light">
+<!-- Mode clair forcé :
+       - data-fr-scheme : préférence utilisateur lue au boot par la DSFR.
+       - data-fr-theme  : thème effectif. On le pose en dur pour que le
+         CSS soit en light dès la première peinture (avant que le JS
+         DSFR ne s'exécute, pour éviter un flash sombre).
+     Le script inline ci-dessous force aussi localStorage.scheme à
+     'light' : la DSFR (dsfr.module.js l.3826) lit en PRIORITÉ
+     localStorage avant l'attribut HTML. Sans ce coup de pouce, une
+     visite antérieure qui aurait stocké 'system' ou 'dark' garderait
+     la main sur la page actuelle. -->
+<html lang="fr" data-fr-scheme="light" data-fr-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quadrant</title>
+    <script>try { localStorage.setItem('scheme', 'light'); } catch (_) {}</script>
 
     <!-- Favicons DSFR (copiés depuis @gouvfr/dsfr/dist/favicon/ dans
          public/favicon/ — recommandations du Système de Design de l'État).

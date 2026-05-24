@@ -57,6 +57,12 @@
  *    l'anonymisation des bulles hors périmètre (pas de fuite indirecte
  *    si l'anonymisation évolue) et parce qu'un agrégat d'établissement
  *    n'a pas de domaine unique.
+ *  - en vue=mentions uniquement, chaque entrée de `mentions_non_representees`
+ *    porte `diplom`, `libelle`, `raison`, plus — pour chaque axe dont
+ *    la donnée est diffusable (denom >= SEUIL_DIFFUSION) — les champs
+ *    `x` (ratio 0-1), `denom_x`, `population_x` et leurs équivalents Y.
+ *    Permet au frontend d'afficher en tableau la valeur diffusable d'un
+ *    axe même quand l'autre manque ou est sous le seuil de diffusion.
  */
 
 require_once __DIR__ . '/../lib/Database.php';
@@ -675,15 +681,21 @@ function calculerMentionsNonRepresentees(
         'm.formation = :formation',
         'm.millesime = :millesime',
     ];
+    // ATTR_EMULATE_PREPARES = false (cf. Database.php) : MySQL en
+    // prepared statements natifs n'autorise pas un même placeholder
+    // nommé à plusieurs endroits du SQL. On dédouble donc les bindings
+    // de var1/var2/date1/date2 (utilisés une fois par CASE ci-dessous).
     $params = [
         ':etab'      => $etabContexte,
         ':motif'     => $motifContexte,
         ':formation' => $formation,
         ':millesime' => $millesime,
-        ':var1'      => $var1,
-        ':date1'     => $dateInserVar1,
-        ':var2'      => $var2,
-        ':date2'     => $dateInserVar2,
+        ':var1_num'    => $var1, ':date1_num'   => $dateInserVar1,
+        ':var1_denom'  => $var1, ':date1_denom' => $dateInserVar1,
+        ':var1_pop'    => $var1, ':date1_pop'   => $dateInserVar1,
+        ':var2_num'    => $var2, ':date2_num'   => $dateInserVar2,
+        ':var2_denom'  => $var2, ':date2_denom' => $dateInserVar2,
+        ':var2_pop'    => $var2, ':date2_pop'   => $dateInserVar2,
     ];
 
     if ($dom !== '')      { $conditions[] = 'm.dom = :dom';           $params[':dom'] = $dom; }
@@ -696,12 +708,19 @@ function calculerMentionsNonRepresentees(
 
     $whereClause = implode(' AND ', $conditions);
 
+    // On agrège num/denom/population pour CHAQUE axe — pour pouvoir,
+    // dans le résultat final, exposer la valeur diffusable d'un axe
+    // même quand l'autre est manquant ou non diffusable.
     $sql = "
         SELECT
             m.diplom,
             MAX(m.libelle_intitule) AS libelle,
-            MAX(CASE WHEN m.indicateur = :var1 AND m.date_inser = :date1 THEN m.denominateur END) AS denom_x,
-            MAX(CASE WHEN m.indicateur = :var2 AND m.date_inser = :date2 THEN m.denominateur END) AS denom_y
+            MAX(CASE WHEN m.indicateur = :var1_num   AND m.date_inser = :date1_num   THEN m.numerateur   END) AS num_x,
+            MAX(CASE WHEN m.indicateur = :var1_denom AND m.date_inser = :date1_denom THEN m.denominateur END) AS denom_x,
+            MAX(CASE WHEN m.indicateur = :var1_pop   AND m.date_inser = :date1_pop   THEN m.population   END) AS population_x,
+            MAX(CASE WHEN m.indicateur = :var2_num   AND m.date_inser = :date2_num   THEN m.numerateur   END) AS num_y,
+            MAX(CASE WHEN m.indicateur = :var2_denom AND m.date_inser = :date2_denom THEN m.denominateur END) AS denom_y,
+            MAX(CASE WHEN m.indicateur = :var2_pop   AND m.date_inser = :date2_pop   THEN m.population   END) AS population_y
         FROM stats_quadrant m
         WHERE $whereClause
         GROUP BY m.diplom
@@ -737,11 +756,38 @@ function calculerMentionsNonRepresentees(
             continue;
         }
 
-        $resultats[] = [
+        $resultat = [
             'diplom'  => $m['diplom'],
             'libelle' => $m['libelle'],
             'raison'  => $raison,
         ];
+
+        // Expose la donnée diffusable de chaque axe quand elle existe — on
+        // s'aligne sur la structure des bulles principales : `x` (ratio 0-1),
+        // `denom_x`, `population_x` (et idem Y). Le frontend réutilise ainsi
+        // sa CellulePourcentage sans cas particulier.
+        //
+        // Politique d'exposition : on n'expose un axe que si son denom >=
+        // SEUIL_DIFFUSION (5). Une donnée non diffusable ne doit pas fuiter
+        // de proportion calculée sur trop peu d'individus — cohérent avec
+        // Diffusion::forme() qui filtre les bulles principales.
+        $popX = ($m['population_x'] ?? '') !== '' ? (string)$m['population_x'] : null;
+        $popY = ($m['population_y'] ?? '') !== '' ? (string)$m['population_y'] : null;
+
+        if ($denomX !== null && $denomX >= Diffusion::SEUIL_DIFFUSION) {
+            $numX = (int)$m['num_x'];
+            $resultat['x']            = round($numX / $denomX, 4);
+            $resultat['denom_x']      = $denomX;
+            $resultat['population_x'] = $popX;
+        }
+        if ($denomY !== null && $denomY >= Diffusion::SEUIL_DIFFUSION) {
+            $numY = (int)$m['num_y'];
+            $resultat['y']            = round($numY / $denomY, 4);
+            $resultat['denom_y']      = $denomY;
+            $resultat['population_y'] = $popY;
+        }
+
+        $resultats[] = $resultat;
     }
 
     return $resultats;
