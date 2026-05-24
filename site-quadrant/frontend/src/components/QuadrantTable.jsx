@@ -227,6 +227,8 @@ export default function QuadrantTable() {
           )}
         </section>
       )}
+
+      <p className="source-attribution">Source : MESRE - SIES</p>
     </div>
   );
 }

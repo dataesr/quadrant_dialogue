@@ -25,7 +25,7 @@ export default function App() {
 }
 
 function AppShell() {
-  const { loading, error, etabContexte, affichage } = useApp();
+  const { loading, error, etabContexte, affichage, vue } = useApp();
 
   return (
     <div className="quadrant-app">
@@ -55,7 +55,11 @@ function AppShell() {
                   filtre Mention dans AdvancedFilters). */}
               <AffichageSelector />
               <FilterBar />
-              <MentionSearch />
+              {/* MentionSearch n'est utile qu'en vue Mentions :
+                  - vue Positionnement → le sélecteur d'étab du haut
+                    de page joue déjà ce rôle (et avec autocomplétion
+                    depuis cette session). */}
+              {vue === 'mentions' && <MentionSearch />}
               <AdvancedFilters />
             </aside>
             <main className="zone-quadrant">

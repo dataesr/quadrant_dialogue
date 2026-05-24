@@ -236,8 +236,16 @@
   font-size: 13px;
 }
 .combobox-suggestions li:hover,
+.combobox-suggestions li[data-highlighted="true"],
 .combobox-suggestions li[aria-selected="true"] {
   background: #f0f0f0;
+}
+/* Complément discret affiché à droite du libellé dans une suggestion
+   (région · typologie pour le sélecteur d'étab). */
+.combobox-suggestions .combobox-suggestion-hint {
+  color: #888;
+  font-size: 12px;
+  margin-left: 4px;
 }
 
 /* Liste verticale utilisée à l'intérieur du panneau de filtres avancés
@@ -250,6 +258,19 @@
 
 .liste-filtres-avances .fr-select-group {
   margin-bottom: 0;
+}
+
+/* Mention de la source de données, affichée en pied de chaque
+   visualisation (quadrant SVG ET vue tableau). Sobre — c'est une
+   attribution officielle, pas un élément interactif. La phase 6
+   (exports PNG/Excel) reprendra cette mention dans le pied de page
+   généré ; pour l'instant, attribution à l'écran uniquement. */
+.source-attribution {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+  text-align: right;
 }
 
 /* Vue tableau alternative au quadrant. Une <section> par cadran, plus

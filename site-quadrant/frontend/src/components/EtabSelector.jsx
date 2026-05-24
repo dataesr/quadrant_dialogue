@@ -1,12 +1,32 @@
+import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import Combobox from './selectors/Combobox.jsx';
 
-// Sélecteur d'établissement, basé sur les classes form DSFR :
-//   - mode "etab" : libellé en lecture seule (pas de combobox)
-//   - mode "rectorat_national" : `fr-select-group` avec option neutre
-// La sous-info Région · Typologie utilise fr-hint-text quand etabInfo est connu.
+// Sélecteur d'établissement de référence en haut de page.
+//
+//   - mode "etab" (un seul étab visible) : libellé en lecture seule.
+//   - mode "rectorat_national" (plusieurs étabs) : combobox avec
+//     autocomplétion. Indispensable au-delà d'une dizaine d'étabs ;
+//     remplace un <fr-select> qui devenait peu pratique à scanner
+//     pour un rectorat avec 20-30 établissements.
+//
+// La sous-info Région · Typologie reste affichée sous le sélecteur
+// quand un étab est connu (fr-hint-text DSFR).
 
 export default function EtabSelector() {
   const { mode, etabList, etabContexte, etabInfo, setEtabContexte } = useApp();
+
+  // Préparation des items pour la combobox. La `hint` (région +
+  // typologie en petit gris à droite) aide à désambiguer deux étabs au
+  // libellé proche.
+  const items = useMemo(
+    () => (etabList || []).map((e) => ({
+      id: e.id,
+      libelle: e.libelle,
+      hint: formatHint(e),
+    })),
+    [etabList]
+  );
 
   return (
     <div className="fr-mb-3w">
@@ -16,24 +36,14 @@ export default function EtabSelector() {
           {etabInfo?.libelle || '—'}
         </p>
       ) : (
-        <div className="fr-select-group fr-mb-0">
-          <label className="fr-label" htmlFor="quadrant-etab-select">
-            Établissement de référence
-          </label>
-          <select
-            id="quadrant-etab-select"
-            className="fr-select"
-            value={etabContexte || ''}
-            onChange={(e) => setEtabContexte(e.target.value)}
-          >
-            <option value="">— sélectionner un établissement —</option>
-            {etabList.map((etab) => (
-              <option key={etab.id} value={etab.id}>
-                {etab.libelle}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Combobox
+          id="quadrant-etab-select"
+          label="Établissement de référence"
+          placeholder="— sélectionner un établissement —"
+          items={items}
+          value={etabContexte || ''}
+          onSelect={(id) => setEtabContexte(id || null)}
+        />
       )}
 
       {etabInfo && (
@@ -46,4 +56,16 @@ export default function EtabSelector() {
       )}
     </div>
   );
+}
+
+// Construit le complément discret affiché à droite du libellé dans le
+// menu déroulant : « · Région · Typologie ». Tolérant aux champs
+// absents — on n'affiche que ce qu'on a.
+function formatHint(etab) {
+  const region = etab.region?.libelle || etab.region?.code;
+  const typo   = etab.typologie;
+  const parts = [];
+  if (region) parts.push(region);
+  if (typo)   parts.push(typo);
+  return parts.length ? `· ${parts.join(' · ')}` : '';
 }
