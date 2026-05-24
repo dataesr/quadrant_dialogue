@@ -345,3 +345,52 @@
 .tableau-cadran .fr-table tr.ligne-selectionne td.cellule-fragile {
   background-color: #FFF4E5;
 }
+
+/* ----------------------------------------------------------------------
+ * Styles d'impression
+ * ----------------------------------------------------------------------
+ * Objectif : à l'impression, ne garder que les éléments porteurs de
+ * sens — entête établissement, visualisation (quadrant SVG ou tableau),
+ * légende des couleurs, mention de source. Tout le chrome interactif
+ * (onglets, panneau de filtres, boutons de zoom, tooltip) est masqué.
+ *
+ * Pas de forçage de couleurs : l'utilisateur décide dans les paramètres
+ * de son imprimante (couleur vs N&B). Le DSFR gère ses propres media
+ * print sur son CSS.
+ *
+ * L'app est intégrée en iframe sur le site hôte. Ces règles ne
+ * s'appliquent qu'à l'impression DEPUIS l'iframe (Ctrl/Cmd+P focus
+ * dans la frame) ; l'impression depuis la page hôte est régie par
+ * le CSS de l'hôte.
+ * -------------------------------------------------------------------- */
+@media print {
+  /* Onglets Vue + Cursus (le wrapper .ligne-onglets de App.jsx
+     contient les deux fieldset fr-segmented). */
+  .ligne-onglets,
+  /* Panneau de filtres latéral (englobe AffichageSelector, FilterBar,
+     MentionSearch et AdvancedFilters — tout est couvert d'un coup). */
+  .panneau-filtres,
+  /* Boutons de zoom +/−/⌂ en surimpression du SVG. */
+  .quadrant-zoom-controls,
+  /* Tooltip flottant si jamais ouvert au moment de l'impression. */
+  .quadrant-tooltip {
+    display: none !important;
+  }
+
+  /* Layout : la grille devient bloc une fois la sidebar masquée — la
+     zone du quadrant prend toute la largeur disponible. */
+  .quadrant-grille {
+    display: block;
+  }
+  .zone-quadrant {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Fonds blancs explicites : évite qu'un fond gris hérité ne ressorte
+     à l'impression (économie d'encre + lisibilité). */
+  body,
+  .quadrant-app {
+    background: white;
+  }
+}
