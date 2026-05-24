@@ -49,8 +49,12 @@ function AppShell() {
 
           <div className="quadrant-grille">
             <aside className="panneau-filtres">
-              <FilterBar />
+              {/* AffichageSelector placé en tête : la bascule
+                  Graphique/Tableau conditionne la visibilité de
+                  certains contrôles en-dessous (cf. MentionSearch,
+                  filtre Mention dans AdvancedFilters). */}
               <AffichageSelector />
+              <FilterBar />
               <MentionSearch />
               <AdvancedFilters />
             </aside>

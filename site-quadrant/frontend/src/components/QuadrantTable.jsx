@@ -152,32 +152,34 @@ export default function QuadrantTable() {
             {' × '}
             {libelleY} {SEMANTIQUE[cadran].y}
           </h3>
-          <table className="fr-table">
-            <thead>
-              <tr>
-                <th scope="col">{entiteHeader}</th>
-                <th scope="col">{libelleX}</th>
-                <th scope="col">{libelleY}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groupes[cadran].map((b) => (
-                <tr key={b.id}>
-                  <th scope="row">{b.libelle || '—'}</th>
-                  <CellulePourcentage
-                    taux={b.x}
-                    denom={b.denom_x}
-                    population={b.population_x}
-                  />
-                  <CellulePourcentage
-                    taux={b.y}
-                    denom={b.denom_y}
-                    population={b.population_y}
-                  />
+          <div className="fr-table fr-table--bordered">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{entiteHeader}</th>
+                  <th scope="col">{libelleX}</th>
+                  <th scope="col">{libelleY}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {groupes[cadran].map((b) => (
+                  <tr key={b.id}>
+                    <th scope="row">{b.libelle || '—'}</th>
+                    <CellulePourcentage
+                      taux={b.x}
+                      denom={b.denom_x}
+                      population={b.population_x}
+                    />
+                    <CellulePourcentage
+                      taux={b.y}
+                      denom={b.denom_y}
+                      population={b.population_y}
+                    />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ))}
 
@@ -193,24 +195,26 @@ export default function QuadrantTable() {
               Aucune mention non représentée pour cette combinaison de filtres.
             </p>
           ) : (
-            <table className="fr-table">
-              <thead>
-                <tr>
-                  <th scope="col">Mention</th>
-                  <th scope="col">{libelleX}</th>
-                  <th scope="col">{libelleY}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mentionsNonRepresentees.map((m) => (
-                  <tr key={m.diplom}>
-                    <th scope="row">{m.libelle || m.diplom}</th>
-                    <CelluleMentionNonRep mention={m} axe="x" />
-                    <CelluleMentionNonRep mention={m} axe="y" />
+            <div className="fr-table fr-table--bordered">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Mention</th>
+                    <th scope="col">{libelleX}</th>
+                    <th scope="col">{libelleY}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {mentionsNonRepresentees.map((m) => (
+                    <tr key={m.diplom}>
+                      <th scope="row">{m.libelle || m.diplom}</th>
+                      <CelluleMentionNonRep mention={m} axe="x" />
+                      <CelluleMentionNonRep mention={m} axe="y" />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       )}

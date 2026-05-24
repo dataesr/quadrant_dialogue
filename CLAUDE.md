@@ -4,6 +4,35 @@ Ce document fournit le contexte permanent du projet. Le lire en début de sessio
 
 ---
 
+## Environnement de développement local
+
+- **Machine** : Mac sans PHP installé. Toute commande PHP locale échoue (`php`, `php -l`, `php -S`, `composer`). NE PAS tenter.
+- **Test PHP** :
+  - syntaxe : `ssh ovh 'php -l /homez.10002/mesouvm/quadsies/api/<chemin>'`
+  - endpoint : `curl -sS "https://quadsies.dgesip.fr/api/<route>"` (mode dev actif, `contexte_id=etBz7` accepté en query)
+- **Déploiement PHP** : `scp <fichier local> ovh:/homez.10002/mesouvm/quadsies/api/<chemin distant>`. Alias SSH `ovh` configuré (user `mesouvm-app`, host `ssh01.cluster121.gra.hosting.ovh.net`).
+- **Production API** : `https://quadsies.dgesip.fr/`. Le frontend en dev (`npm run dev`) proxie `/api` vers cette URL.
+- **Frontend** : Node + Vite installés localement, `npm run dev` / `npm run build` fonctionnent.
+
+## Pièges techniques connus (résolus en sessions précédentes — ne pas redébugger)
+
+### Mode clair DSFR ne tient pas malgré `data-fr-scheme="light"`
+La DSFR (`dsfr.module.js` l.3826) lit en PRIORITÉ `localStorage.getItem('scheme')` AVANT l'attribut HTML. Si une visite antérieure a stocké 'system' ou 'dark', l'attribut HTML est ignoré. Solution déjà en place dans `index.html` :
+```html
+<html lang="fr" data-fr-scheme="light" data-fr-theme="light">
+  <head>
+    ...
+    <script>try { localStorage.setItem('scheme', 'light'); } catch (_) {}</script>
+  </head>
+</html>
+```
+Le `data-fr-theme="light"` posé en dur en complément évite un flash sombre au boot.
+
+### PDO `Invalid parameter number` (`SQLSTATE[HY093]`)
+`Database.php` configure PDO avec `ATTR_EMULATE_PREPARES = false`. Les prepared statements natifs MySQL n'acceptent PAS un même placeholder nommé à plusieurs endroits du SQL. Solution : dédoubler les bindings avec des alias distincts (`:var1_num`, `:var1_denom`, `:var1_pop`…) en bindant la même valeur à chaque alias.
+
+---
+
 ## 1. Vue d'ensemble
 
 **Nature** : application web **transitoire** de visualisation par quadrants à bulles pour comparer les indicateurs de réussite et d'insertion d'établissements universitaires. Inspirée d'un outil Tableau MESR-SIES existant.
