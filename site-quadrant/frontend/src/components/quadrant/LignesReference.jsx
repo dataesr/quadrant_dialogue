@@ -15,8 +15,8 @@ import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
 // bruts de geometry.js ici.
 
 const LABEL = {
-  mediane: 'Méd.',
-  moyenne: 'Moy.',
+  mediane: 'Médiane',
+  moyenne: 'Moyenne',
 };
 
 export default function LignesReference({ reference, xScale, yScale }) {

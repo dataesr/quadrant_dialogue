@@ -150,26 +150,72 @@
   margin-right: 4px;
 }
 
-/* Barre de recherche de mention dans le panneau gauche. Reprend la
-   typographie DSFR via l'input natif. */
-.recherche-mention {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+/* Combobox de recherche de mention (panneau de suggestions custom).
+   La datalist HTML5 native tronquait les libellés longs ; on utilise
+   donc un panneau HTML positionné en absolu, libre de dépasser la
+   largeur de la colonne 280 px (overlay z-index élevé). */
+.recherche-mention-combobox {
+  position: relative;
 }
-.recherche-mention label {
-  font-size: 12px;
-  color: #555;
+.recherche-mention-combobox .fr-label {
+  margin-bottom: 0.25rem;
 }
-.recherche-mention input[type="search"] {
-  padding: 6px 8px;
+.combobox-input-wrapper {
+  position: relative;
+}
+.combobox-input-wrapper input {
+  width: 100%;
+  padding: 6px 28px 6px 8px;
   border: 1px solid #ccc;
   border-radius: 2px;
   font-size: 14px;
+  box-sizing: border-box;
 }
-.recherche-mention input[type="search"]:focus {
+.combobox-input-wrapper input:focus {
   outline: 2px solid #000091;
   outline-offset: -2px;
+}
+.combobox-input-wrapper button {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: #888;
+  padding: 0 4px;
+}
+.combobox-input-wrapper button:hover {
+  color: #000091;
+}
+.combobox-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 400px;
+  max-width: 80vw;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 2px 0 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 20;
+}
+.combobox-suggestions li {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.combobox-suggestions li:hover,
+.combobox-suggestions li[aria-selected="true"] {
+  background: #f0f0f0;
 }
 
 /* Liste verticale utilisée à l'intérieur du panneau de filtres avancés

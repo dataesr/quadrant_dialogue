@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { select } from 'd3-selection';
 import { quantile } from 'd3-array';
@@ -34,6 +34,13 @@ const LIBELLES_DOMAINES = {
 
 const ORDRE_DOMAINES = ['DEG', 'LLA', 'SHS', 'STS', 'INTERD'];
 
+// Marge de débordement autorisée pour les bulles autour du plot strict.
+// Le clipPath dédié aux bulles englobe (plot ± OVERFLOW), de sorte qu'une
+// grosse bulle centrée près du bord puisse mordre légèrement dehors —
+// plus lisible que la couper à ras. Les marges du SVG (cf. geometry.js)
+// sont dimensionnées pour absorber ces 30 px.
+const OVERFLOW = 30;
+
 export default function Quadrant() {
   const {
     cursus, vue, millesime,
@@ -60,7 +67,7 @@ export default function Quadrant() {
   const [hovered, setHovered] = useState(null);
   const wrapperRef = useRef(null);
 
-  function handleHover(bulle, event) {
+  const handleHover = useCallback((bulle, event) => {
     const wrapperRect = wrapperRef.current?.getBoundingClientRect();
     if (!wrapperRect) return;
     setHovered({
@@ -68,19 +75,23 @@ export default function Quadrant() {
       x: event.clientX - wrapperRect.left + 12,
       y: event.clientY - wrapperRect.top  + 12,
     });
-  }
-  function handleLeave() {
-    setHovered(null);
-  }
+  }, []);
+  const handleLeave = useCallback(() => setHovered(null), []);
 
   // ---------------- Zoom ----------------
-  const svgRef  = useRef(null);
+  // Callback ref : le useEffect d'attachement de d3-zoom doit pouvoir
+  // s'exécuter quand le SVG arrive dans le DOM. Avec un useRef classique,
+  // au premier render le SVG n'est pas encore monté (early-return sur
+  // loading=true) ; un useEffect [] ne se redéclencherait pas. On
+  // utilise donc un state-backed callback ref qui re-trigger le useEffect
+  // dès que l'élément change (mount ou unmount).
+  const [svgEl, setSvgEl] = useState(null);
   const zoomRef = useRef(null);
   const [transform, setTransform] = useState(zoomIdentity);
 
   useEffect(() => {
-    if (!svgRef.current) return;
-    const svg = select(svgRef.current);
+    if (!svgEl) return;
+    const svg = select(svgEl);
     const z = zoom()
       .scaleExtent([1, 10])
       .extent([[0, 0], [WIDTH, HEIGHT]])
@@ -90,16 +101,17 @@ export default function Quadrant() {
     zoomRef.current = z;
     return () => {
       svg.on('.zoom', null);
+      zoomRef.current = null;
     };
-  }, []);
+  }, [svgEl]);
 
   function zoomBy(factor) {
-    if (!zoomRef.current || !svgRef.current) return;
-    select(svgRef.current).transition().duration(180).call(zoomRef.current.scaleBy, factor);
+    if (!zoomRef.current || !svgEl) return;
+    select(svgEl).transition().duration(180).call(zoomRef.current.scaleBy, factor);
   }
   function zoomReset() {
-    if (!zoomRef.current || !svgRef.current) return;
-    select(svgRef.current).transition().duration(180).call(zoomRef.current.transform, zoomIdentity);
+    if (!zoomRef.current || !svgEl) return;
+    select(svgEl).transition().duration(180).call(zoomRef.current.transform, zoomIdentity);
   }
 
   // Scales effectives : original × transform d3-zoom. Quand transform =
@@ -108,7 +120,10 @@ export default function Quadrant() {
   const yScale = transform.rescaleY(yScaleBase);
 
   // ---------------- Données dérivées ----------------
-  const bulles = data?.bulles || [];
+  // Memoize : sans ça, `bulles` change de référence à chaque render et
+  // tous les useMemo/useEffect en aval s'invalident inutilement
+  // → boucle infinie via setMentionsAffichees.
+  const bulles = useMemo(() => data?.bulles || [], [data?.bulles]);
 
   // Dénominateurs pour le calcul du rayon : on prend denom_x pour les
   // bulles autorisées et denom (bruité) pour les bulles anonymes.
@@ -142,16 +157,27 @@ export default function Quadrant() {
   }, [allDenoms]);
 
   // Publier la liste des libellés de mentions affichées (pour la
-  // datalist de la barre de recherche).
+  // datalist / combobox de recherche). On compare avant de setter pour
+  // garantir une no-op si la liste est inchangée — un setState avec
+  // un nouveau tableau de même contenu déclencherait quand même un
+  // re-render chez les abonnés.
   useEffect(() => {
     if (vue !== 'mentions') {
-      setMentionsAffichees([]);
+      setMentionsAffichees((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     const libelles = bulles
       .map((b) => b.libelle)
       .filter((l) => typeof l === 'string' && l.length > 0);
-    setMentionsAffichees(libelles);
+    setMentionsAffichees((prev) => {
+      if (
+        prev.length === libelles.length &&
+        prev.every((l, i) => l === libelles[i])
+      ) {
+        return prev;
+      }
+      return libelles;
+    });
   }, [bulles, vue, setMentionsAffichees]);
 
   // ---------------- États d'affichage non-data ----------------
@@ -179,16 +205,18 @@ export default function Quadrant() {
   return (
     <div className="quadrant-wrapper" ref={wrapperRef}>
       <svg
-        ref={svgRef}
+        ref={setSvgEl}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         width="100%"
-        height="auto"
         role="img"
         aria-label="Quadrant"
       >
-        {/* clipPath : empêche les bulles de déborder du plot quand on
-            est zoomé (les positions sont calculées en domaine étendu
-            mais le rendu reste contraint au cadre). */}
+        {/* Deux clipPath distincts :
+            - quadrant-clip-plot : strict, pour les lignes de référence
+              (qui ne doivent pas dépasser).
+            - quadrant-clip-bulles : élargi de OVERFLOW px de chaque
+              côté, pour permettre aux grosses bulles près du bord de
+              déborder légèrement (plus lisible que les couper à ras). */}
         <defs>
           <clipPath id="quadrant-clip-plot">
             <rect
@@ -198,22 +226,36 @@ export default function Quadrant() {
               height={PLOT_HEIGHT}
             />
           </clipPath>
+          <clipPath id="quadrant-clip-bulles">
+            <rect
+              x={MARGIN.left - OVERFLOW}
+              y={MARGIN.top  - OVERFLOW}
+              width={PLOT_WIDTH  + 2 * OVERFLOW}
+              height={PLOT_HEIGHT + 2 * OVERFLOW}
+            />
+          </clipPath>
         </defs>
 
-        {/* Couche de fond invisible : capture les événements de zoom
-            (wheel, drag) même quand on n'est pas sur une bulle. */}
+        {/* Couche de fond invisible mais capturante : sert de surface
+            de drag pour d3-zoom. fill="transparent" ne paint rien donc
+            sans pointerEvents="all" un SVG laisserait passer les events
+            (default visiblePainted). */}
         <rect
           x={MARGIN.left}
           y={MARGIN.top}
           width={PLOT_WIDTH}
           height={PLOT_HEIGHT}
           fill="transparent"
+          pointerEvents="all"
         />
 
         <Axes xScale={xScale} yScale={yScale} libelleX={libelleX} libelleY={libelleY} />
 
         <g clipPath="url(#quadrant-clip-plot)">
           <LignesReference reference={data.reference} xScale={xScale} yScale={yScale} />
+        </g>
+
+        <g clipPath="url(#quadrant-clip-bulles)">
           <Bulles
             bulles={bulles}
             vue={vue}

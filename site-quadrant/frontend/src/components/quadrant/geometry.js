@@ -16,14 +16,16 @@ export const WIDTH  = 700;
 export const HEIGHT = 700;
 
 // Marges internes : laissent de la place pour les graduations + titres
-// d'axes. left et bottom sont légèrement plus grandes pour les labels
-// d'axes ; on rend le plot rigoureusement carré en alignant les deux
-// dimensions de PLOT.
+// d'axes ET pour la zone de débordement contrôlé des bulles. Une grosse
+// bulle centrée sur (0,0) doit pouvoir « mordre » légèrement hors du
+// cadre du plot — c'est plus lisible que la couper à ras. Le clip path
+// dédié aux bulles (cf. Quadrant.jsx) élargit le plot de 30 px sur chaque
+// côté, donc les marges doivent au minimum absorber ces 30 px.
 export const MARGIN = {
-  top:    30,
-  right:  30,
-  bottom: 60,
-  left:   60,
+  top:    50,
+  right:  50,
+  bottom: 80,
+  left:   80,
 };
 
 // Aire utile du plot (intérieur des axes).
