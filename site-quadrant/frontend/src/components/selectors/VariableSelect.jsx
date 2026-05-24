@@ -3,12 +3,14 @@
 // X↔Y reste donc maîtrisée à un seul endroit.
 //
 // Props :
-//  - axis      : 'X' | 'Y' (label affiché)
+//  - axis      : 'X' | 'Y' (utilisé pour l'id et le libellé)
 //  - value     : libellé courant (string | null)
 //  - options   : tableau d'objets { libelle, declinable_delai? }
 //  - onChange  : (newLibelle) => void
 //  - disabled  : booléen
 //  - loading   : true tant que le référentiel charge
+
+const LABEL_AXE = { X: 'Axe horizontal', Y: 'Axe vertical' };
 
 export default function VariableSelect({
   axis,
@@ -24,7 +26,7 @@ export default function VariableSelect({
   return (
     <div className={`fr-select-group${groupDisabled ? ' fr-select-group--disabled' : ''}`}>
       <label className="fr-label" htmlFor={id}>
-        Variable {axis}
+        {LABEL_AXE[axis]}
         {loading && <span className="fr-hint-text">Chargement…</span>}
       </label>
       <select

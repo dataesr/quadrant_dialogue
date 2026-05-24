@@ -4,6 +4,11 @@
 
 const DATES_FALLBACK = ['6', '12', '18', '24', '30'];
 
+const LABEL_AXE = {
+  X: "Délai de l'axe horizontal (mois)",
+  Y: "Délai de l'axe vertical (mois)",
+};
+
 export default function DateInserSelect({
   axis,
   value,
@@ -17,7 +22,7 @@ export default function DateInserSelect({
   return (
     <div className={`fr-select-group${disabled ? ' fr-select-group--disabled' : ''}`}>
       <label className="fr-label" htmlFor={id}>
-        Délai {axis} (mois)
+        {LABEL_AXE[axis]}
       </label>
       <select
         id={id}

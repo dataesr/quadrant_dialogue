@@ -41,11 +41,135 @@
   margin-bottom: 0;
 }
 
-/* Conteneur du quadrant (phase 4). Pour la phase 3, EmptyState a sa propre
-   mise en forme via fr-alert — pas d'aspect-ratio ici, le SVG du quadrant
-   définira sa propre hauteur via un viewBox carré quand il arrivera. */
+/* Conteneur du quadrant. Le SVG porte son viewBox et se met à l'échelle
+   via width:100% height:auto, donc pas de hauteur fixe ici. */
 .zone-quadrant {
   width: 100%;
+}
+
+/* Cadre léger autour du SVG pour le détacher visuellement de la sidebar
+   de filtres. Padding interne minimal pour ne pas étouffer les axes.
+   position:relative pour ancrer le tooltip et les boutons de zoom en
+   surimpression du SVG. */
+.quadrant-wrapper {
+  position: relative;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  padding: 0.5rem;
+}
+
+/* Force Marianne (police DSFR, déjà chargée par @gouvfr/dsfr) sur le
+   texte SVG — les <text> n'héritent pas du font-family du parent HTML
+   par défaut. */
+.quadrant-wrapper svg text {
+  font-family: "Marianne", arial, sans-serif;
+}
+
+/* Tooltip flottant au survol des bulles. Position calculée en JS et
+   passée en inline style (left/top). Pointer-events: none pour ne pas
+   se mettre dans le chemin du mouseover des bulles voisines. */
+.quadrant-tooltip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.quadrant-tooltip .libelle {
+  font-weight: 500;
+  margin-bottom: 2px;
+  max-width: 280px;
+  white-space: normal;
+}
+
+/* Boutons de zoom (+ / − / ⌂) ancrés en surimpression du SVG, coin
+   haut-droit. Sobre, compatibles avec le style DSFR. */
+.quadrant-zoom-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 5;
+}
+.quadrant-zoom-controls button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.92);
+  color: #222;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.quadrant-zoom-controls button:hover {
+  background: #fff;
+  border-color: #000091;
+}
+
+/* Légendes sous le quadrant (couleurs + tailles), affichées côte à côte
+   sur deux lignes wrappées. */
+.legende-bloc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2rem;
+  margin-top: 0.75rem;
+  font-size: 12px;
+  color: #333;
+}
+.legende-domaines,
+.legende-tailles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.legende-domaines .puce {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.legende-tailles svg {
+  vertical-align: middle;
+  margin-right: 2px;
+}
+.legende-tailles .titre {
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+/* Barre de recherche de mention dans le panneau gauche. Reprend la
+   typographie DSFR via l'input natif. */
+.recherche-mention {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.recherche-mention label {
+  font-size: 12px;
+  color: #555;
+}
+.recherche-mention input[type="search"] {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font-size: 14px;
+}
+.recherche-mention input[type="search"]:focus {
+  outline: 2px solid #000091;
+  outline-offset: -2px;
 }
 
 /* Liste verticale utilisée à l'intérieur du panneau de filtres avancés

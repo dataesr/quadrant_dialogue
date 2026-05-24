@@ -5,12 +5,14 @@ import CursusTabs from './components/CursusTabs.jsx';
 import FilterBar from './components/FilterBar.jsx';
 import AdvancedFilters from './components/AdvancedFilters.jsx';
 import EmptyState from './components/EmptyState.jsx';
+import Quadrant from './components/Quadrant.jsx';
+import MentionSearch from './components/MentionSearch.jsx';
 
 // Coquille minimale : layout 1000px max (contrainte iframe), composants
 // DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
-// chargement, erreur, contenu (phase 3 = sélection étab + onglets +
-// panneau de filtres latéral + placeholder pour le quadrant SVG à venir
-// en phase 4).
+// chargement, erreur, contenu. La zone-quadrant affiche le composant
+// <Quadrant> dès qu'un établissement est sélectionné ; sinon un
+// EmptyState invite à choisir un établissement.
 
 export default function App() {
   return (
@@ -46,12 +48,15 @@ function AppShell() {
           <div className="quadrant-grille">
             <aside className="panneau-filtres">
               <FilterBar />
+              <MentionSearch />
               <AdvancedFilters />
             </aside>
             <main className="zone-quadrant">
-              <EmptyState
-                variant={etabContexte ? 'placeholder' : 'no-selection'}
-              />
+              {etabContexte ? (
+                <Quadrant />
+              ) : (
+                <EmptyState variant="no-selection" />
+              )}
             </main>
           </div>
         </>

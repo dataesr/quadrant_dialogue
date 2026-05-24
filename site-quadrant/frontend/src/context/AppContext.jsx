@@ -53,6 +53,17 @@ export function AppProvider({ children }) {
   const [representativite,  setRepresentativite]  = useState(DEFAULT_REPRESENTATIVITE);
   const [ligneReference,    setLigneReference]    = useState(DEFAULT_LIGNE_REFERENCE);
 
+  // --- Phase 4b : compléments quadrant ---
+  // TEMPORAIRE — sera supprimé après validation visuelle d'un mode unique.
+  const [scaleMode, setScaleMode] = useState('sqrt');
+  // Highlight de mention par recherche (distinct du filtre `mention` qui,
+  // lui, réduit la liste des bulles côté API en vue=etablissements).
+  const [rechercheMention, setRechercheMention] = useState('');
+  // Liste des libellés de mentions effectivement affichés — publiée par
+  // <Quadrant> dès que les data sont fetchées, consommée par la barre de
+  // recherche pour alimenter la datalist d'autocomplétion.
+  const [mentionsAffichees, setMentionsAffichees] = useState([]);
+
   // --- Initialisation : /etablissements-visibles ---
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
@@ -285,6 +296,10 @@ export function AppProvider({ children }) {
     typeMaster,
     representativite,
     ligneReference,
+    // Phase 4b
+    scaleMode,
+    rechercheMention,
+    mentionsAffichees,
     // Référentiels chargés
     referentiels,
     // État global
@@ -298,6 +313,9 @@ export function AppProvider({ children }) {
     setTypeMaster,
     setRepresentativite, setLigneReference,
     resetAdvancedFilters,
+    setScaleMode,
+    setRechercheMention,
+    setMentionsAffichees,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

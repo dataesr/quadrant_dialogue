@@ -27,12 +27,15 @@ export default function AdvancedFilters() {
   const {
     etabContexte,
     cursus,
+    vue,
     referentiels,
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite, ligneReference,
+    scaleMode,
     setDomaine, setDiscipline, setSecteur, setMention,
     setRepresentativite, setLigneReference,
+    setScaleMode,
     resetAdvancedFilters,
   } = useApp();
 
@@ -118,16 +121,22 @@ export default function AdvancedFilters() {
             disabled={disabled}
             loading={disciLoading}
           />
-          <ReferentielSelect
-            id="quadrant-mention"
-            label="Mention"
-            defaultLabel="Toutes"
-            items={disciData?.mentions}
-            value={mention}
-            onChange={setMention}
-            disabled={disabled}
-            loading={disciLoading}
-          />
+          {/* Filtre Mention : utile seulement en vue Établissements
+              (cible une mention précise pour comparer les étabs sur
+              cette mention). Sur vue Mentions chaque bulle est déjà une
+              mention, le filtre serait redondant et l'API l'ignore. */}
+          {vue === 'etablissements' && (
+            <ReferentielSelect
+              id="quadrant-mention"
+              label="Mention"
+              defaultLabel="Toutes"
+              items={disciData?.mentions}
+              value={mention}
+              onChange={setMention}
+              disabled={disabled}
+              loading={disciLoading}
+            />
+          )}
 
           {/* Options diverses (Master only pour TypeMaster, sinon caché). */}
           {cursus === 'Master' && <TypeMasterSelect disabled={disabled} />}
@@ -156,6 +165,26 @@ export default function AdvancedFilters() {
             onChange={setLigneReference}
             disabled={disabled}
           />
+
+          {/* TEMPORAIRE — sélecteur d'échelle de bulle pour comparaison
+              visuelle. Sera supprimé après validation d'un mode unique. */}
+          <div className="fr-select-group">
+            <label className="fr-label" htmlFor="quadrant-scale-mode">
+              Échelle des bulles (temporaire)
+            </label>
+            <select
+              id="quadrant-scale-mode"
+              className="fr-select"
+              value={scaleMode}
+              onChange={(e) => setScaleMode(e.target.value)}
+              disabled={disabled}
+            >
+              <option value="sqrt">sqrt (racine carrée)</option>
+              <option value="paliers">paliers (escalier)</option>
+              <option value="cbrt">cbrt (racine cubique)</option>
+              <option value="lineaire">linéaire clampé</option>
+            </select>
+          </div>
 
           <button
             type="button"
