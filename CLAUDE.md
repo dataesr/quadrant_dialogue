@@ -9,7 +9,7 @@ Ce document fournit le contexte permanent du projet. Le lire en début de sessio
 - **Machine** : Mac sans PHP installé. Toute commande PHP locale échoue (`php`, `php -l`, `php -S`, `composer`). NE PAS tenter.
 - **Test PHP** :
   - syntaxe : `ssh ovh 'php -l /homez.10002/mesouvm/quadsies/api/<chemin>'`
-  - endpoint : `curl -sS "https://quadsies.dgesip.fr/api/<route>"` (mode dev actif, `contexte_id=etBz7` accepté en query)
+  - endpoint : `curl -sS "https://quadsies.dgesip.fr/api/<route>"` (mode dev actif, `contexte_id=zKsfQ` accepté en query — cf. §7 pour la liste des contextes de test et leur niveau)
 - **Déploiement PHP** : `scp <fichier local> ovh:/homez.10002/mesouvm/quadsies/api/<chemin distant>`. Alias SSH `ovh` configuré (user `mesouvm-app`, host `ssh01.cluster121.gra.hosting.ovh.net`).
 - **Production API** : `https://quadsies.dgesip.fr/`. Le frontend en dev (`npm run dev`) proxie `/api` vers cette URL.
 - **Frontend** : Node + Vite installés localement, `npm run dev` / `npm run build` fonctionnent.
@@ -248,8 +248,17 @@ L'application a un **mode dev** activé via `'mode_dev' => true` dans `config/co
 
 **Utilisation** :
 ```
-GET /quadrant?contexte_id=etBz7&formation=Master&vue=mentions&...
+GET /quadrant?contexte_id=zKsfQ&formation=Master&vue=mentions&...
 ```
+
+**`contexte_id` de test** (à choisir selon ce qu'on veut couvrir) :
+
+| contexte_id | Niveau | Usage typique |
+|---|---|---|
+| `zKsfQ` | rectorat (régional) | **Défaut** — couvre 7 établissements visibles. Indispensable pour tester la vue Positionnement avec ses 5 catégories sémantiques (sélectionné, même région+typo, même région, même typo, autres). C'est la valeur de `VITE_CONTEXTE_ID_DEV` du frontend. |
+| `etBz7` | établissement (Université Claude Bernard - Lyon 1) | Test du niveau étab : 1 seule bulle accessible en vue Positionnement, AffichageSelector masqué. |
+| `evv7S` | établissement | Test des « mentions non représentées » (a des mentions avec denom < 5 sur certains indicateurs). |
+| `3Z5e6` | établissement | Variante simple, peu de mentions non représentées. |
 
 **À mettre à `false` impérativement avant la mise en production**. Toute action de déploiement en prod doit vérifier ce point.
 

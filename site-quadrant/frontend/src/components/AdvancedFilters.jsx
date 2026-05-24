@@ -66,10 +66,14 @@ export default function AdvancedFilters() {
   const disciData = referentiels.disciplinaire.data;
   const disciLoading = referentiels.disciplinaire.loading;
 
+  // Renommage volontaire : « options » plutôt que « filtres ». Le panneau
+  // inclut aussi des contrôles d'affichage (Ligne de référence,
+  // Représentativité) qui ne sont pas des filtres au sens strict. L'accord
+  // au féminin (« active(s) ») suit naturellement.
   const title =
     activeCount > 0
-      ? `Plus de filtres (${activeCount} actif${activeCount > 1 ? 's' : ''})`
-      : 'Plus de filtres';
+      ? `Plus d'options (${activeCount} active${activeCount > 1 ? 's' : ''})`
+      : "Plus d'options";
 
   const chevron = open ? 'fr-icon-arrow-up-s-line' : 'fr-icon-arrow-down-s-line';
 
