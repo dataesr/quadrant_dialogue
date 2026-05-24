@@ -198,20 +198,29 @@ export default function QuadrantTable() {
 }
 
 // Format d'une cellule de taux. Trois cas :
-//   - denom absent ou < 5 : « Non diffusable » (italique gris). Cas
-//     théoriquement filtré par l'API (Diffusion::forme) — défensif.
-//   - 5 ≤ denom ≤ 19 : fond pastel pour signaler la donnée fragile.
-//   - denom ≥ 20 : présentation neutre.
+//   - denom absent ou < 5 : « Non diffusable » (italique gris, une
+//     seule ligne). Cas théoriquement filtré par l'API
+//     (Diffusion::forme) — défensif.
+//   - 5 ≤ denom ≤ 19 : 2 lignes (taux + effectif) sur fond pastel pour
+//     signaler la donnée fragile.
+//   - denom ≥ 20 : 2 lignes (taux + effectif) sans fond particulier.
+//
+// La présentation à 2 lignes met le taux en évidence (gros + gras) et
+// renvoie l'effectif en discret (gris, plus petit), pour faciliter le
+// scan colonne par colonne sans pour autant masquer la base de calcul.
 function CellulePourcentage({ taux, denom, population }) {
   if (typeof denom !== 'number' || denom < 5) {
     return <td className="cellule-non-diffusable">Non diffusable</td>;
   }
   const fragile = denom >= 5 && denom <= 19;
+  const className = 'cellule-valeur' + (fragile ? ' cellule-fragile' : '');
   const pourcent = (taux * 100).toFixed(1).replace('.', ',');
-  const sur = population ? `sur ${denom} ${population}` : `sur ${denom}`;
   return (
-    <td className={fragile ? 'cellule-fragile' : undefined}>
-      {pourcent} % {sur}
+    <td className={className}>
+      <div className="valeur-percent">{pourcent} %</div>
+      <div className="valeur-population">
+        sur {denom}{population ? ` ${population}` : ''}
+      </div>
     </td>
   );
 }

@@ -28,6 +28,7 @@ export default function AdvancedFilters() {
     etabContexte,
     cursus,
     vue,
+    affichage,
     referentiels,
     domaine, discipline, secteur, mention,
     typeMaster,
@@ -121,11 +122,16 @@ export default function AdvancedFilters() {
             disabled={disabled}
             loading={disciLoading}
           />
-          {/* Filtre Mention : utile seulement en vue Établissements
-              (cible une mention précise pour comparer les étabs sur
-              cette mention). Sur vue Mentions chaque bulle est déjà une
-              mention, le filtre serait redondant et l'API l'ignore. */}
-          {vue === 'etablissements' && (
+          {/* Filtre Mention : utile seulement en vue Établissements +
+              Graphique (cible une mention précise pour comparer les
+              étabs sur cette mention).
+              - Vue Mentions : chaque bulle est déjà une mention, le
+                filtre serait redondant (et l'API l'ignore).
+              - Vue Positionnement + Tableau : le tableau liste des
+                établissements ; un filtre mention compliquerait la
+                lecture sans bénéfice clair. À ré-évaluer si le besoin
+                remonte. */}
+          {vue === 'etablissements' && affichage === 'graphique' && (
             <ReferentielSelect
               id="quadrant-mention"
               label="Mention"

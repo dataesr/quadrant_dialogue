@@ -242,6 +242,39 @@
 .tableau-cadran .fr-table {
   margin-bottom: 0;
 }
+
+/* Colonnes de largeur égale : sans table-layout: fixed le navigateur
+   ajuste la largeur au contenu (les libellés MEN très longs pousseraient
+   la colonne entité à >50% au détriment des cellules de valeur). */
+.tableau-cadran .fr-table table {
+  table-layout: fixed;
+  width: 100%;
+}
+.tableau-cadran .fr-table th,
+.tableau-cadran .fr-table td {
+  width: 33.33%;
+  vertical-align: middle;
+}
+.tableau-cadran .fr-table td:first-child,
+.tableau-cadran .fr-table th:first-child {
+  text-align: left;
+}
+.tableau-cadran .fr-table td.cellule-valeur {
+  text-align: right;
+}
+
+/* Cellule de valeur en deux lignes : taux mis en évidence, effectif
+   en discret. text-align: right hérité de .cellule-valeur. */
+.tableau-cadran .valeur-percent {
+  font-weight: 500;
+  font-size: 14px;
+}
+.tableau-cadran .valeur-population {
+  font-size: 12px;
+  color: #555;
+  margin-top: 2px;
+}
+
 .cellule-fragile {
   background-color: #FFF4E5;
 }
