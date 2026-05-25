@@ -144,7 +144,7 @@ export default function DetailsPanel() {
         <div className="titre-zone">
           <h2>{titreBulle(identite, data?.type)}</h2>
           {identite && (
-            <p className="identite-secondaire">{sousTitreBulle(identite, data?.type)}</p>
+            <p className="identite-secondaire">{sousTitreBulle(identite, data?.type, cursus)}</p>
           )}
         </div>
         <div className="actions">
@@ -288,19 +288,38 @@ function CardIndicateur({
         </div>
       </fieldset>
 
-      {vueGraphe === 'taux' ? (
+      {/* Les deux graphes sont rendus en permanence. Le toggle
+          contrôle UNIQUEMENT lequel est visible : l'autre est
+          déplacé hors viewport via .card-graphe--secondaire. Cela
+          permet à l'export Word de capturer Taux ET Effectifs sans
+          avoir à manipuler l'état React (cf. exportDocx.js,
+          section « Cards X/Y »). Position absolute plutôt que
+          display:none — html-to-image ne capture pas les éléments
+          en display:none. */}
+      <div
+        className={
+          'card-graphe' + (vueGraphe === 'taux' ? '' : ' card-graphe--secondaire')
+        }
+        data-vue="taux"
+      >
         <MiniGrapheEvolution
           serie={serie}
           millesimeCourant={millesimeCourant}
           indicateurName={indicateurName}
           showTitle={false}
         />
-      ) : (
+      </div>
+      <div
+        className={
+          'card-graphe' + (vueGraphe === 'effectifs' ? '' : ' card-graphe--secondaire')
+        }
+        data-vue="effectifs"
+      >
         <MiniGrapheEffectifs
           serie={serie}
           millesimeCourant={millesimeCourant}
         />
-      )}
+      </div>
     </div>
   );
 }
@@ -458,13 +477,24 @@ function titreBulle(identite, type) {
   return identite.uo_lib || identite.id_paysage || '';
 }
 
-function sousTitreBulle(identite, type) {
+// Sous-titre = cursus + identité contextuelle. Préfixer par le
+// cursus rend la fiche autoporteuse — un lecteur qui ne voit que
+// l'en-tête sait à quel type de diplôme se rapporte la bulle
+// (utile pour l'export Word qui réutilise cette structure et pour
+// l'écran quand l'utilisateur consulte plusieurs panneaux à la
+// suite). Aligné avec le sous-titre de l'export Word
+// (cf. exportDocx.js > sousTitreFiche).
+function sousTitreBulle(identite, type, cursus) {
+  const parts = [];
+  if (cursus) parts.push(cursus);
   if (type === 'mention') {
-    return identite.secteur || '';
+    if (identite.secteur) parts.push(identite.secteur);
+  } else {
+    const region = identite.region?.libelle || identite.region?.code || '';
+    if (region) parts.push(region);
+    if (identite.typologie) parts.push(identite.typologie);
   }
-  const region = identite.region?.libelle || identite.region?.code || '';
-  const typo   = identite.typologie || '';
-  return [region, typo].filter(Boolean).join(' · ');
+  return parts.join(' · ');
 }
 
 function formatLibelleIndicateur(variable, dateInser) {

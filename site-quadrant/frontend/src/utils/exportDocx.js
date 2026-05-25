@@ -59,7 +59,12 @@ import { chargerMethodologie } from '../data/methodologie.js';
 // (~470 px à 72 dpi) → ~410 px par image laisse une gouttière entre
 // les deux. Hauteur calculée à partir du ratio natif (cf.
 // paragrapheImage).
-const LARGEUR_MINI_GRAPHE  = 410;
+//
+// Mini-graphes (cards X/Y) : deux images par card (Taux + Effectifs),
+// disposées en sub-tableau 2 colonnes sous la valeur principale.
+// 290 px → laisse une gouttière confortable sur la largeur utile A4.
+// Multi-courbes : deux par ligne, 400 px chacun.
+const LARGEUR_MINI_GRAPHE  = 290;
 const LARGEUR_MULTI_GRAPHE = 400;
 const LARGEUR_SPARKLINE    = 100;
 // Police par défaut du document — choix utilisateur (Calibri lisible,
@@ -118,6 +123,15 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   const dateFR  = formatDateHumaine(new Date());
 
   // -------------------- Capture des graphiques --------------------
+  //
+  // Cards X / Y : on capture les DEUX variantes (Taux et Effectifs),
+  // toutes les deux toujours rendues dans le DOM (cf. CardIndicateur
+  // → card-graphe / card-graphe--secondaire). On cible `.graphe-
+  // indicateur` plutôt que `.graphe-zone` pour embarquer la légende
+  // « Numérateur / Dénominateur » qui vit hors de .graphe-zone côté
+  // Effectifs. Filtre toPng exclut .graphe-titre (les cards rendent
+  // déjà showTitle=false, mais le filtre rend la fonction utilisable
+  // partout sans surprise).
   const cardsEls = panneauEl.querySelectorAll(
     '.section-indicateurs-principaux .indicateur-card'
   );
@@ -126,9 +140,11 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     const libelle = cardEl.querySelector('.libelle-indicateur')?.textContent || '';
     const valeur  = cardEl.querySelector('.valeur-principale')?.textContent || '';
     const detail  = cardEl.querySelector('.detail-numerateur')?.textContent || '';
-    const zone    = cardEl.querySelector('.graphe-zone');
-    const image   = zone ? await capturerImage(zone, toPng) : null;
-    cards.push({ libelle, valeur, detail, image });
+    const tauxEl      = cardEl.querySelector('[data-vue="taux"] .graphe-indicateur');
+    const effectifsEl = cardEl.querySelector('[data-vue="effectifs"] .graphe-indicateur');
+    const imageTaux       = tauxEl      ? await capturerImage(tauxEl,      toPng, { excludeClass: 'graphe-titre' }) : null;
+    const imageEffectifs  = effectifsEl ? await capturerImage(effectifsEl, toPng, { excludeClass: 'graphe-titre' }) : null;
+    cards.push({ libelle, valeur, detail, imageTaux, imageEffectifs });
   }
 
   const sectionAutresEl = panneauEl.querySelector('.section-autres-indicateurs');
@@ -137,8 +153,12 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     const grafs = sectionAutresEl.querySelectorAll(':scope > .graphe-indicateur');
     for (const gEl of grafs) {
       const titreG = gEl.querySelector('.graphe-titre')?.textContent || '';
-      const zone   = gEl.querySelector('.graphe-zone');
-      const image  = zone ? await capturerImage(zone, toPng) : null;
+      // On capture `.graphe-indicateur` complet (et non plus
+      // seulement .graphe-zone) pour inclure la légende de variantes
+      // — sinon les courbes colorées sont illisibles dans le Word.
+      // Filtre toPng exclut .graphe-titre : le H3 Word est déjà
+      // ajouté à côté de l'image, on évite le doublon de titre.
+      const image  = await capturerImage(gEl, toPng, { excludeClass: 'graphe-titre' });
       multiCourbes.push({ titre: titreG, image });
     }
   }
@@ -178,23 +198,23 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     ficheData, contexte,
   }));
 
-  // Indicateurs du quadrant — cards X et Y côte à côte dans un
-  // tableau invisible 2 colonnes. Chaque cellule contient le bloc
-  // complet (titre H3, valeur, détail, image mini-graphe). Si on n'a
-  // qu'une seule card (cas non standard), elle prend la pleine
-  // largeur via la même fonction (pairs gère l'élément seul).
+  // Indicateurs du quadrant — cards X puis Y empilées verticalement.
+  // Chaque card affiche : H3 du libellé, valeur principale, détail,
+  // puis un sub-tableau 2 colonnes (Taux | Effectifs) sans bordures
+  // avec une légende centrée sous chaque image. Les deux variantes
+  // sont capturées depuis le DOM grâce au montage permanent (cf.
+  // CardIndicateur dans DetailsPanel — toggle = positionnement
+  // off-screen, pas démontage).
   children.push(headingParagraph(
     HeadingLevel.HEADING_2,
     'Indicateurs du quadrant',
     { Paragraph, TextRun, BorderStyle, spacingBefore: 240 },
   ));
-  if (cards.length > 0) {
-    children.push(tableImagesCoteACote(
-      cards.map((card) => contenuCellulaireCardIndicateur(card, {
-        Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
-      })),
-      { Table, TableRow, TableCell, Paragraph, WidthType, BorderStyle },
-    ));
+  for (const card of cards) {
+    children.push(...blocCardIndicateur(card, {
+      Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
+      Table, TableRow, TableCell, WidthType, BorderStyle,
+    }));
   }
 
   // Évolution historique.
@@ -602,44 +622,96 @@ function tableImagesCoteACote(cellulesContenu, deps) {
   });
 }
 
-// Contenu d'une cellule pour une card d'indicateur (axe X ou Y) :
-// libellé en gras (substitut H3 — un vrai HEADING_3 dans une cellule
-// génère un comportement de style erratique selon les versions de
-// Word), valeur principale centrée gras, détail centré italique,
-// image mini-graphe.
-function contenuCellulaireCardIndicateur(card, deps) {
-  const { Paragraph, TextRun, ImageRun, AlignmentType } = deps;
-  const paragraphs = [];
+// Bloc complet pour une card d'indicateur (axe X ou Y) :
+// H3 du libellé, valeur principale centrée, détail centré, puis un
+// sub-tableau 2 colonnes sans bordures contenant l'image Taux à
+// gauche et l'image Effectifs à droite, chacune surmontée d'une
+// légende centrée. Si une seule des deux images est dispo (cas
+// dégénéré : effectifs absents pour une mention non-diffusable),
+// la cellule manquante reste vide — pas de bordure pour rester
+// discret.
+//
+// Retourne un array de "fils Word" (Paragraph + Table) à pousser
+// dans la liste `children` du document. Un seul item par axe.
+function blocCardIndicateur(card, deps) {
+  const {
+    Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
+    Table, TableRow, TableCell, WidthType, BorderStyle,
+  } = deps;
+
+  const out = [];
 
   if (card.libelle) {
-    paragraphs.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
-      children: [new TextRun({
-        text: card.libelle, color: COULEUR_MARIANNE, bold: true, size: 22,
-      })],
+    out.push(headingParagraph(HeadingLevel.HEADING_3, card.libelle, {
+      Paragraph, TextRun,
     }));
   }
   if (card.valeur) {
-    paragraphs.push(new Paragraph({
+    out.push(new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: card.valeur, bold: true, size: 28 })],
+      children: [new TextRun({ text: card.valeur, bold: true, size: 32 })],
     }));
   }
   if (card.detail) {
-    paragraphs.push(new Paragraph({
+    out.push(new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
+      spacing: { after: 120 },
       children: [new TextRun({
         text: card.detail, italics: true, color: COULEUR_GRIS, size: 18,
       })],
     }));
   }
-  if (card.image) {
-    paragraphs.push(paragrapheImage(card.image, LARGEUR_MINI_GRAPHE, {
+
+  // Sub-tableau 2 colonnes invisibles : Taux | Effectifs.
+  if (card.imageTaux || card.imageEffectifs) {
+    const noBorders = bordersInvisibles(BorderStyle);
+    const celluleTaux = new TableCell({
+      width: { size: 50, type: WidthType.PERCENTAGE },
+      borders: noBorders,
+      children: contenuCellulaireMiniGraphe(card.imageTaux, 'Évolution du taux', {
+        Paragraph, TextRun, ImageRun, AlignmentType,
+      }),
+    });
+    const celluleEffectifs = new TableCell({
+      width: { size: 50, type: WidthType.PERCENTAGE },
+      borders: noBorders,
+      children: contenuCellulaireMiniGraphe(card.imageEffectifs, 'Évolution des effectifs', {
+        Paragraph, TextRun, ImageRun, AlignmentType,
+      }),
+    });
+    out.push(new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: noBorders,
+      rows: [new TableRow({ children: [celluleTaux, celluleEffectifs] })],
+    }));
+  }
+
+  // Espace après la card pour aérer entre X et Y / avant la section
+  // suivante. Un paragraphe vide est plus fiable qu'un spacing.after
+  // sur la table (varie selon les renderers Word).
+  out.push(new Paragraph({}));
+
+  return out;
+}
+
+// Contenu d'une cellule mini-graphe : image + légende centrée
+// (« Évolution du taux » ou « Évolution des effectifs »). Si
+// l'image manque, on rend juste la légende — la cellule garde sa
+// place dans le tableau.
+function contenuCellulaireMiniGraphe(image, legende, deps) {
+  const { Paragraph, TextRun, ImageRun, AlignmentType } = deps;
+  const paragraphs = [];
+  if (image) {
+    paragraphs.push(paragrapheImage(image, LARGEUR_MINI_GRAPHE, {
       Paragraph, ImageRun, AlignmentType,
     }));
   }
+  paragraphs.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [new TextRun({
+      text: legende, italics: true, color: COULEUR_GRIS, size: 18,
+    })],
+  }));
   return paragraphs;
 }
 
@@ -750,12 +822,21 @@ function ajouterAnnexeMethodologie(children, cursusValue, methodologie, deps) {
 // =====================================================================
 // Capture html-to-image isolée → { buffer, width, height } PNG
 // =====================================================================
-async function capturerImage(el, toPng) {
+//
+// Options :
+//   excludeClass : string — si présent, les nœuds porteurs de cette
+//                  classe sont exclus de la capture (typiquement
+//                  .graphe-titre, dont le contenu est déjà rendu
+//                  comme heading Word à côté de l'image).
+async function capturerImage(el, toPng, { excludeClass } = {}) {
   try {
     const dataUrl = await toPng(el, {
       pixelRatio: 2,
       backgroundColor: '#ffffff',
       cacheBust: true,
+      filter: excludeClass
+        ? (node) => !node?.classList?.contains?.(excludeClass)
+        : undefined,
     });
     const base64 = dataUrl.split(',', 2)[1];
     const bin = atob(base64);
