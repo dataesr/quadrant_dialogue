@@ -481,9 +481,16 @@
   font-style: italic;
 }
 
+/* Bascule Taux/Effectifs au-dessus des graphes dans une card X/Y.
+   Compact (fr-segmented--sm) pour ne pas écraser le graphique en
+   dessous. */
+.panneau-details .card-vue-toggle {
+  margin: 0.4rem 0 0.25rem;
+}
+
 /* Wrapper « graphe + titre + légende éventuelle ». Sert à la fois aux
-   évolutions mono-courbe (MiniGrapheEvolution) et aux graphiques
-   multi-courbes (GrapheMultiCourbes). */
+   évolutions mono-courbe (MiniGrapheEvolution / Effectifs) et aux
+   graphiques multi-courbes (GrapheMultiCourbes). */
 .panneau-details .graphe-indicateur {
   margin-top: 0.5rem;
 }

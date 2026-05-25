@@ -28,12 +28,18 @@ export function extraireSerie(historique, indicateur, dateInser) {
       (r) => r.indicateur === indicateur && (r.date_inser ?? '') === (dateInser ?? '')
     );
     if (!row) {
-      out.push({ millesime: Number(h.millesime), taux: null, denominateur: null });
+      out.push({
+        millesime: Number(h.millesime),
+        taux: null,
+        numerateur: null,
+        denominateur: null,
+      });
       continue;
     }
     out.push({
       millesime:     Number(h.millesime),
       taux:          row.taux,
+      numerateur:    row.numerateur,         // exposé pour MiniGrapheEffectifs
       denominateur:  row.denominateur,
       nonDiffusable: row.non_diffusable === true,
     });
@@ -230,39 +236,88 @@ export function calculerEchelleY(tauxValeurs) {
   const min = Math.min(...valides);
   const max = Math.max(...valides);
   const range = max - min;
-  const marge = Math.max(range * 0.1, 5);
+
+  // Marge resserrée : 5 % de l'amplitude ou 0,5 point au minimum.
+  // Permet aux indicateurs à petites valeurs (Taux non salarié ~1-2 %)
+  // d'occuper l'espace vertical au lieu d'être écrasés contre l'axe.
+  const marge = Math.max(range * 0.05, 0.5);
 
   let yMin = Math.max(0, min - marge);
   let yMax = Math.min(100, max + marge);
 
-  // Garantir une amplitude visuelle de 15 points (sinon le graphique
-  // semble plat même si les valeurs varient).
-  if (yMax - yMin < 15) {
+  // Amplitude minimale 3 points (au lieu de 15 historiquement) :
+  // garde-fou contre le « plat parfait » d'un graphique à valeur
+  // unique sans gonfler artificiellement les micro-variations.
+  if (yMax - yMin < 3) {
     const milieu = (yMax + yMin) / 2;
-    yMin = Math.max(0, milieu - 7.5);
-    yMax = Math.min(100, milieu + 7.5);
-    // Si on a buté sur une borne, on rééquilibre depuis l'autre côté.
-    if (yMax - yMin < 15) {
-      if (yMin === 0) yMax = Math.min(100, 15);
-      else if (yMax === 100) yMin = Math.max(0, 85);
+    yMin = Math.max(0, milieu - 1.5);
+    yMax = Math.min(100, milieu + 1.5);
+    if (yMax - yMin < 3) {
+      if (yMin === 0)        yMax = Math.min(100, 3);
+      else if (yMax === 100) yMin = Math.max(0, 97);
     }
   }
 
-  yMin = Math.floor(yMin / 5) * 5;
-  yMax = Math.ceil(yMax / 5) * 5;
+  // Granularité d'arrondi adaptée : pas de pas de 5 sur une fenêtre
+  // qui ferait 3 points de haut. En dessous de 10 points d'amplitude
+  // brute, on arrondit au point entier.
+  const amplitudeBrute = yMax - yMin;
+  const granularity = amplitudeBrute < 10 ? 1 : 5;
+  yMin = Math.floor(yMin / granularity) * granularity;
+  yMax = Math.ceil(yMax / granularity) * granularity;
 
+  // Pas de tick : choisi pour produire ~4-5 graduations selon
+  // l'amplitude. Sous 5 points, step=1 pour rester lisible.
   const amplitude = yMax - yMin;
   let step;
-  if (amplitude <= 20)      step = 5;
+  if (amplitude <= 5)       step = 1;
+  else if (amplitude <= 20) step = 5;
   else if (amplitude <= 50) step = 10;
   else                      step = 25;
 
   const ticks = [];
   for (let t = yMin; t <= yMax + 0.001; t += step) {
-    ticks.push(Math.round(t));
+    ticks.push(t);
   }
 
   return { yMin, yMax, ticks };
+}
+
+// Échelle Y pour des effectifs absolus (numérateur + dénominateur).
+// Diffère de calculerEchelleY :
+//   - pas de borne haute à 100 (on est en effectifs, pas en %)
+//   - on part TOUJOURS de 0 (un effectif négatif n'a pas de sens, et
+//     démarrer à 0 permet de comparer visuellement num vs denom sans
+//     trompe-l'œil)
+//   - on choisit un step « rond » sur des magnitudes 1/2/5 × 10^k
+export function calculerEchelleYEffectifs(valeurs) {
+  const valides = (valeurs || []).filter((v) => typeof v === 'number' && v >= 0);
+  if (valides.length === 0) {
+    return { yMin: 0, yMax: 10, ticks: [0, 5, 10] };
+  }
+  const max = Math.max(...valides);
+  if (max === 0) {
+    return { yMin: 0, yMax: 1, ticks: [0, 1] };
+  }
+
+  // Cible ~4 ticks. On choisit le step parmi 1, 2, 5 × 10^k qui
+  // produit entre 3 et 6 ticks. Approche classique « nice scale ».
+  const rawStep = max / 4;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / magnitude;
+  let stepBase;
+  if (norm <= 1)      stepBase = 1;
+  else if (norm <= 2) stepBase = 2;
+  else if (norm <= 5) stepBase = 5;
+  else                stepBase = 10;
+  const step = stepBase * magnitude;
+
+  const yMax = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let t = 0; t <= yMax + step / 2; t += step) {
+    ticks.push(t);
+  }
+  return { yMin: 0, yMax, ticks };
 }
 
 // =============================================================================

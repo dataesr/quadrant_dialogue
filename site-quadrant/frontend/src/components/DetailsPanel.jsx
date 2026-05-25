@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { useQuadrantDetails } from '../hooks/useQuadrantDetails.js';
 import MiniGrapheEvolution from './details/MiniGrapheEvolution.jsx';
+import MiniGrapheEffectifs from './details/MiniGrapheEffectifs.jsx';
 import GrapheMultiCourbes from './details/GrapheMultiCourbes.jsx';
 import Sparkline from './details/Sparkline.jsx';
 import {
@@ -151,8 +152,16 @@ export default function DetailsPanel() {
 }
 
 // ---------------------------------------------------------------------
-// Card pour un axe X ou Y. Toujours une évolution mono-courbe — la
-// variante affichée est celle choisie dans le quadrant (date_inser).
+// Card pour un axe X ou Y. Une seule variante affichée (la date_inser
+// du quadrant) — pour la profondeur multi-variantes, voir la section
+// « Évolution historique des indicateurs ».
+//
+// Bascule locale entre deux représentations de la même série :
+//   - « Taux »     : MiniGrapheEvolution (axe Y = %)
+//   - « Effectifs »: MiniGrapheEffectifs  (axe Y = effectifs absolus,
+//                    2 courbes num + denom). Utile pour distinguer
+//                    une variation de taux qui vient d'un changement
+//                    de numérateur, de dénominateur, ou des deux.
 // ---------------------------------------------------------------------
 function CardIndicateur({
   indicateurName,
@@ -164,17 +173,62 @@ function CardIndicateur({
 }) {
   const ligneCourante = trouverLigneCourante(donneesCourantes, indicateurName, dateInser);
   const libelle = formatLibelleIndicateur(indicateurName, dateInser);
+  const serie = useMemo(
+    () => extraireSerie(historique, indicateurName, dateInser),
+    [historique, indicateurName, dateInser]
+  );
+
+  const [vueGraphe, setVueGraphe] = useState('taux');
+  // useId : identifiants stables et uniques pour les radios DSFR — la
+  // même card peut être montée 2× (X et Y) sur la même page.
+  const fieldsetId = useId();
 
   return (
     <div className="indicateur-card">
       <p className="libelle-indicateur">{libelle}</p>
       <ValeurCourante ligne={ligneCourante} population={population} />
-      <MiniGrapheEvolution
-        serie={extraireSerie(historique, indicateurName, dateInser)}
-        millesimeCourant={millesimeCourant}
-        indicateurName={indicateurName}
-        showTitle={false}
-      />
+
+      <fieldset className="fr-segmented fr-segmented--sm card-vue-toggle">
+        <legend className="fr-segmented__legend fr-sr-only">
+          Type de représentation
+        </legend>
+        <div className="fr-segmented__elements">
+          <div className="fr-segmented__element">
+            <input
+              type="radio"
+              id={`${fieldsetId}-taux`}
+              name={fieldsetId}
+              checked={vueGraphe === 'taux'}
+              onChange={() => setVueGraphe('taux')}
+            />
+            <label className="fr-label" htmlFor={`${fieldsetId}-taux`}>Taux</label>
+          </div>
+          <div className="fr-segmented__element">
+            <input
+              type="radio"
+              id={`${fieldsetId}-effectifs`}
+              name={fieldsetId}
+              checked={vueGraphe === 'effectifs'}
+              onChange={() => setVueGraphe('effectifs')}
+            />
+            <label className="fr-label" htmlFor={`${fieldsetId}-effectifs`}>Effectifs</label>
+          </div>
+        </div>
+      </fieldset>
+
+      {vueGraphe === 'taux' ? (
+        <MiniGrapheEvolution
+          serie={serie}
+          millesimeCourant={millesimeCourant}
+          indicateurName={indicateurName}
+          showTitle={false}
+        />
+      ) : (
+        <MiniGrapheEffectifs
+          serie={serie}
+          millesimeCourant={millesimeCourant}
+        />
+      )}
     </div>
   );
 }
@@ -243,7 +297,7 @@ function SectionAutresIndicateurs({
   if (rienAAfficher) {
     return (
       <section className="section-autres-indicateurs">
-        <h3>Autres indicateurs</h3>
+        <h3>Évolution historique des indicateurs</h3>
         <p className="info-vide">Aucun autre indicateur disponible.</p>
       </section>
     );
@@ -251,7 +305,7 @@ function SectionAutresIndicateurs({
 
   return (
     <section className="section-autres-indicateurs">
-      <h3>Autres indicateurs</h3>
+      <h3>Évolution historique des indicateurs</h3>
 
       {reussiteGraphAffichable && (
         (() => {
