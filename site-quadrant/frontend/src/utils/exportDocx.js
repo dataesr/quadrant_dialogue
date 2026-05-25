@@ -54,7 +54,7 @@
 // rend séparément. Le ratio natif de chaque image est préservé en
 // lisant ses dimensions après capture.
 
-import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE } from './constants.js';
+import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE_OUTIL } from './constants.js';
 import { chargerMethodologie } from '../data/methodologie.js';
 
 // Largeur cible (en pixels Word) pour chaque type d'image.
@@ -339,7 +339,7 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     .map((p) => ({ name: p.name, value: String(p.value) }));
 
   const doc = new Document({
-    creator:      NOM_SOURCE,
+    creator:      NOM_SOURCE_OUTIL,
     title:        `Fiche ${ficheData?.type === 'mention' ? 'mention' : 'établissement'} - ${titre}`,
     description:  `Export Quadrant - ${titre} - ${cursusValue} - millésime ${millesimeStr}`,
     lastModifiedBy: 'Application Quadrant',

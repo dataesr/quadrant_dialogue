@@ -12,7 +12,7 @@
 // regroupements de cadrans DOIVENT rester alignés avec ceux de
 // QuadrantTable.jsx (constantes LIBELLES_CADRANS + SEMANTIQUE).
 
-import { LIBELLE_SOURCE, NOM_SOURCE, MENTION_DIFFUSION } from './constants.js';
+import { LIBELLE_SOURCE, NOM_SOURCE_OUTIL, MENTION_DIFFUSION } from './constants.js';
 import { construireNomFichier } from './exportPng.js';
 import { chargerMethodologie } from '../data/methodologie.js';
 
@@ -77,7 +77,7 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   const ExcelJS = ExcelJSModule.default;
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = NOM_SOURCE;
+  workbook.creator = NOM_SOURCE_OUTIL;
   workbook.created = new Date();
   workbook.description =
     `Export Quadrant - ${contexte?.vue || ''} - ` +
@@ -511,7 +511,7 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Filtre Mention',         filtres.mention || ''],
     ['Type de Master',         filtres.typeMaster || ''],
     ['Date d\'export',         formatDateTimeIso(new Date())],
-    ['Source de données',      NOM_SOURCE],
+    ['Source de données',      NOM_SOURCE_OUTIL],
     ['Diffusion',              MENTION_DIFFUSION],
   ];
 
