@@ -52,7 +52,7 @@ const LIBELLES_FORMES = {
   rond:             'Effectifs ≥ 20',
   triangle_gauche:  'Effectif fragile sur l’axe horizontal',
   triangle_bas:     'Effectif fragile sur l’axe vertical',
-  croix:            'Effectif fragile sur les deux axes',
+  croix:            'Effectifs fragiles sur les deux axes',
 };
 
 // Z-index sémantique des bulles en vue=etablissements (du fond vers
