@@ -32,10 +32,8 @@ export default function AdvancedFilters() {
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite, ligneReference,
-    scaleMode,
     setDomaine, setDiscipline, setSecteur,
     setRepresentativite, setLigneReference,
-    setScaleMode,
     resetAdvancedFilters,
   } = useApp();
 
@@ -160,26 +158,6 @@ export default function AdvancedFilters() {
             onChange={setLigneReference}
             disabled={disabled}
           />
-
-          {/* TEMPORAIRE — sélecteur d'échelle de bulle pour comparaison
-              visuelle. Sera supprimé après validation d'un mode unique. */}
-          <div className="fr-select-group">
-            <label className="fr-label" htmlFor="quadrant-scale-mode">
-              Échelle des bulles (temporaire)
-            </label>
-            <select
-              id="quadrant-scale-mode"
-              className="fr-select"
-              value={scaleMode}
-              onChange={(e) => setScaleMode(e.target.value)}
-              disabled={disabled}
-            >
-              <option value="sqrt">sqrt (racine carrée)</option>
-              <option value="paliers">paliers (escalier)</option>
-              <option value="cbrt">cbrt (racine cubique)</option>
-              <option value="lineaire">linéaire clampé</option>
-            </select>
-          </div>
 
           <button
             type="button"
