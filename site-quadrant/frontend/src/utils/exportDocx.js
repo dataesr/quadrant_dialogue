@@ -66,12 +66,12 @@ import { chargerMethodologie } from '../data/methodologie.js';
 //
 // Disposition empilée verticalement (cards X puis Y empilées, chacune
 // avec Taux puis Effectifs empilés ; multi-courbes empilés). Largeur
-// cible 420 px : un compromis entre lisibilité et compacité — assez
-// pour que les légendes des multi-courbes 5 délais restent
-// confortables, sans qu'un multi-courbes 5 séries (~1.03 de ratio,
-// donc ~410 px de haut) ne consomme une page entière.
-const LARGEUR_MINI_GRAPHE  = 420;
-const LARGEUR_MULTI_GRAPHE = 420;
+// cible 360 px : compact tout en gardant les légendes des
+// multi-courbes 5 délais lisibles. Avec 360 px, un multi-courbes
+// 5 séries fait ~350 px de haut (~9.3 cm) — plusieurs graphes
+// tiennent sur une page A4.
+const LARGEUR_MINI_GRAPHE  = 360;
+const LARGEUR_MULTI_GRAPHE = 360;
 // Police par défaut du document — choix utilisateur (Calibri lisible,
 // universellement installée sur Word/LibreOffice). Taille en demi-
 // points : 22 = 11 pt.
