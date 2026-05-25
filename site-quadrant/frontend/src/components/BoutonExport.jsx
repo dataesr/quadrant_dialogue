@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { exportQuadrantPng } from '../utils/exportPng.js';
 import { exportQuadrantXlsx } from '../utils/exportXlsx.js';
+import { messageErreur } from '../utils/errors.js';
 
 // Bouton d'export adaptatif au mode courant :
 //   - affichage='graphique' → PNG (capture du .quadrant-wrapper avec
@@ -33,6 +34,14 @@ export default function BoutonExport() {
 
   const [exporting, setExporting] = useState(false);
   const [erreur, setErreur] = useState(null);
+
+  // Auto-effacement du message d'erreur après 5 s — toast-like.
+  // L'utilisateur peut retenter sans avoir à fermer manuellement.
+  useEffect(() => {
+    if (!erreur) return;
+    const t = setTimeout(() => setErreur(null), 5000);
+    return () => clearTimeout(t);
+  }, [erreur]);
 
   const { data } = useQuadrant({
     cursus, vue, millesime,
@@ -109,7 +118,7 @@ export default function BoutonExport() {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Erreur d\'export:', err);
-      setErreur(err?.message || 'Échec de l\'export.');
+      setErreur(messageErreur(err) || 'Échec de l\'export.');
     } finally {
       setExporting(false);
     }

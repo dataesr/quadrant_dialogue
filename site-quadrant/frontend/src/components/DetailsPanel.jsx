@@ -13,7 +13,10 @@ import {
 } from './details/historique.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
+import { messageErreur } from '../utils/errors.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
+import MessageErreur from './MessageErreur.jsx';
+import Skeleton from './Skeleton.jsx';
 
 // Panneau de détails d'une bulle.
 //
@@ -61,6 +64,17 @@ export default function DetailsPanel() {
   // panneau (capture des sous-éléments via html-to-image).
   const panneauRef = useRef(null);
   const [exportFiche, setExportFiche] = useState({ running: false, erreur: null });
+
+  // Auto-effacement du message d'erreur d'export Word après 5 s
+  // (toast-like). L'utilisateur peut retenter sans avoir à fermer.
+  useEffect(() => {
+    if (!exportFiche.erreur) return;
+    const t = setTimeout(
+      () => setExportFiche((s) => ({ ...s, erreur: null })),
+      5000,
+    );
+    return () => clearTimeout(t);
+  }, [exportFiche.erreur]);
 
   const details = useQuadrantDetails({
     vue,
@@ -133,7 +147,10 @@ export default function DetailsPanel() {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Export fiche Word :', err);
-      setExportFiche({ running: false, erreur: err?.message || 'Échec de l\'export.' });
+      setExportFiche({
+        running: false,
+        erreur: messageErreur(err) || 'Échec de l\'export.',
+      });
     }
   }
 
@@ -171,12 +188,8 @@ export default function DetailsPanel() {
         </div>
       )}
 
-      {details.loading && <p className="info">Chargement…</p>}
-      {details.error && (
-        <div className="fr-alert fr-alert--error fr-alert--sm" role="alert">
-          <p>{details.error}</p>
-        </div>
-      )}
+      {details.loading && <DetailsPanelSkeleton />}
+      <MessageErreur error={details.error} compact />
 
       {!details.loading && !details.error && data && (
         <>
@@ -505,4 +518,32 @@ function trouverLigneCourante(donneesCourantes, indicateur, dateInser) {
 
 function formatPourcent(taux) {
   return `${taux.toFixed(1).replace('.', ',')} %`;
+}
+
+// ---------------------------------------------------------------------
+// Skeleton de chargement — utilisé pendant l'appel /quadrant/details
+// après un clic sur une bulle. Réserve la place de l'identité
+// secondaire, des deux cards X/Y et de la section « Évolution » pour
+// éviter le saut de mise en page à l'arrivée des données.
+// ---------------------------------------------------------------------
+function DetailsPanelSkeleton() {
+  return (
+    <div className="skeleton-panneau-details" aria-busy="true">
+      <Skeleton height="0.85rem" width="65%" />
+      <div className="skeleton-card">
+        <Skeleton height="0.85rem" width="55%" />
+        <Skeleton height="1.4rem" width="35%" />
+        <Skeleton height="0.7rem" width="50%" />
+        <Skeleton height="100px" radius="6px" />
+      </div>
+      <div className="skeleton-card">
+        <Skeleton height="0.85rem" width="55%" />
+        <Skeleton height="1.4rem" width="35%" />
+        <Skeleton height="0.7rem" width="50%" />
+        <Skeleton height="100px" radius="6px" />
+      </div>
+      <Skeleton height="0.78rem" width="50%" />
+      <Skeleton height="150px" radius="6px" />
+    </div>
+  );
 }

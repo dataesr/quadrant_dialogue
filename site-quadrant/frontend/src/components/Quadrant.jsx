@@ -18,6 +18,8 @@ import {
   ORDRE_CATEGORIES_ETAB,
 } from '../utils/colors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import MessageErreur from './MessageErreur.jsx';
+import Skeleton from './Skeleton.jsx';
 
 // Composant principal du quadrant. Orchestrateur :
 //   1. fetch des bulles via useQuadrant
@@ -309,17 +311,27 @@ export default function Quadrant() {
 
   // ---------------- États d'affichage non-data ----------------
   if (loading) {
+    // Skeleton « cadre vide » à la place du quadrant. Ratio
+    // approximatif du SVG final, plus deux pastilles pour la légende
+    // — évite le saut de mise en page quand les données arrivent.
     return (
-      <div className="fr-alert fr-alert--info">
-        <p>Chargement du quadrant…</p>
+      <div
+        className="quadrant-wrapper quadrant-wrapper--skeleton"
+        aria-busy="true"
+        aria-label="Chargement du quadrant"
+      >
+        <Skeleton height="480px" radius="4px" />
+        <div className="legende-bloc" style={{ marginTop: '0.75rem' }}>
+          <Skeleton width="180px" height="14px" />
+          <Skeleton width="220px" height="14px" />
+          <Skeleton width="160px" height="14px" />
+        </div>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="fr-alert fr-alert--error" role="alert">
-        <p>{error}</p>
-      </div>
+      <MessageErreur error={error} />
     );
   }
   if (!data) return null;

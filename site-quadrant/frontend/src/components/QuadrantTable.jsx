@@ -3,6 +3,8 @@ import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
+import MessageErreur from './MessageErreur.jsx';
+import Skeleton from './Skeleton.jsx';
 
 // Vue alternative au quadrant SVG : présente les mêmes données sous
 // forme de tableaux regroupés par cadran (haut-droite / haut-gauche /
@@ -140,17 +142,22 @@ export default function QuadrantTable() {
   }, [data]);
 
   if (loading) {
+    // Skeleton léger : entête de section + quelques lignes grisées
+    // à hauteur approximative. Évite le saut de layout entre
+    // l'attente et le tableau réel.
     return (
-      <div className="fr-alert fr-alert--info">
-        <p>Chargement du tableau…</p>
+      <div aria-busy="true" aria-label="Chargement du tableau">
+        <Skeleton height="1.2rem" width="50%" style={{ marginBottom: '0.5rem' }} />
+        <Skeleton height="2.4rem" width="100%" radius="2px" style={{ marginBottom: '0.5rem' }} />
+        <Skeleton height="2rem" width="100%" radius="2px" style={{ marginBottom: '0.25rem' }} />
+        <Skeleton height="2rem" width="100%" radius="2px" style={{ marginBottom: '0.25rem' }} />
+        <Skeleton height="2rem" width="100%" radius="2px" style={{ marginBottom: '0.25rem' }} />
       </div>
     );
   }
   if (error) {
     return (
-      <div className="fr-alert fr-alert--error" role="alert">
-        <p>{error}</p>
-      </div>
+      <MessageErreur error={error} />
     );
   }
   if (!data) return null;
