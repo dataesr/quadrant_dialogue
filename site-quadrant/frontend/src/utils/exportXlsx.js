@@ -12,7 +12,7 @@
 // regroupements de cadrans DOIVENT rester alignés avec ceux de
 // QuadrantTable.jsx (constantes LIBELLES_CADRANS + SEMANTIQUE).
 
-import { LIBELLE_SOURCE } from './constants.js';
+import { NOM_SOURCE } from './constants.js';
 import { construireNomFichier } from './exportPng.js';
 
 const ORDRE_CADRANS = ['haut_droite', 'haut_gauche', 'bas_droite', 'bas_gauche'];
@@ -66,7 +66,7 @@ export async function exportQuadrantXlsx({ data, contexte }) {
   const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
 
-  workbook.creator = 'MESRE - SIES';
+  workbook.creator = NOM_SOURCE;
   workbook.created = new Date();
   workbook.description =
     `Export Quadrant - ${contexte?.vue || ''} - ` +
@@ -85,6 +85,7 @@ export async function exportQuadrantXlsx({ data, contexte }) {
     contexte,
   });
   remplirFeuilleMetadonnees(workbook, contexte);
+  remplirFeuilleTracabilite(workbook, contexte);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -354,8 +355,9 @@ function styliserEntete(cell) {
 }
 
 // ---------------------------------------------------------------------
-// Feuille « Métadonnées » : clé-valeur en 2 colonnes, plus un bloc
-// traçabilité visuellement séparé en bas.
+// Feuille « Métadonnées » : clé-valeur en 2 colonnes.
+// La traçabilité (contexte_id, tokens…) est isolée dans une feuille
+// cachée — cf. remplirFeuilleTracabilite plus bas.
 // ---------------------------------------------------------------------
 function remplirFeuilleMetadonnees(workbook, contexte) {
   const ws = workbook.addWorksheet('Métadonnées');
@@ -382,20 +384,34 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Filtre Mention',         filtres.mention || 'Tous'],
     ['Type de Master',         filtres.typeMaster || 'Non applicable'],
     ['Date d\'export',         formatDateTimeIso(new Date())],
-    ['Source',                 LIBELLE_SOURCE],
+    ['Source de données',      NOM_SOURCE],
   ];
 
   for (const [k, v] of lignes) ajouterLigneMeta(ws, k, v);
+}
 
-  // --- Bloc traçabilité ---
-  ajouterLigneMeta(ws, '', '');
-  const sep = ws.addRow(['── Traçabilité ──', '']);
-  sep.getCell(1).font = { bold: true, italic: true, color: { argb: 'FF555555' } };
+// ---------------------------------------------------------------------
+// Feuille « Traçabilité » : masquée par défaut (réaffichable par
+// clic-droit sur les onglets > Afficher). Contient le contexte_id, les
+// tokens de session disponibles et la date d'export ISO 8601 — pour
+// permettre une enquête sur l'origine d'un fichier sans pour autant
+// imposer cette information à l'usage courant. Une seconde couche est
+// portée par les propriétés document Excel (workbook.creator,
+// workbook.description) qui restent invisibles à l'œil nu.
+// ---------------------------------------------------------------------
+function remplirFeuilleTracabilite(workbook, contexte) {
+  const ws = workbook.addWorksheet('Traçabilité', { state: 'hidden' });
+  ws.columns = [{ width: 28 }, { width: 70 }];
 
   const tokens = contexte?.tokens || {};
-  if (tokens.contexteId)        ajouterLigneMeta(ws, 'Contexte ID',       tokens.contexteId);
-  if (tokens.tokenConnexion)    ajouterLigneMeta(ws, 'Token connexion',   tokens.tokenConnexion);
-  if (tokens.tokenUtilisateur)  ajouterLigneMeta(ws, 'Token utilisateur', tokens.tokenUtilisateur);
+  const lignes = [
+    ['Date d\'export (ISO 8601)', new Date().toISOString()],
+  ];
+  if (tokens.contexteId)       lignes.push(['Contexte ID',       tokens.contexteId]);
+  if (tokens.tokenConnexion)   lignes.push(['Token connexion',   tokens.tokenConnexion]);
+  if (tokens.tokenUtilisateur) lignes.push(['Token utilisateur', tokens.tokenUtilisateur]);
+
+  for (const [k, v] of lignes) ajouterLigneMeta(ws, k, v);
 }
 
 function ajouterLigneMeta(ws, cle, valeur) {

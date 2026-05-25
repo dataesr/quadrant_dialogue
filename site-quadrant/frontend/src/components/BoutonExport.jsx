@@ -27,6 +27,7 @@ export default function BoutonExport() {
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
     affichage,
+    rechercheMention,
   } = useApp();
 
   const [exporting, setExporting] = useState(false);
@@ -65,11 +66,19 @@ export default function BoutonExport() {
     setErreur(null);
     setExporting(true);
     try {
+      // Résolution du surlignage : on n'expose une mention/un
+      // établissement surligné dans l'export que si la recherche
+      // courante matche EXACTEMENT le libellé d'une bulle affichée
+      // (même règle que <Bulles>). Une recherche partielle reste
+      // visuelle, sans trace dans l'export.
+      const surligne = resoudreSurlignage(rechercheMention, data?.bulles);
+
       const contexte = construireContexte({
         etabInfo, cursus, vue, millesime,
         variableX, variableY, dateInserX, dateInserY,
         domaine, discipline, secteur, mention, typeMaster,
         representativite, ligneReference,
+        surligne,
       });
 
       if (affichage === 'graphique') {
@@ -128,6 +137,7 @@ function construireContexte(params) {
       representativite: params.representativite,
       ligneReference: params.ligneReference,
     },
+    surligne: params.surligne || null,
     tokens: {
       // En mode dev, seul `contexte_id` est connu côté frontend (lu
       // dans VITE_CONTEXTE_ID_DEV). Les vrais tokens de session
@@ -139,4 +149,19 @@ function construireContexte(params) {
       tokenUtilisateur: undefined,
     },
   };
+}
+
+// Même règle de matching que <Bulles>/libellesMatchent : libellé
+// exact, casse et espaces ignorés. On retourne le libellé canonique
+// de la bulle (pas la saisie utilisateur) pour rester fidèle à
+// l'affichage à l'écran.
+function resoudreSurlignage(recherche, bulles) {
+  if (!recherche || !Array.isArray(bulles) || bulles.length === 0) return null;
+  const cible = recherche.trim().toLowerCase();
+  if (!cible) return null;
+  const bulle = bulles.find(
+    (b) => (b.libelle || '').trim().toLowerCase() === cible
+  );
+  if (!bulle) return null;
+  return { libelle: bulle.libelle };
 }

@@ -16,7 +16,7 @@
 // contexte_id et date d'export. Les tokens de session sont aussi
 // inclus s'ils sont disponibles côté frontend.
 
-import { LIBELLE_SOURCE } from './constants.js';
+import { LIBELLE_SOURCE, NOM_SOURCE } from './constants.js';
 
 export async function exportQuadrantPng({ wrapperEl, contexte }) {
   if (!wrapperEl) throw new Error('exportQuadrantPng: wrapperEl manquant.');
@@ -68,12 +68,14 @@ export async function exportQuadrantPng({ wrapperEl, contexte }) {
 // ---------------------------------------------------------------------
 // Construction du bandeau titre. DOM minimal, styles via .export-titre
 // dans global.css.
+//
+// Les libellés d'axes ne sont volontairement pas répétés dans le
+// bandeau : le SVG du quadrant les porte déjà sous chaque axe.
 // ---------------------------------------------------------------------
 function construireBandeauTitre(contexte) {
   const {
     etabInfo, cursus, vue, millesime,
-    variableX, dateInserX,
-    variableY, dateInserY,
+    surligne,
     filtres,
   } = contexte;
 
@@ -110,13 +112,18 @@ function construireBandeauTitre(contexte) {
     header.appendChild(p);
   }
 
-  // Axes complets.
-  const pAxes = document.createElement('p');
-  pAxes.className = 'sous-titre';
-  pAxes.textContent =
-    `Axe X : ${formatLibelleAxe(variableX, dateInserX)}` +
-    ` · Axe Y : ${formatLibelleAxe(variableY, dateInserY)}`;
-  header.appendChild(pAxes);
+  // Surlignage : affiché seulement si une bulle correspond exactement
+  // à la recherche (libellé exact). Cf. BoutonExport.jsx qui résout
+  // ce champ depuis rechercheMention + data.bulles avant l'appel.
+  if (surligne?.libelle) {
+    const p = document.createElement('p');
+    p.className = 'sous-titre';
+    const prefixe = vue === 'mentions'
+      ? 'Mention surlignée'
+      : 'Établissement surligné';
+    p.textContent = `${prefixe} : ${surligne.libelle}`;
+    header.appendChild(p);
+  }
 
   // Filtres actifs (non-défaut). Sur une ligne, tronquée si nécessaire.
   const filtresLib = formaterFiltresActifs(filtres);
@@ -143,12 +150,6 @@ function construirePiedExport() {
   pied.appendChild(droite);
 
   return pied;
-}
-
-function formatLibelleAxe(variable, dateInser) {
-  if (!variable) return '—';
-  if (!dateInser) return variable;
-  return `${variable} (${dateInser} mois)`;
 }
 
 function formaterFiltresActifs(filtres) {
@@ -201,7 +202,7 @@ async function injecterMetadonneesPng(blob, contexte) {
 
 function construireMetadonneesPng(contexte) {
   const out = [];
-  out.push(['Software', 'Quadrant - MESRE/SIES']);
+  out.push(['Software', `Quadrant - ${NOM_SOURCE}`]);
   out.push(['Source', LIBELLE_SOURCE]);
   out.push(['Creation Time', new Date().toISOString()]);
   if (contexte?.tokens?.contexteId) {
@@ -254,10 +255,10 @@ function formatDateCompact(d) {
 }
 
 function formatDateHumaine(d) {
-  const yyyy = d.getFullYear();
-  const mm   = String(d.getMonth() + 1).padStart(2, '0');
   const dd   = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function declencherTelechargement(blob, nomFichier) {
