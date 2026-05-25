@@ -280,6 +280,63 @@ GET /quadrant?contexte_id=zKsfQ&formation=Master&vue=mentions&...
 
 ---
 
+## 7 bis. Déploiement OVH
+
+### Pré-requis avant déploiement
+- [ ] `mode_dev = false` dans `site-quadrant/api/config/config.php` (cf. §7 ci-dessus).
+- [ ] `cors_origin` réglé sur le vrai domaine du site hôte (pas `*`).
+- [ ] Credentials BDD OVH renseignés dans `config.php` (jamais commités).
+- [ ] Clé API partagée site hôte ↔ API quadrant configurée des deux côtés.
+- [ ] Migrations `docs/migrations/002_rate_limit.sql` et `003_defaut_cursus.sql` jouées sur la BDD OVH (cf. §6).
+- [ ] Vérifier que `VITE_CONTEXTE_ID_DEV` est absent du `.env` de prod (sinon l'iframe forcera ce contexte au lieu d'attendre les tokens du site hôte).
+
+### Build et upload frontend
+```bash
+cd site-quadrant/frontend
+npm run build
+# Le résultat est dans dist/ (statique, copiable tel quel).
+# Sauvegarde du dist/ courant avant de l'écraser (cf. Rollback) :
+ssh ovh 'rm -rf /homez.10002/mesouvm/quadsies/dist.bak && cp -r /homez.10002/mesouvm/quadsies/dist /homez.10002/mesouvm/quadsies/dist.bak'
+# Upload du nouveau build :
+scp -r dist/* ovh:/homez.10002/mesouvm/quadsies/dist/
+```
+
+### Déploiement API (PHP)
+Pas de build — les fichiers PHP sont copiés tels quels.
+```bash
+# Depuis la racine du repo :
+scp -r site-quadrant/api/* ovh:/homez.10002/mesouvm/quadsies/api/
+# config.php n'est PAS dans le repo (.gitignored) — à ne JAMAIS écraser.
+# Si le scp -r écrase, refaire un upload ciblé du config.php sauvegardé.
+```
+
+### Mise à jour de la méthodologie sans recompilation
+Le contenu est dans `/homez.10002/mesouvm/quadsies/dist/methodologie.json` (cf. §6 « Mise à jour de la méthodologie »). Éditer directement en SFTP ; visible au prochain rechargement de l'app, pas de rebuild requis. Penser à dupliquer la modification dans `site-quadrant/frontend/public/methodologie.json` côté repo pour conserver la cohérence dépôt ↔ prod.
+
+### Vérification post-déploiement
+- [ ] `curl -sS https://quadsies.dgesip.fr/api/health` → `{"status":"ok"}` HTTP 200.
+- [ ] `curl -sS https://quadsies.dgesip.fr/api/health?check=full` → vérifications de cohérence `dim_indicateur_cursus` ↔ `stats_quadrant` sans erreur.
+- [ ] Iframe avec POST des 3 tokens cachés → quadrant s'affiche (smoke test sur page hôte).
+- [ ] Clic sur une bulle → panneau de détails s'ouvre, données arrivent.
+- [ ] Export PNG + XLSX + Word d'une bulle quelconque → fichiers produits, contenus cohérents.
+- [ ] `methodologie.json` accessible directement : `curl -sS https://quadsies.dgesip.fr/dist/methodologie.json` renvoie le JSON.
+
+### Rollback
+```bash
+ssh ovh 'cd /homez.10002/mesouvm/quadsies && rm -rf dist && mv dist.bak dist'
+# Pour l'API, garder en local une copie versionnée avant déploiement.
+# Pas d'automatisme de rollback côté API à ce stade — un mauvais
+# déploiement se rattrape par redéploiement de la version précédente
+# depuis git (git checkout <commit-précédent> ; scp -r site-quadrant/api/*).
+```
+
+### Sécurité de session (rappel)
+- Tokens validés côté API via appel server-to-server au site hôte (cf. `lib/Session.php`).
+- Cache de session via `app_rate_limit` table (migration 002).
+- HTTPS obligatoire — le site hôte est en HTTPS, le navigateur refuserait sinon un POST cross-origin.
+
+---
+
 ## 8. Documents clés à consulter
 
 | Document | À consulter pour... |
