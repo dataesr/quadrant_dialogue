@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
-import { LIBELLE_SOURCE } from '../utils/constants.js';
+import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 
 // Vue alternative au quadrant SVG : présente les mêmes données sous
 // forme de tableaux regroupés par cadran (haut-droite / haut-gauche /
@@ -247,6 +247,7 @@ export default function QuadrantTable() {
       )}
 
       <p className="source-attribution">{LIBELLE_SOURCE}</p>
+      <p className="mention-diffusion">{MENTION_DIFFUSION}</p>
     </div>
   );
 }

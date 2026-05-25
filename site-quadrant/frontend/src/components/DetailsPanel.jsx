@@ -12,7 +12,7 @@ import {
   seriesReussite,
   seriesInsertion,
 } from './details/historique.js';
-import { LIBELLE_SOURCE } from '../utils/constants.js';
+import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
 
 // Panneau de détails d'une bulle.
@@ -114,6 +114,8 @@ export default function DetailsPanel() {
           etabInfo,
           cursus, vue, millesime,
           variableX, variableY, dateInserX, dateInserY,
+          populationX: bulleAssociee?.population_x,
+          populationY: bulleAssociee?.population_y,
         },
         panneauEl: panneauRef.current,
       });
@@ -195,6 +197,7 @@ export default function DetailsPanel() {
           />
 
           <p className="source-attribution">{LIBELLE_SOURCE}</p>
+          <p className="mention-diffusion">{MENTION_DIFFUSION}</p>
         </>
       )}
     </aside>

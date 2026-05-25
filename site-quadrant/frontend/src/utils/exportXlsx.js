@@ -12,7 +12,7 @@
 // regroupements de cadrans DOIVENT rester alignés avec ceux de
 // QuadrantTable.jsx (constantes LIBELLES_CADRANS + SEMANTIQUE).
 
-import { NOM_SOURCE } from './constants.js';
+import { NOM_SOURCE, MENTION_DIFFUSION } from './constants.js';
 import { construireNomFichier } from './exportPng.js';
 
 const ORDRE_CADRANS = ['haut_droite', 'haut_gauche', 'bas_droite', 'bas_gauche'];
@@ -365,22 +365,45 @@ function styliserEntete(cell) {
 // `.quadrant-offscreen` dans global.css) ; en mode graphique il est
 // directement visible. html-to-image opère sur l'élément peu importe.
 //
-// Image insérée à l'origine de la feuille, dimensionnée pour rester
-// lisible sans débordement : 960×680 px (ratio ≈ celui du quadrant).
-// Si la capture échoue (lib absente, wrapper manquant, contenu non
-// stylé), on log et on continue — l'absence d'image ne doit pas casser
-// l'export tabulaire qui reste le contenu principal.
+// On exclut explicitement de la capture les éléments qui n'ont pas
+// leur place dans une image de référence stockée dans le XLSX :
+//   - .quadrant-zoom-controls : interactifs, sans sens sur image fixe
+//   - .quadrant-tooltip : overlay éphémère
+//   - .source-attribution / .mention-diffusion : déjà portés par la
+//     feuille « Métadonnées »
+// Ce qui reste : SVG du quadrant et légende des couleurs — exactement
+// ce qu'il faut pour rejouer mentalement la visualisation.
+//
+// Ratio préservé : on lit la taille native de l'image obtenue puis on
+// calcule la hauteur d'affichage en Excel pour conserver le ratio
+// (largeur cible : 900 px). Sans ça, un `ext` fixé en dur déforme
+// l'image quand son ratio diffère.
+//
+// Tolérante à l'échec : si la capture rate, on log et on continue —
+// l'export tabulaire (Données + Métadonnées) reste le contenu
+// principal et ne doit pas casser pour autant.
 // ---------------------------------------------------------------------
 async function remplirFeuilleGraphique(workbook, wrapperEl) {
   if (!wrapperEl) return;
 
+  let dataUrl;
   let buffer;
   try {
     const { toPng } = await import('html-to-image');
-    const dataUrl = await toPng(wrapperEl, {
+    dataUrl = await toPng(wrapperEl, {
       pixelRatio: 2,
       backgroundColor: '#ffffff',
       cacheBust: true,
+      filter: (node) => {
+        // node est parfois un TextNode ; pas de classList alors.
+        const cl = node?.classList;
+        if (!cl) return true;
+        if (cl.contains('quadrant-zoom-controls')) return false;
+        if (cl.contains('quadrant-tooltip'))       return false;
+        if (cl.contains('source-attribution'))     return false;
+        if (cl.contains('mention-diffusion'))      return false;
+        return true;
+      },
     });
     // dataUrl est de la forme "data:image/png;base64,XXXX". On
     // n'utilise pas fetch(dataUrl).blob() pour éviter une étape réseau
@@ -395,16 +418,39 @@ async function remplirFeuilleGraphique(workbook, wrapperEl) {
     return;
   }
 
+  // Lecture des dimensions natives pour calculer un ext qui préserve
+  // le ratio. Image() résout via onload sur un dataURL.
+  let widthDisplay = 900;
+  let heightDisplay = 600;
+  try {
+    const dims = await dimensionsImage(dataUrl);
+    if (dims.width > 0 && dims.height > 0) {
+      const ratio = dims.height / dims.width;
+      widthDisplay = 900;
+      heightDisplay = Math.round(widthDisplay * ratio);
+    }
+  } catch {
+    // Garde les valeurs par défaut — Excel affichera une image sans
+    // déformation visible si elle est carrée environ.
+  }
+
   const ws = workbook.addWorksheet('Graphique');
   const imageId = workbook.addImage({
     buffer,
     extension: 'png',
   });
-  // Placement TL = colonne 0 / ligne 0 ; extent en pixels pour une
-  // image autoportée (les colonnes Excel restent par défaut).
   ws.addImage(imageId, {
     tl: { col: 0, row: 0 },
-    ext: { width: 960, height: 680 },
+    ext: { width: widthDisplay, height: heightDisplay },
+  });
+}
+
+function dimensionsImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload  = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
   });
 }
 
@@ -444,12 +490,23 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Type de Master',         filtres.typeMaster || ''],
     ['Date d\'export',         formatDateTimeIso(new Date())],
     ['Source de données',      NOM_SOURCE],
+    ['Diffusion',              MENTION_DIFFUSION],
   ];
 
   for (const [k, v] of lignes) {
     if (estValeurAbsente(v)) continue;
     ajouterLigneMeta(ws, k, v);
   }
+
+  // Mise en exergue de la ligne « Diffusion » : italique gris,
+  // cohérent avec l'affichage écran (.mention-diffusion). On la
+  // retrouve par sa clé pour rester robuste au filtrage des lignes
+  // absentes au-dessus.
+  ws.eachRow((row) => {
+    if (row.getCell(1).value === 'Diffusion') {
+      row.getCell(2).font = { italic: true, color: { argb: 'FF666666' } };
+    }
+  });
 }
 
 // Une « valeur absente » est null/undefined, chaîne vide, ou un

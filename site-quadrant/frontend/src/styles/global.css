@@ -289,6 +289,17 @@
   text-align: right;
 }
 
+/* Mention de diffusion restreinte, posée juste sous la source.
+   Visible à l'écran ET dans les captures PNG (non masquée par
+   body.exporting, cf. bloc « Styles d'export PNG » plus bas). */
+.mention-diffusion {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+  text-align: right;
+}
+
 /* Vue tableau alternative au quadrant. Une <section> par cadran, plus
    éventuellement une section finale « Mentions non représentées ». */
 .tableau-cadran {

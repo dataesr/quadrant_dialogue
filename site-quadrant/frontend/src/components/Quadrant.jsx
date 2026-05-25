@@ -17,7 +17,7 @@ import {
   LIBELLES_CATEGORIES_ETAB,
   ORDRE_CATEGORIES_ETAB,
 } from '../utils/colors.js';
-import { LIBELLE_SOURCE } from '../utils/constants.js';
+import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 
 // Composant principal du quadrant. Orchestrateur :
 //   1. fetch des bulles via useQuadrant
@@ -420,6 +420,7 @@ export default function Quadrant() {
       )}
 
       <p className="source-attribution">{LIBELLE_SOURCE}</p>
+      <p className="mention-diffusion">{MENTION_DIFFUSION}</p>
     </div>
   );
 }
