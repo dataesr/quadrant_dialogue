@@ -179,6 +179,29 @@
   margin-right: 4px;
   vertical-align: middle;
 }
+
+/* Légende des formes de bulles (sous la légende des couleurs). Met
+   un titre court à gauche puis les entrées (icône SVG + libellé)
+   alignées en ligne, flex-wrap pour passer sur 2 lignes si besoin. */
+.legende-formes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.legende-formes-titre {
+  font-weight: 500;
+  color: #555;
+}
+.legende-forme-entree {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.legende-forme-entree .forme-icone {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
 .legende-tailles svg {
   vertical-align: middle;
   margin-right: 2px;

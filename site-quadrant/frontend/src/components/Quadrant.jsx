@@ -43,6 +43,18 @@ const LIBELLES_DOMAINES = {
 
 const ORDRE_DOMAINES = ['DEG', 'LLA', 'SHS', 'STS', 'INTERD'];
 
+// Ordre de rendu de la légende des formes (codé sur la sémantique :
+// du plus fiable au moins fiable, gauche → droite). Les libellés
+// reprennent la convention API (cf. CLAUDE.md §11) : forme = fonction
+// du couple (denom_x, denom_y) vs. le seuil 20.
+const ORDRE_FORMES = ['rond', 'triangle_gauche', 'triangle_bas', 'croix'];
+const LIBELLES_FORMES = {
+  rond:             'Effectifs ≥ 20',
+  triangle_gauche:  'Effectif fragile sur l’axe horizontal',
+  triangle_bas:     'Effectif fragile sur l’axe vertical',
+  croix:            'Effectif fragile sur les deux axes',
+};
+
 // Z-index sémantique des bulles en vue=etablissements (du fond vers
 // le premier plan). La bulle de l'établissement de contexte
 // (couleur_key=selectionne) est TOUJOURS rendue au-dessus pour ne
@@ -206,6 +218,18 @@ export default function Quadrant() {
     for (const b of bulles) if (b.couleur_key) set.add(b.couleur_key);
     return ORDRE_CATEGORIES_ETAB.filter((c) => set.has(c));
   }, [bulles, vue]);
+
+  // Formes de bulles effectivement présentes (rond, triangle_bas,
+  // triangle_gauche, croix). Sert à conditionner l'affichage de la
+  // légende des formes : on ne la rend que si au moins une bulle
+  // non-ronde existe (= au moins un effectif fragile 5-19). Quand
+  // toutes les bulles sont rondes, la légende n'apporte rien.
+  const formesPresentes = useMemo(() => {
+    const set = new Set();
+    for (const b of bulles) if (b.forme) set.add(b.forme);
+    return ORDRE_FORMES.filter((f) => set.has(f));
+  }, [bulles]);
+  const aDesFormesFragiles = formesPresentes.some((f) => f !== 'rond');
 
   // Publier la liste des libellés affichés (pour la combobox de
   // recherche) :
@@ -430,6 +454,32 @@ export default function Quadrant() {
         </div>
       )}
 
+      {/* Légende des formes : pose le contrat sur la fragilité des
+          effectifs. Affichée uniquement quand au moins une bulle
+          non-ronde est présente (forme = signal d'effectif 5-19). Les
+          icônes SVG inline reproduisent fidèlement le rendu des
+          bulles — mêmes polygones que dans Bulles.jsx, à dimension
+          fixe (rayon 6 px) et en gris neutre pour rester sémantiques
+          et indépendantes des palettes de couleur. */}
+      {aDesFormesFragiles && (
+        <div className="legende-bloc">
+          <div
+            className="legende-formes"
+            aria-label="Formes des bulles selon la fragilité des effectifs"
+          >
+            <span className="legende-formes-titre">
+              Effectifs de référence&nbsp;:
+            </span>
+            {formesPresentes.map((f) => (
+              <span key={f} className="legende-forme-entree">
+                <FormeIcone forme={f} />
+                {LIBELLES_FORMES[f]}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="source-attribution">
         {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
       </p>
@@ -441,4 +491,71 @@ function formatLibelle(variable, dateInser) {
   if (!variable) return '';
   if (!dateInser) return variable;
   return `${variable} (${dateInser} mois)`;
+}
+
+// Icône SVG inline reproduisant la forme d'une bulle (rond, triangle
+// bas/gauche, croix) à dimension fixe. Conserve la même géométrie que
+// Bulles.jsx (cf. trianglePoints) — un coup d'œil ici doit
+// littéralement faire correspondre l'icône à une bulle du quadrant.
+function FormeIcone({ forme }) {
+  const W = 18;
+  const r = 6;
+  const cx = W / 2;
+  const cy = W / 2;
+  const stroke = '#444';
+  const strokeWidth = 1.5;
+  const fill = 'none';
+
+  if (forme === 'rond') {
+    return (
+      <svg
+        className="forme-icone" width={W} height={W} viewBox={`0 0 ${W} ${W}`}
+        aria-hidden="true"
+      >
+        <circle cx={cx} cy={cy} r={r} fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+      </svg>
+    );
+  }
+  if (forme === 'triangle_bas') {
+    const points = [
+      [cx,         cy + r],
+      [cx - r,     cy - r * 0.7],
+      [cx + r,     cy - r * 0.7],
+    ].map((p) => p.join(',')).join(' ');
+    return (
+      <svg
+        className="forme-icone" width={W} height={W} viewBox={`0 0 ${W} ${W}`}
+        aria-hidden="true"
+      >
+        <polygon points={points} fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+      </svg>
+    );
+  }
+  if (forme === 'triangle_gauche') {
+    const points = [
+      [cx - r,         cy],
+      [cx + r * 0.7,   cy - r],
+      [cx + r * 0.7,   cy + r],
+    ].map((p) => p.join(',')).join(' ');
+    return (
+      <svg
+        className="forme-icone" width={W} height={W} viewBox={`0 0 ${W} ${W}`}
+        aria-hidden="true"
+      >
+        <polygon points={points} fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+      </svg>
+    );
+  }
+  if (forme === 'croix') {
+    return (
+      <svg
+        className="forme-icone" width={W} height={W} viewBox={`0 0 ${W} ${W}`}
+        aria-hidden="true"
+      >
+        <line x1={cx - r} y1={cy - r} x2={cx + r} y2={cy + r} stroke={stroke} strokeWidth={strokeWidth + 0.5} />
+        <line x1={cx - r} y1={cy + r} x2={cx + r} y2={cy - r} stroke={stroke} strokeWidth={strokeWidth + 0.5} />
+      </svg>
+    );
+  }
+  return null;
 }
