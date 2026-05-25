@@ -4,12 +4,13 @@
 // métadonnées d'export Excel et les chunks PNG.
 export const NOM_SOURCE = 'MESRE - SIES';
 
-// Libellé de la source de données, affiché en pied de chaque
-// visualisation et inclus dans les exports (PNG et XLSX). Centralisé
-// pour faciliter une modification éventuelle si l'un ou l'autre des
-// sigles change (par exemple changement de nom de ministère ou de
-// service).
-export const LIBELLE_SOURCE = `Source : ${NOM_SOURCE}`;
+// Libellé de la source affiché en pied de chaque visualisation (écran)
+// et inclus dans les exports (PNG, XLSX, Word). Inclut le nom de
+// l'outil — la source NOM_SOURCE seule reste utilisée pour les
+// métadonnées techniques où l'outil est déjà identifié par
+// d'autres champs (workbook.creator, Document.creator, chunk
+// PNG « Software »).
+export const LIBELLE_SOURCE = `Source : ${NOM_SOURCE} - outil quadrant`;
 
 // Mention de diffusion restreinte affichée sous la source sur tout
 // élément de visualisation (écran + exports PNG, XLSX, Word). Rappel
