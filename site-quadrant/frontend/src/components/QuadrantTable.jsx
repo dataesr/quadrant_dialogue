@@ -173,7 +173,7 @@ export default function QuadrantTable() {
             {' × '}
             {libelleY} {SEMANTIQUE[cadran].y}
           </h3>
-          <div className="fr-table fr-table--bordered">
+          <div className="tableau-cadran-table">
             <table>
               <thead>
                 <tr>
@@ -227,7 +227,7 @@ export default function QuadrantTable() {
               Aucune mention non représentée pour cette combinaison de filtres.
             </p>
           ) : (
-            <div className="fr-table fr-table--bordered">
+            <div className="tableau-cadran-table">
               <table>
                 <thead>
                   <tr>

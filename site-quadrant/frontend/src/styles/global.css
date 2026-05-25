@@ -330,31 +330,60 @@
   font-size: 1rem;
   margin-bottom: 0.5rem;
 }
-.tableau-cadran .fr-table {
+
+/* Wrapper de tableau de cadran. Volontairement NON DSFR (.fr-table /
+   .fr-table--bordered) : DSFR enregistre un composant JS sur
+   .fr-table (api.table.Table) qui mesure scrollLeft/offsetWidth
+   pour ajouter dynamiquement .fr-table__shadow et inline-styles.
+   Cette mesure se fait au montage initial, AVANT que notre
+   table-layout: fixed n'ait fini de calculer les largeurs, et le
+   premier tableau du DOM se retrouvait avec un cadre + fond
+   d'en-tête persistant que les suivants n'avaient pas. Le simple
+   wrapper sans classe DSFR évite tout enregistrement du composant
+   et donne un rendu strictement identique pour les 4 cadrans. */
+.tableau-cadran-table {
   margin-bottom: 0;
 }
 
 /* Colonnes de largeur égale : sans table-layout: fixed le navigateur
    ajuste la largeur au contenu (les libellés MEN très longs pousseraient
    la colonne entité à >50% au détriment des cellules de valeur). */
-.tableau-cadran .fr-table table {
+.tableau-cadran-table table {
   table-layout: fixed;
   width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
 }
-.tableau-cadran .fr-table th,
-.tableau-cadran .fr-table td {
+.tableau-cadran-table th,
+.tableau-cadran-table td {
   width: 33.33%;
   vertical-align: middle;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+  background-color: white;
 }
-.tableau-cadran .fr-table td:first-child,
-.tableau-cadran .fr-table th:first-child {
+/* En-tête : fond gris léger commun, bordure renforcée en bas. */
+.tableau-cadran-table thead th {
+  background-color: #f6f6f6;
+  font-weight: 500;
   text-align: left;
+  border-bottom: 2px solid #888;
+}
+.tableau-cadran-table td:first-child,
+.tableau-cadran-table th:first-child {
+  text-align: left;
+}
+/* Dernière ligne : pas de border-bottom pour éviter une ligne
+   surnuméraire en bas du tableau. */
+.tableau-cadran-table tbody tr:last-child th,
+.tableau-cadran-table tbody tr:last-child td {
+  border-bottom: none;
 }
 /* Toutes les cellules de valeur (taux + effectif, mais aussi les statuts
    textuels « Non diffusable » / « Pas de donnée ») sont alignées à
    droite — cohérence dans une même colonne. */
-.tableau-cadran .fr-table td.cellule-valeur,
-.tableau-cadran .fr-table td.cellule-non-diffusable {
+.tableau-cadran-table td.cellule-valeur,
+.tableau-cadran-table td.cellule-non-diffusable {
   text-align: right;
 }
 
@@ -379,8 +408,8 @@
    Positionnement (couleur_key === 'selectionne'). Fond pastel rouge
    qui rappelle le rouge #E91719 utilisé pour la bulle correspondante
    dans le SVG → cohérence chromatique entre les deux affichages. */
-.tableau-cadran .fr-table tr.ligne-selectionne th,
-.tableau-cadran .fr-table tr.ligne-selectionne td {
+.tableau-cadran-table tr.ligne-selectionne th,
+.tableau-cadran-table tr.ligne-selectionne td {
   background-color: #FEF1F1;
 }
 
@@ -389,8 +418,8 @@
    prend +1 classe de spécificité par rapport à la règle de fond rouge
    ci-dessus → l'information « donnée fragile » prime visuellement
    sur « ligne de l'étab de contexte ». */
-.tableau-cadran .fr-table td.cellule-fragile,
-.tableau-cadran .fr-table tr.ligne-selectionne td.cellule-fragile {
+.tableau-cadran-table td.cellule-fragile,
+.tableau-cadran-table tr.ligne-selectionne td.cellule-fragile {
   background-color: #FFF4E5;
 }
 
@@ -631,11 +660,11 @@
 
 /* Lignes du tableau (vue Tableau du quadrant) cliquables — ouvrent le
    panneau de détails. */
-.tableau-cadran .fr-table tr.ligne-cliquable {
+.tableau-cadran-table tr.ligne-cliquable {
   cursor: pointer;
 }
-.tableau-cadran .fr-table tr.ligne-cliquable:hover th,
-.tableau-cadran .fr-table tr.ligne-cliquable:hover td {
+.tableau-cadran-table tr.ligne-cliquable:hover th,
+.tableau-cadran-table tr.ligne-cliquable:hover td {
   background-color: #f6f6f6;
 }
 /* Hover préserve la nuance pastel des lignes spéciales (ligne sélectionnée
