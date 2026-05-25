@@ -30,8 +30,12 @@ const M = { top: 10, right: 14, bottom: 22, left: 40 }; // left élargi : effect
 const PLOT_W = W - M.left - M.right;
 const PLOT_H = H - M.top - M.bottom;
 
-const COULEUR_NUM    = '#0E0E60';
-const COULEUR_DENOM  = '#5A5A5A';
+// Bleu et rouge Marianne (couleurs officielles DSFR) pour un contraste
+// fort entre numérateur et dénominateur. La hiérarchie « num inclus
+// dans denom » est portée par les libellés et la sémantique ; les
+// couleurs servent uniquement à distinguer.
+const COULEUR_NUM    = '#000091'; // Bleu Marianne
+const COULEUR_DENOM  = '#E1000F'; // Rouge Marianne
 const COULEUR_GRILLE = '#e0e0e0';
 
 export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
