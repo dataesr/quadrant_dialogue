@@ -12,6 +12,7 @@ import {
   seriesReussite,
   seriesInsertion,
 } from './details/historique.js';
+import { LIBELLE_SOURCE } from '../utils/constants.js';
 
 // Panneau de détails d'une bulle.
 //
@@ -144,7 +145,7 @@ export default function DetailsPanel() {
             millesimeCourant={millesime}
           />
 
-          <p className="source-attribution">Source : MESRE - SIES</p>
+          <p className="source-attribution">{LIBELLE_SOURCE}</p>
         </>
       )}
     </aside>

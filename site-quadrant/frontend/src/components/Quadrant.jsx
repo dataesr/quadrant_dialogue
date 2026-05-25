@@ -17,6 +17,7 @@ import {
   LIBELLES_CATEGORIES_ETAB,
   ORDRE_CATEGORIES_ETAB,
 } from '../utils/colors.js';
+import { LIBELLE_SOURCE } from '../utils/constants.js';
 
 // Composant principal du quadrant. Orchestrateur :
 //   1. fetch des bulles via useQuadrant
@@ -418,7 +419,7 @@ export default function Quadrant() {
         </div>
       )}
 
-      <p className="source-attribution">Source : MESRE - SIES</p>
+      <p className="source-attribution">{LIBELLE_SOURCE}</p>
     </div>
   );
 }
