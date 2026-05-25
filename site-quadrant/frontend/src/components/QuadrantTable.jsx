@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import { trackEvent } from '../utils/matomo.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
@@ -74,7 +75,7 @@ export default function QuadrantTable() {
   const {
     cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
-    etabContexte,
+    etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
     setDetailsCible,
@@ -89,6 +90,12 @@ export default function QuadrantTable() {
       type: vue === 'mentions' ? 'mention' : 'etablissement',
       targetId: b.id,
       ...(vue === 'etablissements' && mention ? { mention } : {}),
+    });
+    trackEvent('Détails', 'clic_bulle', b.libelle, {
+      etab: etabInfo?.libelle,
+      vue,
+      cursus,
+      millesime,
     });
   }
 

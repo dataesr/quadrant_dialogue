@@ -18,6 +18,7 @@ import {
   ORDRE_CATEGORIES_ETAB,
 } from '../utils/colors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import { trackEvent } from '../utils/matomo.js';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
 
@@ -81,7 +82,7 @@ export default function Quadrant() {
   const {
     cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
-    etabContexte,
+    etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
     scaleMode,
@@ -104,7 +105,13 @@ export default function Quadrant() {
       targetId: b.id,
       ...(vue === 'etablissements' && mention ? { mention } : {}),
     });
-  }, [setDetailsCible, vue, mention]);
+    trackEvent('Détails', 'clic_bulle', b.libelle, {
+      etab: etabInfo?.libelle,
+      vue,
+      cursus,
+      millesime,
+    });
+  }, [setDetailsCible, vue, mention, etabInfo, cursus, millesime]);
 
   const { loading, data, error } = useQuadrant({
     cursus, vue, millesime,

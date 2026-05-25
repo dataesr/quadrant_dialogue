@@ -14,6 +14,7 @@ import {
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
 import { messageErreur } from '../utils/errors.js';
+import { trackEvent } from '../utils/matomo.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
@@ -121,6 +122,19 @@ export default function DetailsPanel() {
   async function handleExportFiche() {
     if (!ficheExportable || !panneauRef.current) return;
     setExportFiche({ running: true, erreur: null });
+    // Name = libellé de la bulle ciblée (mention ou établissement) —
+    // mêmes règles que titreBulle().
+    const libelleBulle = identite
+      ? (data?.type === 'mention'
+          ? (identite.libelle || identite.diplom || null)
+          : (identite.uo_lib || identite.id_paysage || null))
+      : null;
+    trackEvent('Export', 'export_docx', libelleBulle, {
+      etab: etabInfo?.libelle,
+      vue,
+      cursus,
+      millesime,
+    });
     try {
       await exportFicheDocx({
         ficheData: data,

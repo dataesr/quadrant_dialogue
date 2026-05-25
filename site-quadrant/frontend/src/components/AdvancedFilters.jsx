@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
+import { trackEvent } from '../utils/matomo.js';
 import ReferentielSelect from './selectors/ReferentielSelect.jsx';
 import TypeMasterSelect from './selectors/TypeMasterSelect.jsx';
 import BinaryToggle from './selectors/BinaryToggle.jsx';
@@ -26,8 +27,8 @@ const DEFAULT_LIGNE_REFERENCE  = 'mediane';
 
 export default function AdvancedFilters() {
   const {
-    etabContexte,
-    cursus,
+    etabContexte, etabInfo,
+    vue, cursus, millesime,
     referentiels,
     domaine, discipline, secteur, mention,
     typeMaster,
@@ -36,6 +37,16 @@ export default function AdvancedFilters() {
     setRepresentativite, setLigneReference,
     resetAdvancedFilters,
   } = useApp();
+
+  function ouvrirModaleMethodologie() {
+    setModaleMethodOpen(true);
+    trackEvent('Méthodologie', 'ouverture_modale', null, {
+      etab: etabInfo?.libelle,
+      vue,
+      cursus,
+      millesime,
+    });
+  }
 
   const [open, setOpen] = useState(false);
   const [modaleMethodOpen, setModaleMethodOpen] = useState(false);
@@ -176,7 +187,7 @@ export default function AdvancedFilters() {
       <button
         type="button"
         className="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-btn--icon-left fr-icon-question-line bouton-methodologie"
-        onClick={() => setModaleMethodOpen(true)}
+        onClick={ouvrirModaleMethodologie}
       >
         Méthodologie
       </button>

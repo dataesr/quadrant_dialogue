@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext.jsx';
+import { trackEvent } from '../utils/matomo.js';
 
 // Contrôle segmenté DSFR pour le cursus, à taille normale (uniforme avec
 // ViewTabs côté UI). Le `key` est le libellé long attendu par l'API en
@@ -12,8 +13,19 @@ const CURSUS_OPTIONS = [
 ];
 
 export default function CursusTabs() {
-  const { cursus, setCursus, etabContexte } = useApp();
+  const { cursus, setCursus, etabContexte, etabInfo, vue, millesime } = useApp();
   const disabled = !etabContexte;
+
+  function handleChange(nouveauCursus) {
+    if (nouveauCursus === cursus) return;
+    setCursus(nouveauCursus);
+    trackEvent('Navigation', 'change_cursus', null, {
+      etab: etabInfo?.libelle,
+      vue,
+      cursus: nouveauCursus,
+      millesime,
+    });
+  }
 
   return (
     <fieldset className="fr-segmented fr-mb-2w" disabled={disabled}>
@@ -29,7 +41,7 @@ export default function CursusTabs() {
                 id={id}
                 value={opt.key}
                 checked={cursus === opt.key}
-                onChange={() => setCursus(opt.key)}
+                onChange={() => handleChange(opt.key)}
               />
               <label className="fr-label" htmlFor={id}>
                 {opt.short}

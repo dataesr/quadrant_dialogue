@@ -4,6 +4,7 @@ import { useQuadrant } from '../hooks/useQuadrant.js';
 import { exportQuadrantPng } from '../utils/exportPng.js';
 import { exportQuadrantXlsx } from '../utils/exportXlsx.js';
 import { messageErreur } from '../utils/errors.js';
+import { trackEvent } from '../utils/matomo.js';
 
 // Bouton d'export adaptatif au mode courant :
 //   - affichage='graphique' → PNG (capture du .quadrant-wrapper avec
@@ -104,11 +105,23 @@ export default function BoutonExport() {
         surligne,
       });
 
+      // Tracking AVANT le lancement de l'export : on capte
+      // l'intention même si l'export échoue ensuite. Pas de PII —
+      // que des dimensions analytiques (étab/vue/cursus/millésime).
+      const trackContexte = {
+        etab: etabInfo?.libelle,
+        vue,
+        cursus,
+        millesime,
+      };
+
       if (affichage === 'graphique') {
+        trackEvent('Export', 'export_png', null, trackContexte);
         const wrapperEl = document.querySelector('.quadrant-wrapper');
         if (!wrapperEl) throw new Error('Quadrant introuvable dans la page.');
         await exportQuadrantPng({ wrapperEl, contexte });
       } else {
+        trackEvent('Export', 'export_xlsx', null, trackContexte);
         // En mode tableau le quadrant est rendu hors écran (cf.
         // App.jsx > .quadrant-offscreen) — la capture pour la feuille
         // « Graphique » du XLSX se fait sur ce wrapper offscreen.

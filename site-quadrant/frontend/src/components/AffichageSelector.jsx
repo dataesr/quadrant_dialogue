@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext.jsx';
+import { trackEvent } from '../utils/matomo.js';
 
 // Toggle entre vue graphique (quadrant SVG) et vue tableau. Segmented
 // control DSFR, identique au sélecteur Médiane/Moyenne.
@@ -12,10 +13,24 @@ import { useApp } from '../context/AppContext.jsx';
 //    niveau étab).
 
 export default function AffichageSelector() {
-  const { vue, affichage, setAffichage, nbBullesAccessibles } = useApp();
+  const {
+    vue, affichage, setAffichage, nbBullesAccessibles,
+    etabInfo, cursus, millesime,
+  } = useApp();
 
   const visible = vue === 'mentions' || nbBullesAccessibles >= 2;
   if (!visible) return null;
+
+  function handleChange(nouvelAffichage) {
+    if (nouvelAffichage === affichage) return;
+    setAffichage(nouvelAffichage);
+    trackEvent('Navigation', 'change_affichage', nouvelAffichage, {
+      etab: etabInfo?.libelle,
+      vue,
+      cursus,
+      millesime,
+    });
+  }
 
   return (
     <fieldset className="fr-segmented fr-segmented--sm">
@@ -28,7 +43,7 @@ export default function AffichageSelector() {
             name="affichage"
             value="graphique"
             checked={affichage === 'graphique'}
-            onChange={() => setAffichage('graphique')}
+            onChange={() => handleChange('graphique')}
           />
           <label className="fr-label" htmlFor="affichage-graphique">Graphique</label>
         </div>
@@ -39,7 +54,7 @@ export default function AffichageSelector() {
             name="affichage"
             value="tableau"
             checked={affichage === 'tableau'}
-            onChange={() => setAffichage('tableau')}
+            onChange={() => handleChange('tableau')}
           />
           <label className="fr-label" htmlFor="affichage-tableau">Tableau</label>
         </div>

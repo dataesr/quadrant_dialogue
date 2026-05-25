@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext.jsx';
+import { trackEvent } from '../utils/matomo.js';
 
 // Contrôle segmenté DSFR pour la vue (Mentions / Positionnement).
 // Le composant `fr-segmented` est un fieldset de radios — quand on met le
@@ -11,8 +12,19 @@ const VIEW_OPTIONS = [
 ];
 
 export default function ViewTabs() {
-  const { vue, setVue, etabContexte } = useApp();
+  const { vue, setVue, etabContexte, etabInfo, cursus, millesime } = useApp();
   const disabled = !etabContexte;
+
+  function handleChange(nouvelleVue) {
+    if (nouvelleVue === vue) return;
+    setVue(nouvelleVue);
+    trackEvent('Navigation', 'change_vue', null, {
+      etab: etabInfo?.libelle,
+      vue: nouvelleVue,
+      cursus,
+      millesime,
+    });
+  }
 
   return (
     <fieldset className="fr-segmented fr-mb-2w" disabled={disabled}>
@@ -28,7 +40,7 @@ export default function ViewTabs() {
                 id={id}
                 value={opt.key}
                 checked={vue === opt.key}
-                onChange={() => setVue(opt.key)}
+                onChange={() => handleChange(opt.key)}
               />
               <label className="fr-label" htmlFor={id}>
                 {opt.label}

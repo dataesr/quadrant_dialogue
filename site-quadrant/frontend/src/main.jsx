@@ -13,6 +13,7 @@ import '@gouvfr/dsfr/dist/dsfr.module.min.js';
 import App from './App.jsx';
 import './styles/global.css';
 import { chargerMethodologie } from './data/methodologie.js';
+import { initMatomo } from './utils/matomo.js';
 
 // Préchargement de la méthodologie en parallèle du premier rendu —
 // fire & forget. Le contenu est externalisé dans `public/methodologie.json`
@@ -21,6 +22,10 @@ import { chargerMethodologie } from './data/methodologie.js';
 // consommateurs (tooltips, modale, exports) gèrent gracieusement le
 // cas où le cache n'est pas encore prêt.
 chargerMethodologie();
+
+// Initialisation du tracker Matomo (instance MESRE, sans cookie).
+// Idempotent : safe vis-à-vis du double mount React.StrictMode en dev.
+initMatomo();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
