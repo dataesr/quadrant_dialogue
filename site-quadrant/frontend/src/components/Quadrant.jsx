@@ -221,6 +221,11 @@ export default function Quadrant() {
   // inchangée — un setState avec un nouveau tableau de même contenu
   // déclencherait quand même un re-render chez les abonnés.
   useEffect(() => {
+    // Guard : pas de publication tant que le fetch n'a pas livré ses
+    // données. Sinon un transient bulles=[] pendant un fetch en cours
+    // écraserait une valeur correcte précédente. Critique pour la
+    // safety useEffect plus bas (qui repose sur nbBullesAccessibles).
+    if (!data) return;
     const source = vue === 'mentions'
       ? bulles
       : bulles.filter((b) => b.details_accessibles);
@@ -232,16 +237,22 @@ export default function Quadrant() {
         ? prev
         : libelles
     ));
-  }, [bulles, vue, setMentionsAffichees]);
+  }, [data, bulles, vue, setMentionsAffichees]);
 
   // Publier le nombre de bulles accessibles (= avec details_accessibles).
   // Sert à conditionner la visibilité du toggle Graphique/Tableau et
   // de la barre de recherche en vue=etablissements (un user étab ne voit
   // qu'une seule bulle accessible — pas la peine d'afficher ces UI).
   useEffect(() => {
+    // Idem : guard data. Sans ça, un Quadrant fraîchement remonté ou
+    // un changement de filtres en cours de fetch publierait
+    // transitoirement 0 → la safety useEffect plus bas bascule
+    // affichage='graphique' à tort (bug Positionnement reporté en
+    // session précédente).
+    if (!data) return;
     const nbAccess = bulles.filter((b) => b.details_accessibles).length;
     setNbBullesAccessibles((prev) => (prev === nbAccess ? prev : nbAccess));
-  }, [bulles, setNbBullesAccessibles]);
+  }, [data, bulles, setNbBullesAccessibles]);
 
   // Garde-fou cohérence affichage/contexte : en vue Positionnement, si
   // l'utilisateur est au niveau étab (1 seule bulle accessible),

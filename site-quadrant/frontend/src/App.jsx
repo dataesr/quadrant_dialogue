@@ -75,22 +75,31 @@ function AppShell() {
             >
               {etabContexte ? (
                 <>
-                  {affichage === 'graphique' ? (
+                  {/* Un seul <Quadrant /> monté en permanence : en
+                      mode tableau on l'envoie offscreen via CSS
+                      plutôt que de monter une seconde instance.
+                      Raison historique : avoir deux mounts (top
+                      level + offscreen) provoquait à chaque bascule
+                      Graphique↔Tableau un remount du Quadrant
+                      offscreen → useQuadrant repartait sur data=null
+                      → publication transitoire de
+                      nbBullesAccessibles=0 → la safety useEffect de
+                      Quadrant.jsx forçait setAffichage('graphique'),
+                      bug visible en vue Positionnement.
+                      Avec un seul mount, useQuadrant garde son data
+                      entre les bascules et la safety useEffect ne se
+                      déclenche que sur de vraies conditions étab. */}
+                  <div
+                    className={
+                      affichage === 'tableau'
+                        ? 'quadrant-offscreen'
+                        : undefined
+                    }
+                    aria-hidden={affichage === 'tableau' ? 'true' : undefined}
+                  >
                     <Quadrant />
-                  ) : (
-                    <>
-                      {/* En mode tableau, on garde le quadrant SVG
-                          monté hors écran : il alimente la capture
-                          d'image insérée dans la feuille « Graphique »
-                          du XLSX. Coût : un fetch /quadrant
-                          supplémentaire (même payload que celui de
-                          QuadrantTable, mais isolé par instance). */}
-                      <div className="quadrant-offscreen" aria-hidden="true">
-                        <Quadrant />
-                      </div>
-                      <QuadrantTable />
-                    </>
-                  )}
+                  </div>
+                  {affichage === 'tableau' && <QuadrantTable />}
                   <DetailsPanel />
                 </>
               ) : (
