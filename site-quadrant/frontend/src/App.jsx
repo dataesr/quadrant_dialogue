@@ -9,6 +9,7 @@ import Quadrant from './components/Quadrant.jsx';
 import QuadrantTable from './components/QuadrantTable.jsx';
 import MentionSearch from './components/MentionSearch.jsx';
 import AffichageSelector from './components/AffichageSelector.jsx';
+import DetailsPanel from './components/DetailsPanel.jsx';
 
 // Coquille minimale : layout 1000px max (contrainte iframe), composants
 // DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
@@ -25,7 +26,7 @@ export default function App() {
 }
 
 function AppShell() {
-  const { loading, error, etabContexte, affichage, vue } = useApp();
+  const { loading, error, etabContexte, affichage, vue, detailsCible } = useApp();
 
   return (
     <div className="quadrant-app">
@@ -62,9 +63,17 @@ function AppShell() {
               {vue === 'mentions' && <MentionSearch />}
               <AdvancedFilters />
             </aside>
-            <main className="zone-quadrant">
+            <main
+              className={
+                'zone-quadrant' +
+                (etabContexte && detailsCible ? ' zone-quadrant--avec-details' : '')
+              }
+            >
               {etabContexte ? (
-                affichage === 'graphique' ? <Quadrant /> : <QuadrantTable />
+                <>
+                  {affichage === 'graphique' ? <Quadrant /> : <QuadrantTable />}
+                  <DetailsPanel />
+                </>
               ) : (
                 <EmptyState variant="no-selection" />
               )}

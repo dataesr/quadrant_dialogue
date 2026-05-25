@@ -76,7 +76,20 @@ export default function Quadrant() {
     setNbBullesAccessibles,
     affichage,
     setAffichage,
+    setDetailsCible,
   } = useApp();
+
+  // Clic sur une bulle accessible → ouvre le panneau de détails.
+  // En vue=etablissements avec filtre mention, on transmet la mention
+  // pour que /quadrant/details renvoie les données de cette mention pour
+  // cet établissement précis plutôt que l'agrégat.
+  const handleSelectBulle = useCallback((b) => {
+    setDetailsCible({
+      type: vue === 'mentions' ? 'mention' : 'etablissement',
+      targetId: b.id,
+      ...(vue === 'etablissements' && mention ? { mention } : {}),
+    });
+  }, [setDetailsCible, vue, mention]);
 
   const { loading, data, error } = useQuadrant({
     cursus, vue, millesime,
@@ -327,6 +340,7 @@ export default function Quadrant() {
             rechercheMention={rechercheMention}
             onHover={handleHover}
             onLeave={handleLeave}
+            onSelect={handleSelectBulle}
           />
         </g>
       </svg>

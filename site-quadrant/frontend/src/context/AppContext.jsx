@@ -34,7 +34,7 @@ export function AppProvider({ children }) {
   const [etabInfo,     setEtabInfo]          = useState(null);
   const [etabList,     setEtabList]          = useState([]);
   const [mode,         setMode]              = useState(null);
-  const [vue,          setVue]               = useState('mentions');
+  const [vue,          setVueState]          = useState('mentions');
   const [cursus,       setCursusState]       = useState('Master');
 
   // --- Phase 3 : filtres essentiels ---
@@ -70,6 +70,12 @@ export function AppProvider({ children }) {
   // publié par <Quadrant>, consommé par AffichageSelector / MentionSearch
   // pour conditionner leur visibilité en vue=etablissements.
   const [nbBullesAccessibles, setNbBullesAccessibles] = useState(0);
+  // Bulle « cible » du panneau de détails (phase 5). null = panneau fermé.
+  //   { type: 'mention'|'etablissement', targetId: string, mention?: string }
+  // Reset auto au moindre changement structurel des filtres : la cible
+  // n'a plus de sens si on passe à un autre cursus, vue, millésime ou
+  // étab de référence.
+  const [detailsCible, setDetailsCibleState] = useState(null);
 
   // --- Initialisation : /etablissements-visibles ---
   const [loading, setLoading] = useState(true);
@@ -220,6 +226,7 @@ export function AppProvider({ children }) {
   // dans la liste déjà chargée — pas de nouvel appel API.
   const setEtabContexte = useCallback(
     (id) => {
+      setDetailsCibleState(null); // cible probablement invalide après changement d'étab
       if (!id) {
         setEtabContexteState(null);
         setEtabInfo(null);
@@ -232,6 +239,11 @@ export function AppProvider({ children }) {
     [etabList]
   );
 
+  // Setter détailsCible exposé tel quel (pas de logique métier supplémentaire).
+  const setDetailsCible = useCallback((cible) => {
+    setDetailsCibleState(cible);
+  }, []);
+
   // Changement de cursus : tout ce qui dépend du cursus est invalidé.
   // - millésime + variables + dates → seront re-défaultés quand les
   //   nouveaux référentiels arriveront ;
@@ -239,6 +251,7 @@ export function AppProvider({ children }) {
   //   valeurs disponibles changent avec le cursus ;
   // - representativite + ligneReference → préservés (préférences UX
   //   indépendantes du cursus).
+  // - detailsCible → fermé : cible probablement invalide dans le nouveau cursus.
   const setCursus = useCallback((newCursus) => {
     setCursusState(newCursus);
     setMillesimeState(null);
@@ -251,6 +264,19 @@ export function AppProvider({ children }) {
     setSecteur(null);
     setMention(null);
     setTypeMaster(null);
+    setDetailsCibleState(null);
+  }, []);
+
+  // Wrappers de setVue et setMillesime qui ferment le panneau de détails
+  // — la cible n'a plus forcément de sens après changement (ex. une
+  // mention de l'étab n'a pas d'équivalent en vue Positionnement).
+  const setVue = useCallback((v) => {
+    setVueState(v);
+    setDetailsCibleState(null);
+  }, []);
+  const setMillesime = useCallback((m) => {
+    setMillesimeState(m);
+    setDetailsCibleState(null);
   }, []);
 
   // Setter variable X : ajuste automatiquement date_inserX selon le drapeau
@@ -275,8 +301,6 @@ export function AppProvider({ children }) {
     },
     [referentiels.variables.data]
   );
-
-  const setMillesime = useCallback((m) => setMillesimeState(m), []);
 
   // Remet à zéro tous les filtres avancés (laisse vue / cursus / variables /
   // millésime / établissement intacts). Utilisé par le bouton « Réinitialiser
@@ -309,6 +333,7 @@ export function AppProvider({ children }) {
     mentionsAffichees,
     affichage,
     nbBullesAccessibles,
+    detailsCible,
     // Référentiels chargés
     referentiels,
     // État global
@@ -327,6 +352,7 @@ export function AppProvider({ children }) {
     setMentionsAffichees,
     setAffichage,
     setNbBullesAccessibles,
+    setDetailsCible,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

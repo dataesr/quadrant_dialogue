@@ -44,6 +44,7 @@ export default function Bulles({
   rechercheMention = '',
   onHover,
   onLeave,
+  onSelect, // (bulle) => void — clic sur une bulle accessible
 }) {
   if (!bulles?.length) return null;
 
@@ -68,16 +69,20 @@ export default function Bulles({
         const strokeColor   = estMatch ? COULEUR_HIGHLIGHT : fill;
         const strokeWidth   = estMatch ? 3 : 1;
 
+        const cliquable = b.details_accessibles && !!onSelect;
         const commun = {
           fill,
           fillOpacity,
           stroke: strokeColor,
           strokeOpacity,
           strokeWidth,
-          style: { cursor: b.details_accessibles ? 'pointer' : 'default' },
+          style: { cursor: cliquable ? 'pointer' : 'default' },
           onMouseEnter: (e) => onHover?.(b, e),
           onMouseMove:  (e) => onHover?.(b, e),
           onMouseLeave: () => onLeave?.(),
+          // Clic uniquement sur les bulles accessibles (vue=mentions :
+          // toujours ; vue=etablissements : seulement non-anonymes).
+          onClick: cliquable ? () => onSelect(b) : undefined,
         };
 
         switch (b.forme) {
@@ -105,14 +110,15 @@ export default function Bulles({
           case 'croix':
             // Croix : les deux dénominateurs faibles. Bornée par un
             // <g> portant les handlers, pour que les deux segments
-            // partagent le survol.
+            // partagent le survol et le clic.
             return (
               <g
                 key={b.id}
                 onMouseEnter={(e) => onHover?.(b, e)}
                 onMouseMove={(e)  => onHover?.(b, e)}
                 onMouseLeave={() => onLeave?.()}
-                style={{ cursor: b.details_accessibles ? 'pointer' : 'default' }}
+                onClick={cliquable ? () => onSelect(b) : undefined}
+                style={{ cursor: cliquable ? 'pointer' : 'default' }}
               >
                 <line
                   x1={cx - r} y1={cy - r} x2={cx + r} y2={cy + r}

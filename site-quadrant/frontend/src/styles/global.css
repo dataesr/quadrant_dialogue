@@ -347,6 +347,156 @@
 }
 
 /* ----------------------------------------------------------------------
+ * Panneau de détails (phase 5)
+ * ----------------------------------------------------------------------
+ * Le panneau s'insère à droite de la visualisation (quadrant SVG ou
+ * tableau) quand `detailsCible` est défini dans AppContext. Il prend
+ * une colonne fixe de 320 px ; la visualisation occupe le 1fr restant.
+ * Quand le panneau est fermé, .zone-quadrant retombe en simple bloc.
+ *
+ * Largeur de l'iframe 1000 px → ~700 px restent pour la visualisation
+ * une fois le panneau ouvert. C'est confortable pour le quadrant SVG
+ * (viewBox élastique) et pour le tableau (table-layout: fixed).
+ * -------------------------------------------------------------------- */
+.zone-quadrant--avec-details {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.panneau-details {
+  position: relative;
+  border: 1px solid #ddd;
+  background: white;
+  padding: 0.75rem 0.75rem 1rem;
+  overflow-y: auto;
+  max-height: 800px;
+  font-size: 0.9rem;
+}
+
+.panneau-details header {
+  position: relative;
+  padding-right: 28px;     /* place pour la croix */
+  margin-bottom: 1rem;
+}
+.panneau-details h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.25;
+}
+.panneau-details h3 {
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+  margin: 1.25rem 0 0.5rem;
+}
+.panneau-details .identite-secondaire {
+  color: #666;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.panneau-details .bouton-fermer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #555;
+  padding: 0 4px;
+}
+.panneau-details .bouton-fermer:hover {
+  color: #000091;
+}
+
+.panneau-details .indicateur-card {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #eee;
+}
+.panneau-details .indicateur-card:last-child {
+  border-bottom: none;
+}
+.panneau-details .libelle-indicateur {
+  margin: 0 0 0.2rem;
+  font-size: 0.85rem;
+  color: #444;
+}
+.panneau-details .valeur-principale {
+  font-size: 1.45rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.1;
+}
+.panneau-details .valeur-non-diffusable {
+  font-size: 1rem;
+  font-style: italic;
+  color: #888;
+  font-weight: 400;
+}
+.panneau-details .detail-numerateur {
+  color: #666;
+  font-size: 0.8rem;
+  margin: 2px 0 0.5rem;
+}
+
+.panneau-details .table-autres-indicateurs {
+  width: 100%;
+  font-size: 0.82rem;
+  border-collapse: collapse;
+}
+.panneau-details .table-autres-indicateurs td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.panneau-details .table-autres-indicateurs td.cellule-libelle {
+  color: #333;
+}
+.panneau-details .table-autres-indicateurs td.cellule-taux {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 60px;
+}
+.panneau-details .table-autres-indicateurs td.cellule-sparkline {
+  width: 64px;
+  padding-left: 8px;
+}
+.panneau-details .table-autres-indicateurs .non-diffusable,
+.panneau-details .table-autres-indicateurs .absent {
+  color: #999;
+  font-style: italic;
+}
+
+.panneau-details .info,
+.panneau-details .info-vide {
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Lignes du tableau (vue Tableau du quadrant) cliquables — ouvrent le
+   panneau de détails. */
+.tableau-cadran .fr-table tr.ligne-cliquable {
+  cursor: pointer;
+}
+.tableau-cadran .fr-table tr.ligne-cliquable:hover th,
+.tableau-cadran .fr-table tr.ligne-cliquable:hover td {
+  background-color: #f6f6f6;
+}
+/* Hover préserve la nuance pastel des lignes spéciales (ligne sélectionnée
+   et cellule fragile) en restant plus spécifique que les règles ci-dessus
+   est inutile : on retombe sur la priorité fournie par les rules existantes
+   .ligne-selectionne (+1 classe) et .cellule-fragile (+1 classe + élément).
+   Voir le bloc tableau plus haut. */
+
+/* ----------------------------------------------------------------------
  * Styles d'impression
  * ----------------------------------------------------------------------
  * Objectif : à l'impression, ne garder que les éléments porteurs de
@@ -373,13 +523,19 @@
   /* Boutons de zoom +/−/⌂ en surimpression du SVG. */
   .quadrant-zoom-controls,
   /* Tooltip flottant si jamais ouvert au moment de l'impression. */
-  .quadrant-tooltip {
+  .quadrant-tooltip,
+  /* Panneau de détails (phase 5) — pas imprimable, le contenu
+     informatif reste celui de la visualisation principale. */
+  .panneau-details {
     display: none !important;
   }
 
   /* Layout : la grille devient bloc une fois la sidebar masquée — la
-     zone du quadrant prend toute la largeur disponible. */
-  .quadrant-grille {
+     zone du quadrant prend toute la largeur disponible. La même règle
+     s'applique quand le panneau de détails est ouvert au moment de
+     l'impression (zone-quadrant--avec-details retombe en simple bloc). */
+  .quadrant-grille,
+  .zone-quadrant--avec-details {
     display: block;
   }
   .zone-quadrant {

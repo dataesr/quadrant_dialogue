@@ -73,7 +73,20 @@ export default function QuadrantTable() {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
+    setDetailsCible,
   } = useApp();
+
+  // Clic sur une ligne du tableau → ouvre le panneau de détails (même
+  // comportement que le clic sur une bulle SVG). Les bulles déjà
+  // filtrées sur details_accessibles=true à la construction des
+  // groupes — donc toutes les lignes sont cliquables.
+  function ouvrirDetail(b) {
+    setDetailsCible({
+      type: vue === 'mentions' ? 'mention' : 'etablissement',
+      targetId: b.id,
+      ...(vue === 'etablissements' && mention ? { mention } : {}),
+    });
+  }
 
   const { loading, data, error } = useQuadrant({
     cursus, vue, millesime,
@@ -171,7 +184,11 @@ export default function QuadrantTable() {
                 {groupes[cadran].map((b) => (
                   <tr
                     key={b.id}
-                    className={b.couleur_key === 'selectionne' ? 'ligne-selectionne' : undefined}
+                    className={
+                      'ligne-cliquable' +
+                      (b.couleur_key === 'selectionne' ? ' ligne-selectionne' : '')
+                    }
+                    onClick={() => ouvrirDetail(b)}
                   >
                     <th scope="row">{b.libelle || '—'}</th>
                     <CellulePourcentage
