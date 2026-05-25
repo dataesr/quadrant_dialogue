@@ -29,13 +29,16 @@
 //       [H3] Libellé indicateur (avec date_inser si déclinable)
 //       [centré 16pt gras] Valeur principale
 //       [centré 9pt italique gris] Détail num / denom / population
-//       [image] Mini-graphe SVG isolé
+//       [image] Mini-graphe Taux centré + légende centrée
+//       [image] Mini-graphe Effectifs centré + légende centrée
 //   [H2]   Évolution historique des indicateurs
 //     Pour chaque multi-courbe (Réussite + Insertion…) :
 //       [H3] Titre du groupe
-//       [image] Multi-courbe SVG isolé
-//     Pour les indicateurs simples :
-//       [Table 3 colonnes] Indicateur / Taux / Sparkline image
+//       [image] Multi-courbe SVG isolé centré (avec sa légende native)
+//   [H2]   Autres indicateurs
+//     Pour chaque indicateur simple (non-déclinable hors axes) :
+//       Bloc card identique à X/Y (libellé, valeur, mini-graphes
+//       Taux + Effectifs).
 //   [PageBreak]
 //   [H2]   Méthodologie
 //     Texte général + section dédiée au cursus courant.
@@ -45,10 +48,11 @@
 // fiche. Rien n'est visible dans le corps du document — uniquement
 // dans Fichier > Informations > Propriétés > Avancées.
 //
-// Captures isolées : on cible les `.graphe-zone` (div interne aux
-// composants de graphique), ce qui exclut le titre HTML (`.graphe-titre`)
-// et la légende textuelle externe. Le ratio natif de chaque image est
-// préservé en lisant ses dimensions après capture.
+// Captures isolées : on cible les `.graphe-indicateur` (wrapper qui
+// contient SVG + légende de variantes éventuelle). Filtre toPng
+// exclut `.graphe-titre` pour ne pas dupliquer le titre H3 que Word
+// rend séparément. Le ratio natif de chaque image est préservé en
+// lisant ses dimensions après capture.
 
 import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE } from './constants.js';
 import { chargerMethodologie } from '../data/methodologie.js';
@@ -62,13 +66,12 @@ import { chargerMethodologie } from '../data/methodologie.js';
 //
 // Disposition empilée verticalement (cards X puis Y empilées, chacune
 // avec Taux puis Effectifs empilés ; multi-courbes empilés). Largeur
-// cible 580 px : laisse une gouttière confortable sur A4 portrait
-// marges 2 cm (largeur utile ~643 px à 96 dpi). Lisibilité prime sur
-// la compacité — les versions précédentes côte à côte tassaient les
-// légendes.
-const LARGEUR_MINI_GRAPHE  = 580;
-const LARGEUR_MULTI_GRAPHE = 580;
-const LARGEUR_SPARKLINE    = 100;
+// cible 420 px : un compromis entre lisibilité et compacité — assez
+// pour que les légendes des multi-courbes 5 délais restent
+// confortables, sans qu'un multi-courbes 5 séries (~1.03 de ratio,
+// donc ~410 px de haut) ne consomme une page entière.
+const LARGEUR_MINI_GRAPHE  = 420;
+const LARGEUR_MULTI_GRAPHE = 420;
 // Police par défaut du document — choix utilisateur (Calibri lisible,
 // universellement installée sur Word/LibreOffice). Taille en demi-
 // points : 22 = 11 pt.
@@ -139,14 +142,7 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   );
   const cards = [];
   for (const cardEl of cardsEls) {
-    const libelle = cardEl.querySelector('.libelle-indicateur')?.textContent || '';
-    const valeur  = cardEl.querySelector('.valeur-principale')?.textContent || '';
-    const detail  = cardEl.querySelector('.detail-numerateur')?.textContent || '';
-    const tauxEl      = cardEl.querySelector('[data-vue="taux"] .graphe-indicateur');
-    const effectifsEl = cardEl.querySelector('[data-vue="effectifs"] .graphe-indicateur');
-    const imageTaux       = tauxEl      ? await capturerImage(tauxEl,      toPng, { excludeClass: 'graphe-titre' }) : null;
-    const imageEffectifs  = effectifsEl ? await capturerImage(effectifsEl, toPng, { excludeClass: 'graphe-titre' }) : null;
-    cards.push({ libelle, valeur, detail, imageTaux, imageEffectifs });
+    cards.push(await capturerCardIndicateur(cardEl, toPng));
   }
 
   const sectionAutresEl = panneauEl.querySelector('.section-autres-indicateurs');
@@ -165,15 +161,16 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     }
   }
 
-  const lignesSimples = [];
-  if (sectionAutresEl) {
-    const trs = sectionAutresEl.querySelectorAll('.table-autres-indicateurs tr');
-    for (const tr of trs) {
-      const libelle = tr.querySelector('.cellule-libelle')?.textContent || '';
-      const taux    = tr.querySelector('.cellule-taux')?.textContent    || '';
-      const sparkSvg = tr.querySelector('.cellule-sparkline svg');
-      const sparkline = sparkSvg ? await capturerImage(sparkSvg, toPng) : null;
-      lignesSimples.push({ libelle, taux, sparkline });
+  // Section « Autres indicateurs » : cards complémentaires (indicateurs
+  // simples non-déclinables et Réussite dégénérée à 1 variante). Même
+  // structure DOM que les cards X/Y → on réutilise la fonction de
+  // capture des cards et le bloc Word `blocCardIndicateur`.
+  const sectionComplEl = panneauEl.querySelector('.section-indicateurs-complementaires');
+  const cardsComplementaires = [];
+  if (sectionComplEl) {
+    const els = sectionComplEl.querySelectorAll(':scope > .indicateur-card');
+    for (const cardEl of els) {
+      cardsComplementaires.push(await capturerCardIndicateur(cardEl, toPng));
     }
   }
 
@@ -225,7 +222,7 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     { Paragraph, TextRun, BorderStyle, spacingBefore: 240 },
   ));
 
-  if (multiCourbes.length === 0 && lignesSimples.length === 0) {
+  if (multiCourbes.length === 0 && cardsComplementaires.length === 0) {
     children.push(new Paragraph({
       children: [new TextRun({
         text: 'Aucun autre indicateur disponible.',
@@ -251,15 +248,21 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     }
   }
 
-  if (lignesSimples.length > 0) {
-    children.push(headingParagraph(HeadingLevel.HEADING_3, 'Indicateurs simples', {
-      Paragraph, TextRun,
-    }));
-    children.push(construireTableSimples({
-      Table, TableRow, TableCell, Paragraph, TextRun,
-      ImageRun, AlignmentType, WidthType, BorderStyle, ShadingType,
-      lignesSimples,
-    }));
+  // Autres indicateurs — cards complémentaires (simples), même rendu
+  // que les cards X/Y du quadrant : H3 + valeur + détail + graphes
+  // Taux et Effectifs empilés. Section dédiée H2 pour aérer la
+  // hiérarchie (sépare des multi-courbes historiques).
+  if (cardsComplementaires.length > 0) {
+    children.push(headingParagraph(
+      HeadingLevel.HEADING_2,
+      'Autres indicateurs',
+      { Paragraph, TextRun, BorderStyle, spacingBefore: 240 },
+    ));
+    for (const card of cardsComplementaires) {
+      children.push(...blocCardIndicateur(card, {
+        Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
+      }));
+    }
   }
 
   // Annexe Méthodologie (saut de page + section générale + bloc cursus
@@ -485,75 +488,6 @@ function borduresTable(BorderStyle) {
   };
 }
 
-function construireTableSimples(deps) {
-  const {
-    Table, TableRow, TableCell, Paragraph, TextRun,
-    ImageRun, AlignmentType, WidthType, BorderStyle, ShadingType,
-    lignesSimples,
-  } = deps;
-
-  // En-tête : fond gris léger, gras.
-  const enteteShading = {
-    fill: 'F0F0F0',
-    type: ShadingType.CLEAR,
-    color: 'auto',
-  };
-  const headerCells = ['Indicateur', 'Taux', 'Évolution'].map((t, i) =>
-    new TableCell({
-      width: { size: [60, 15, 25][i], type: WidthType.PERCENTAGE },
-      shading: enteteShading,
-      children: [new Paragraph({
-        children: [new TextRun({ text: t, bold: true })],
-      })],
-    })
-  );
-
-  const rows = [new TableRow({ tableHeader: true, children: headerCells })];
-
-  lignesSimples.forEach((l, idx) => {
-    const shading = {
-      fill: idx % 2 === 0 ? 'FFFFFF' : FILL_ZEBRA,
-      type: ShadingType.CLEAR,
-      color: 'auto',
-    };
-    rows.push(new TableRow({
-      children: [
-        new TableCell({
-          shading,
-          children: [new Paragraph({
-            children: [new TextRun({ text: l.libelle || '' })],
-          })],
-        }),
-        new TableCell({
-          shading,
-          children: [new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: l.taux || '—' })],
-          })],
-        }),
-        new TableCell({
-          shading,
-          children: [
-            l.sparkline
-              ? paragrapheImage(l.sparkline, LARGEUR_SPARKLINE, {
-                  Paragraph, ImageRun, AlignmentType,
-                })
-              : new Paragraph({
-                  children: [new TextRun({ text: '', color: '999999' })],
-                }),
-          ],
-        }),
-      ],
-    }));
-  });
-
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: borduresTable(BorderStyle),
-    rows,
-  });
-}
-
 function paragrapheImage(image, largeurCible, deps) {
   const { Paragraph, ImageRun, AlignmentType } = deps;
   const ratio = image.height && image.width
@@ -725,6 +659,24 @@ function ajouterAnnexeMethodologie(children, cursusValue, methodologie, deps) {
       children: [new TextRun({ text: blocCursus.insertion.definition })],
     }));
   }
+}
+
+// =====================================================================
+// Capture d'une card d'indicateur (utilisée pour X/Y et les
+// indicateurs simples). Lit le DOM rendu par CardIndicateur :
+// libellé, valeur principale, détail, plus les deux mini-graphes
+// Taux et Effectifs (toggle = positionnement off-screen côté CSS,
+// les deux variantes existent toujours dans le DOM).
+// =====================================================================
+async function capturerCardIndicateur(cardEl, toPng) {
+  const libelle = cardEl.querySelector('.libelle-indicateur')?.textContent || '';
+  const valeur  = cardEl.querySelector('.valeur-principale')?.textContent || '';
+  const detail  = cardEl.querySelector('.detail-numerateur')?.textContent || '';
+  const tauxEl      = cardEl.querySelector('[data-vue="taux"] .graphe-indicateur');
+  const effectifsEl = cardEl.querySelector('[data-vue="effectifs"] .graphe-indicateur');
+  const imageTaux      = tauxEl      ? await capturerImage(tauxEl,      toPng, { excludeClass: 'graphe-titre' }) : null;
+  const imageEffectifs = effectifsEl ? await capturerImage(effectifsEl, toPng, { excludeClass: 'graphe-titre' }) : null;
+  return { libelle, valeur, detail, imageTaux, imageEffectifs };
 }
 
 // =====================================================================

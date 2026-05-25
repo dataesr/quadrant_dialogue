@@ -18,7 +18,7 @@
 //   5. Calcul d'une échelle Y adaptative + générateur de graduations.
 
 // =============================================================================
-// Série mono-courbe (utilisée par MiniGrapheEvolution + Sparkline)
+// Série mono-courbe (utilisée par MiniGrapheEvolution)
 // =============================================================================
 
 // Convertit en number ou null. Convention partagée par tous les

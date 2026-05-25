@@ -496,34 +496,6 @@
   margin: 2px 0 0.5rem;
 }
 
-.panneau-details .table-autres-indicateurs {
-  width: 100%;
-  font-size: 0.82rem;
-  border-collapse: collapse;
-}
-.panneau-details .table-autres-indicateurs td {
-  padding: 0.3rem 0.4rem;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: middle;
-}
-.panneau-details .table-autres-indicateurs td.cellule-libelle {
-  color: #333;
-}
-.panneau-details .table-autres-indicateurs td.cellule-taux {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  width: 60px;
-}
-.panneau-details .table-autres-indicateurs td.cellule-sparkline {
-  width: 64px;
-  padding-left: 8px;
-}
-.panneau-details .table-autres-indicateurs .non-diffusable,
-.panneau-details .table-autres-indicateurs .absent {
-  color: #999;
-  font-style: italic;
-}
 
 .panneau-details .info,
 .panneau-details .info-vide {
@@ -608,11 +580,20 @@
   vertical-align: middle;
 }
 
-/* Séparateurs entre graphiques consécutifs dans la section « Autres ». */
-.section-autres-indicateurs .graphe-indicateur + .graphe-indicateur,
-.section-autres-indicateurs .table-autres-indicateurs + .graphe-indicateur {
+/* Séparateurs entre graphiques consécutifs dans la section « Évolution
+   historique ». */
+.section-autres-indicateurs .graphe-indicateur + .graphe-indicateur {
   margin-top: 1rem;
   padding-top: 0.5rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Section « Autres indicateurs » : cards complètes des simples,
+   rendues comme les cards X/Y du quadrant. Mêmes styles de card —
+   séparateur entre cards consécutives. */
+.section-indicateurs-complementaires .indicateur-card + .indicateur-card {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
   border-top: 1px solid #f0f0f0;
 }
 

@@ -5,7 +5,6 @@ import { useQuadrantDetails } from '../hooks/useQuadrantDetails.js';
 import MiniGrapheEvolution from './details/MiniGrapheEvolution.jsx';
 import MiniGrapheEffectifs from './details/MiniGrapheEffectifs.jsx';
 import GrapheMultiCourbes from './details/GrapheMultiCourbes.jsx';
-import Sparkline from './details/Sparkline.jsx';
 import {
   extraireSerie,
   decouperGroupes,
@@ -20,22 +19,22 @@ import IndicateurTooltip from './IndicateurTooltip.jsx';
 //
 // Structure :
 //   1. En-tête (libellé, identité secondaire, croix de fermeture)
-//   2. « Indicateurs du quadrant » : 2 cards X et Y avec MiniGrapheEvolution
-//      (1 courbe = la variante exacte choisie pour le quadrant). Pas
-//      de graphique multi-courbes dans les cards — la profondeur
-//      multi-variantes est dans la section « Autres ».
-//   3. « Autres indicateurs » découpée en trois sous-blocs ordonnés :
-//        a. Réussite (regroupement de tous les indicateurs « Taux de
-//           réussite en ... » → un seul GrapheMultiCourbes, une courbe
-//           par durée).
-//        b. Indicateurs simples (non-déclinables hors réussite et hors
-//           axes X/Y) → table compacte, 1 ligne par indicateur.
-//        c. Indicateurs d'insertion (déclinables hors réussite) → un
-//           GrapheMultiCourbes par indicateur, une courbe par délai
-//           (6/12/18/24/30 mois).
-//      Robustesse : si un groupe se retrouve avec 0 ou 1 indicateur
-//      (cas d'un retrait en BDD), on dégrade vers la table simple
-//      plutôt que de produire un graphique multi-courbes dégénéré.
+//   2. « Indicateurs du quadrant » : 2 cards X et Y avec mini-graphes
+//      Taux + Effectifs (toggle ; les deux toujours rendus pour l'export
+//      Word). Une seule variante par card — la profondeur multi-
+//      variantes est en section 3.
+//   3. « Évolution historique des indicateurs » : graphiques
+//      multi-courbes uniquement.
+//        - Réussite : un seul GrapheMultiCourbes regroupant les
+//          indicateurs « Taux de réussite en ... » (une courbe par
+//          durée) si ≥ 2 variantes.
+//        - Insertion (déclinables hors réussite) : un GrapheMultiCourbes
+//          par indicateur, une courbe par délai (6/12/18/24/30 mois).
+//   4. « Autres indicateurs » : indicateurs simples non-déclinables
+//      hors axes X/Y, rendus comme des cards complètes (libellé,
+//      valeur, mini-graphes Taux/Effectifs). Si Réussite n'a qu'un
+//      indicateur (dégénération), il est rabattu ici pour éviter un
+//      multi-courbes à 1 courbe.
 //
 // Asymétrie API : /quadrant/details ne renvoie pas population_x/y.
 // On les pioche dans /quadrant (useQuadrant) — affichées uniquement
@@ -211,6 +210,14 @@ export default function DetailsPanel() {
             cursus={cursus}
           />
 
+          <SectionIndicateursComplementaires
+            donneesCourantes={data.donnees_courantes}
+            historique={data.historique}
+            indicateursDesAxes={[variableX, variableY]}
+            millesimeCourant={millesime}
+            cursus={cursus}
+          />
+
           <p className="source-attribution">
             {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
           </p>
@@ -350,50 +357,28 @@ function ValeurCourante({ ligne, population }) {
 }
 
 // ---------------------------------------------------------------------
-// Section « Autres indicateurs ».
+// Section « Évolution historique des indicateurs » : multi-courbes
+// Réussite et Insertion uniquement. Les indicateurs simples
+// (rabattus depuis Réussite ou non-déclinables) sont rendus dans
+// SectionIndicateursComplementaires sous forme de cards complètes.
 // ---------------------------------------------------------------------
 function SectionAutresIndicateurs({
   donneesCourantes,
   historique,
   indicateursDesAxes,
   millesimeCourant,
-  cursus,
 }) {
-  const { reussite, insertion, simples } = decouperGroupes(
+  const { reussite, insertion } = decouperGroupes(
     donneesCourantes, historique, indicateursDesAxes
   );
 
-  // Robustesse : si Réussite ne contient qu'UN indicateur (cas où une
-  // variante aurait été supprimée), on évite le graphique multi-
-  // courbes à 1 courbe et on traite cet indicateur comme une ligne
-  // simple. Idem pour Insertion à 1 délai effectif (mais la logique
-  // est portée par GrapheMultiCourbes → on garde le graphe si ≥ 2
-  // points valides au total, donc 1 courbe avec ≥ 2 millésimes
-  // affichera quand même).
+  // Réussite avec ≥ 2 indicateurs → multi-courbes. Sinon le ou les
+  // indicateur(s) restant(s) sont récupérés en cards complémentaires
+  // par SectionIndicateursComplementaires (cf. logique alignée).
   const reussiteGraphAffichable = reussite.length >= 2;
-  const reussiteEnSimples = !reussiteGraphAffichable ? reussite : [];
 
-  // Lignes simples à rendre : les "simples" du décompte initial, plus
-  // un éventuel rabattement depuis Réussite.
-  const lignesSimples = [];
-  for (const nom of reussiteEnSimples.concat(simples)) {
-    const ligne = (donneesCourantes || []).find(
-      (r) => r.indicateur === nom && !r.date_inser
-    );
-    if (ligne) lignesSimples.push(ligne);
-  }
-
-  const rienAAfficher =
-    !reussiteGraphAffichable && lignesSimples.length === 0 && insertion.length === 0;
-
-  if (rienAAfficher) {
-    return (
-      <section className="section-autres-indicateurs">
-        <h3>Évolution historique des indicateurs</h3>
-        <p className="info-vide">Aucun autre indicateur disponible.</p>
-      </section>
-    );
-  }
+  const rienAAfficher = !reussiteGraphAffichable && insertion.length === 0;
+  if (rienAAfficher) return null;
 
   return (
     <section className="section-autres-indicateurs">
@@ -413,21 +398,6 @@ function SectionAutresIndicateurs({
         })()
       )}
 
-      {lignesSimples.length > 0 && (
-        <table className="table-autres-indicateurs">
-          <tbody>
-            {lignesSimples.map((r) => (
-              <LigneSimple
-                key={r.indicateur}
-                ligne={r}
-                historique={historique}
-                cursus={cursus}
-              />
-            ))}
-          </tbody>
-        </table>
-      )}
-
       {insertion.map((nom) => {
         const { variantes, parVariante } = seriesInsertion(nom, historique);
         if (variantes.length === 0) return null;
@@ -445,26 +415,49 @@ function SectionAutresIndicateurs({
   );
 }
 
-function LigneSimple({ ligne, historique, cursus }) {
-  const serie = extraireSerie(historique, ligne.indicateur, '');
+// ---------------------------------------------------------------------
+// Section « Autres indicateurs » : indicateurs simples non-déclinables
+// rendus comme des cards d'indicateur complètes (libellé + valeur
+// principale + mini-graphes Taux/Effectifs avec toggle). Remplace
+// l'ancien tableau zébré + sparklines : la card offre une lecture plus
+// riche (échelle Y, années en X, points marqués) et reste cohérente
+// avec les cards X et Y du quadrant. Si la Réussite n'a qu'un seul
+// indicateur (dégénération multi-courbes à 1 courbe), il est rabattu
+// ici aussi.
+// ---------------------------------------------------------------------
+function SectionIndicateursComplementaires({
+  donneesCourantes,
+  historique,
+  indicateursDesAxes,
+  millesimeCourant,
+  cursus,
+}) {
+  const { reussite, simples } = decouperGroupes(
+    donneesCourantes, historique, indicateursDesAxes
+  );
+
+  // Même règle que SectionAutresIndicateurs : ≥ 2 réussites → graphe
+  // multi-courbes ; sinon, on les rapatrie en cards simples.
+  const reussiteEnSimples = reussite.length >= 2 ? [] : reussite;
+  const nomsSimples = reussiteEnSimples.concat(simples);
+
+  if (nomsSimples.length === 0) return null;
+
   return (
-    <tr>
-      <td className="cellule-libelle">
-        <IndicateurTooltip libelle={ligne.indicateur} cursus={cursus} mode="inline" />
-      </td>
-      <td className="cellule-taux">
-        {ligne.taux !== null && ligne.taux !== undefined ? (
-          formatPourcent(ligne.taux)
-        ) : ligne.non_diffusable ? (
-          <span className="non-diffusable">N/D</span>
-        ) : (
-          <span className="absent">—</span>
-        )}
-      </td>
-      <td className="cellule-sparkline">
-        <Sparkline serie={serie} />
-      </td>
-    </tr>
+    <section className="section-indicateurs-complementaires">
+      <h3>Autres indicateurs</h3>
+      {nomsSimples.map((nom) => (
+        <CardIndicateur
+          key={nom}
+          indicateurName={nom}
+          dateInser=""
+          donneesCourantes={donneesCourantes}
+          historique={historique}
+          millesimeCourant={millesimeCourant}
+          cursus={cursus}
+        />
+      ))}
+    </section>
   );
 }
 
