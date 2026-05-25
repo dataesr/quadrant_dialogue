@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError, getQuadrantDetails } from '../services/api.js';
+import { messageErreur } from '../utils/errors.js';
 
 // Hook qui charge /quadrant/details pour la bulle « cible » courante.
 //
@@ -28,20 +29,21 @@ function cleCache(params) {
   return JSON.stringify(ordonne);
 }
 
+// Spécialisé pour /quadrant/details : ce hook a deux cas contextuels
+// (429 → message qui renvoie au clic, 403 → hors périmètre) qui
+// méritent un libellé propre. Le reste retombe sur la mise en forme
+// commune messageErreur() — un seul endroit à maintenir pour les
+// statuts génériques (réseau, 404, 5xx).
 function messageDepuisErreur(err) {
-  if (!(err instanceof ApiError)) {
-    return err?.message || String(err);
+  if (err instanceof ApiError) {
+    if (err.status === 429) {
+      return 'Trop de requêtes envoyées au serveur. Veuillez patienter quelques secondes avant de cliquer sur une autre bulle.';
+    }
+    if (err.status === 403) {
+      return 'Détails non disponibles pour cette bulle (hors de votre périmètre).';
+    }
   }
-  if (err.status === 429) {
-    return 'Trop de requêtes envoyées au serveur. Veuillez patienter quelques secondes avant de cliquer sur une autre bulle.';
-  }
-  if (err.status === 403) {
-    return 'Détails non disponibles pour cette bulle (hors de votre périmètre).';
-  }
-  if (err.status >= 500) {
-    return `Erreur serveur (${err.code || err.status}) — réessayez plus tard.`;
-  }
-  return `${err.message}${err.code ? ` (${err.code})` : ''}`;
+  return messageErreur(err);
 }
 
 export function useQuadrantDetails({

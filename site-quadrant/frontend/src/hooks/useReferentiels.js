@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ApiError,
   getReferentielDisciplinaire,
   getReferentielMillesimes,
   getReferentielVariables,
 } from '../services/api.js';
+import { messageErreur } from '../utils/errors.js';
 
 // Hook qui regroupe les trois référentiels nécessaires aux filtres :
 //   - millesimes : dépend du cursus
@@ -105,13 +105,6 @@ function loadCached(cache, key, fetcher, setter, isCancelled) {
     })
     .catch((err) => {
       if (isCancelled()) return;
-      setter({ loading: false, data: null, error: formatError(err) });
+      setter({ loading: false, data: null, error: messageErreur(err) });
     });
-}
-
-function formatError(err) {
-  if (err instanceof ApiError) {
-    return err.message + (err.code ? ` (${err.code})` : '');
-  }
-  return err?.message || String(err);
 }

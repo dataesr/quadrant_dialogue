@@ -5,8 +5,9 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { ApiError, getEtablissementsVisibles } from '../services/api.js';
+import { getEtablissementsVisibles } from '../services/api.js';
 import { useReferentiels } from '../hooks/useReferentiels.js';
+import { messageErreur } from '../utils/errors.js';
 
 // État global de l'application. Sépare proprement :
 //   1. État de sélection établissement (phase 2)
@@ -54,8 +55,11 @@ export function AppProvider({ children }) {
   const [ligneReference,    setLigneReference]    = useState(DEFAULT_LIGNE_REFERENCE);
 
   // --- Phase 4b : compléments quadrant ---
-  // TEMPORAIRE — sera supprimé après validation visuelle d'un mode unique.
-  const [scaleMode, setScaleMode] = useState('sqrt');
+  // Mode d'échelle des bulles arrêté à 'sqrt' (racine carrée du
+  // dénominateur). Conservé en state pour ne pas bouleverser les
+  // signatures de Bulles.jsx / rayonBulle() ; le sélecteur d'UI a
+  // été retiré (phase 7 — un seul mode validé).
+  const [scaleMode] = useState('sqrt');
   // Highlight de mention par recherche (distinct du filtre `mention` qui,
   // lui, réduit la liste des bulles côté API en vue=etablissements).
   const [rechercheMention, setRechercheMention] = useState('');
@@ -118,11 +122,7 @@ export function AppProvider({ children }) {
         }
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof ApiError) {
-          setError(`Erreur API (${err.code || err.status}) : ${err.message}`);
-        } else {
-          setError(err?.message || String(err));
-        }
+        setError(messageErreur(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -347,7 +347,6 @@ export function AppProvider({ children }) {
     setTypeMaster,
     setRepresentativite, setLigneReference,
     resetAdvancedFilters,
-    setScaleMode,
     setRechercheMention,
     setMentionsAffichees,
     setAffichage,

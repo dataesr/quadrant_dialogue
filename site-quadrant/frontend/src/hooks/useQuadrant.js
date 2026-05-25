@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ApiError, getQuadrant } from '../services/api.js';
+import { getQuadrant } from '../services/api.js';
 
 // Hook qui charge /quadrant à partir des filtres du AppContext. Renvoie
 // { loading, data, error }. Annule proprement les requêtes obsolètes via
@@ -75,11 +75,10 @@ export function useQuadrant({
       })
       .catch((err) => {
         if (cancelled) return;
-        const message =
-          err instanceof ApiError
-            ? `${err.message}${err.code ? ` (${err.code})` : ''}`
-            : err?.message || String(err);
-        setState({ loading: false, data: null, error: message });
+        // On expose l'objet erreur brut (ApiError porte .status et
+        // .code). Le composant consommateur utilise <MessageErreur>
+        // / messageErreur() pour le formater en fonction du status.
+        setState({ loading: false, data: null, error: err });
       });
 
     return () => {
