@@ -1,0 +1,62 @@
+{
+  "generale": "Cet outil propose un ensemble de nuages de points qui croisent les valeurs de deux indicateurs liés à la réussite, l'orientation et l'insertion professionnelle des étudiants inscrits en université de 3 types de diplôme : licence générale, licence professionnelle et master.\n\nParmi les 6 onglets proposés, les 3 premiers permettent de croiser les informations au niveau de chaque mention de diplôme d'une université. Les 3 derniers s'intéressent au niveau de chaque université pour l'ensemble des disciplines ou pour un ensemble disciplinaire distinct. Un point du nuage représente donc respectivement une mention de diplôme d'une université ou l'ensemble des mentions d'une université.\n\nDans les quadrants, chaque axe d'un nuage de points est coupé en deux plans selon la médiane de chacun des deux indicateurs calculés à partir des points présents sur le graphique. De chaque côté se trouvent la moitié des points. Les points sont ainsi présents dans l'un des quatre quadrants du graphique. La taille de chaque point est proportionnelle à l'effectif de référence du premier indicateur (dénominateur de l'indicateur 1). Chaque quadrant du graphique ne contient que très rarement un quart des points du nuage.\n\nCertaines mentions et certains établissements peuvent ne pas apparaître sur ces nuages de points en fonction du type de diplôme, de la discipline ou des indicateurs sélectionnés. C'est le cas lorsque l'établissement ne propose pas un type diplôme ou cette discipline, lorsque certaines mentions proposées par un établissement ne correspondent pas dans le temps (différence entre l'offre de formation au moment de l'inscription en début de cursus et celle au moment de la diplomation) ou lorsque les effectifs de référence des taux (dénominateurs des indicateurs) sont inférieurs à 5, ce qui est le cas de beaucoup d'indicateurs d'insertion des mentions de licence générale qui ont moins de 5 sortants parmi les diplômés.\n\nLes indicateurs proposés sont calculés à partir des données des dispositifs SISE et InserSup. Les valeurs des indicateurs calculés sur de faibles effectifs, généralement inférieurs à 20, sont à prendre avec précaution. Les données relatives aux étudiants inscrits dans les établissements composantes ne sont pas prises en compte dans ces nuages de points.",
+  "cursus": {
+    "Licence générale": {
+      "libelle": "Licence générale",
+      "champ": "Le champ des inscrits est constitué des néo-bacheliers inscrits en première année de licence (L1) à la rentrée universitaire N. En sont exclus les étudiants ayant pris une inscription parallèle en STS, DUT ou CPGE ou ayant obtenu le diplôme de Licence à l'issue de la première année.\nLes indicateurs sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en L1.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite en 3 ans",
+          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+2 ou N+3, quels que soit l'établissement ou la mention d'obtention."
+        },
+        {
+          "libelle": "Taux de réussite en 3 ou 4 ans",
+          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+2, N+3 ou N+4, quels que soit l'établissement ou la mention d'obtention."
+        },
+        {
+          "libelle": "Taux de poursuite d’étude",
+          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+3 ou N+4, quels que soit l'établissement ou la mention d'obtention, et poursuivant des études supérieure à la rentrée suivant l'obtention du diplôme de licence générale ou professionnelle."
+        }
+      ],
+      "champ_insertion": "Diplômés de licence générale de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
+      }
+    },
+    "Licence professionnelle": {
+      "libelle": "Licence professionnelle",
+      "champ": "Primo-inscrits en licence professionnelle (LP) à la rentrée universitaire N.\nLes indicateurs de réussite sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en licence professionnelle.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite en 1 an",
+          "definition": "Étudiants du champ ayant obtenu une licence professionnelle à la session N+1, quels que soit l'établissement ou la mention d'obtention."
+        }
+      ],
+      "champ_insertion": "Diplômés de licence professionnelle de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
+      }
+    },
+    "Master": {
+      "libelle": "Master",
+      "champ": "Primo-inscrits en première année de master (M1) à la rentrée universitaire N.\nLes indicateurs de réussite sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en M1.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite en 2 ans",
+          "definition": "Étudiants du champ ayant obtenu un master à la session N+2, quels que soit l'établissement ou la mention d'obtention."
+        },
+        {
+          "libelle": "Taux de réussite en 2 ou 3 ans",
+          "definition": "Étudiants du champ ayant obtenu un master aux sessions N+2 ou N+3, quels que soit l'établissement ou la mention d'obtention."
+        }
+      ],
+      "champ_insertion": "Diplômés de master de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
+      }
+    }
+  }
+}

@@ -14,10 +14,7 @@
 
 import { LIBELLE_SOURCE, NOM_SOURCE, MENTION_DIFFUSION } from './constants.js';
 import { construireNomFichier } from './exportPng.js';
-import {
-  METHODOLOGIE_GENERALE,
-  METHODOLOGIE_CURSUS,
-} from '../data/methodologie.js';
+import { chargerMethodologie } from '../data/methodologie.js';
 
 const ORDRE_CADRANS = ['haut_droite', 'haut_gauche', 'bas_droite', 'bas_gauche'];
 
@@ -67,7 +64,17 @@ const BORDER_THIN = {
 export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   if (!data) throw new Error('exportQuadrantXlsx: data manquant.');
 
-  const ExcelJS = (await import('exceljs')).default;
+  // Charger la méthodologie en parallèle de l'init ExcelJS. Si elle
+  // n'est pas encore prête (utilisateur exporte avant tout survol /
+  // ouverture de modale), on l'attend ici pour garantir une feuille
+  // « Méthodologie » peuplée. Cas d'échec géré : `chargerMethodologie`
+  // installe un cache vide en fallback — la feuille restera quasi
+  // vide mais l'export ne plantera pas.
+  const [ExcelJSModule, methodologie] = await Promise.all([
+    import('exceljs'),
+    chargerMethodologie(),
+  ]);
+  const ExcelJS = ExcelJSModule.default;
   const workbook = new ExcelJS.Workbook();
 
   workbook.creator = NOM_SOURCE;
@@ -94,7 +101,7 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   // XLSX ne doit pas casser à cause d'un problème d'image.
   await remplirFeuilleGraphique(workbook, wrapperEl);
   remplirFeuilleMetadonnees(workbook, contexte);
-  remplirFeuilleMethodologie(workbook);
+  remplirFeuilleMethodologie(workbook, methodologie);
   remplirFeuilleMeta(workbook, contexte);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -540,7 +547,7 @@ function estValeurAbsente(valeur) {
 // onglets, pour que l'utilisateur la voie dès l'ouverture.
 // Colonne unique large, wrap actif, titres en bleu Marianne.
 // ---------------------------------------------------------------------
-function remplirFeuilleMethodologie(workbook) {
+function remplirFeuilleMethodologie(workbook, methodologie) {
   const ws = workbook.addWorksheet('Méthodologie');
   ws.columns = [{ width: 100 }];
 
@@ -553,35 +560,38 @@ function remplirFeuilleMethodologie(workbook) {
   row += 2;
 
   // Section générale.
-  const sousTitreCell = ws.getCell(`A${row}`);
-  sousTitreCell.value = 'Présentation générale';
-  sousTitreCell.font = { bold: true, size: 12 };
-  row++;
+  if (methodologie?.generale) {
+    const sousTitreCell = ws.getCell(`A${row}`);
+    sousTitreCell.value = 'Présentation générale';
+    sousTitreCell.font = { bold: true, size: 12 };
+    row++;
 
-  for (const para of METHODOLOGIE_GENERALE.split('\n\n')) {
-    const cell = ws.getCell(`A${row}`);
-    cell.value = para;
-    cell.alignment = { wrapText: true, vertical: 'top' };
-    ws.getRow(row).height = estimerHauteurParagraphe(para);
-    row += 2;
+    for (const para of methodologie.generale.split('\n\n')) {
+      const cell = ws.getCell(`A${row}`);
+      cell.value = para;
+      cell.alignment = { wrapText: true, vertical: 'top' };
+      ws.getRow(row).height = estimerHauteurParagraphe(para);
+      row += 2;
+    }
   }
 
-  // Une section par cursus couvert par METHODOLOGIE_CURSUS.
-  for (const [code, bloc] of Object.entries(METHODOLOGIE_CURSUS)) {
+  // Une section par cursus couvert par la méthodologie chargée.
+  for (const [code, bloc] of Object.entries(methodologie?.cursus || {})) {
     void code; // libellé visuel utilisé, code conservé pour traçabilité.
     const cellBloc = ws.getCell(`A${row}`);
     cellBloc.value = bloc.libelle;
     cellBloc.font = { bold: true, size: 12, color: { argb: 'FF000091' } };
     row += 2;
 
-    // Champ.
-    const cellChamp = ws.getCell(`A${row}`);
-    cellChamp.value = bloc.champ;
-    cellChamp.alignment = { wrapText: true, vertical: 'top' };
-    ws.getRow(row).height = estimerHauteurParagraphe(bloc.champ);
-    row += 2;
+    if (bloc.champ) {
+      const cellChamp = ws.getCell(`A${row}`);
+      cellChamp.value = bloc.champ;
+      cellChamp.alignment = { wrapText: true, vertical: 'top' };
+      ws.getRow(row).height = estimerHauteurParagraphe(bloc.champ);
+      row += 2;
+    }
 
-    for (const ind of bloc.indicateurs) {
+    for (const ind of bloc.indicateurs || []) {
       const cellTitre = ws.getCell(`A${row}`);
       cellTitre.value = ind.libelle;
       cellTitre.font = { bold: true };
@@ -594,25 +604,29 @@ function remplirFeuilleMethodologie(workbook) {
       row += 2;
     }
 
-    const cellTitreChampIns = ws.getCell(`A${row}`);
-    cellTitreChampIns.value = `Champ de l'insertion professionnelle`;
-    cellTitreChampIns.font = { bold: true };
-    row++;
-    const cellChampIns = ws.getCell(`A${row}`);
-    cellChampIns.value = bloc.champ_insertion;
-    cellChampIns.alignment = { wrapText: true, vertical: 'top' };
-    ws.getRow(row).height = estimerHauteurParagraphe(bloc.champ_insertion);
-    row += 2;
+    if (bloc.champ_insertion) {
+      const cellTitreChampIns = ws.getCell(`A${row}`);
+      cellTitreChampIns.value = `Champ de l'insertion professionnelle`;
+      cellTitreChampIns.font = { bold: true };
+      row++;
+      const cellChampIns = ws.getCell(`A${row}`);
+      cellChampIns.value = bloc.champ_insertion;
+      cellChampIns.alignment = { wrapText: true, vertical: 'top' };
+      ws.getRow(row).height = estimerHauteurParagraphe(bloc.champ_insertion);
+      row += 2;
+    }
 
-    const cellTitreIns = ws.getCell(`A${row}`);
-    cellTitreIns.value = bloc.insertion.libelle;
-    cellTitreIns.font = { bold: true };
-    row++;
-    const cellIns = ws.getCell(`A${row}`);
-    cellIns.value = bloc.insertion.definition;
-    cellIns.alignment = { wrapText: true, vertical: 'top' };
-    ws.getRow(row).height = estimerHauteurParagraphe(bloc.insertion.definition);
-    row += 3;
+    if (bloc.insertion) {
+      const cellTitreIns = ws.getCell(`A${row}`);
+      cellTitreIns.value = bloc.insertion.libelle;
+      cellTitreIns.font = { bold: true };
+      row++;
+      const cellIns = ws.getCell(`A${row}`);
+      cellIns.value = bloc.insertion.definition;
+      cellIns.alignment = { wrapText: true, vertical: 'top' };
+      ws.getRow(row).height = estimerHauteurParagraphe(bloc.insertion.definition);
+      row += 3;
+    }
   }
 }
 

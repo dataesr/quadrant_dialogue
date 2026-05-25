@@ -51,15 +51,22 @@
 // préservé en lisant ses dimensions après capture.
 
 import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE } from './constants.js';
-import {
-  METHODOLOGIE_GENERALE,
-  METHODOLOGIE_CURSUS,
-} from '../data/methodologie.js';
+import { chargerMethodologie } from '../data/methodologie.js';
 
 // Largeur cible (en pixels Word) pour chaque type d'image.
-const LARGEUR_MINI_GRAPHE  = 480;
-const LARGEUR_MULTI_GRAPHE = 560;
+// Réduction à ~70 % de la phase précédente (480/560) pour permettre la
+// disposition côte à côte sur A4 marges 2 cm : largeur utile ~17 cm
+// (~470 px à 72 dpi) → ~410 px par image laisse une gouttière entre
+// les deux. Hauteur calculée à partir du ratio natif (cf.
+// paragrapheImage).
+const LARGEUR_MINI_GRAPHE  = 410;
+const LARGEUR_MULTI_GRAPHE = 400;
 const LARGEUR_SPARKLINE    = 100;
+// Police par défaut du document — choix utilisateur (Calibri lisible,
+// universellement installée sur Word/LibreOffice). Taille en demi-
+// points : 22 = 11 pt.
+const FONT_DOC      = 'Calibri';
+const FONT_DOC_SIZE = 22;
 
 // Bleu Marianne — couleur titre H1/H2/H3 et accents.
 const COULEUR_MARIANNE = '000091';
@@ -85,9 +92,11 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   const [
     { toPng },
     docx,
+    methodologie,
   ] = await Promise.all([
     import('html-to-image'),
     import('docx'),
+    chargerMethodologie(),
   ]);
 
   const {
@@ -99,10 +108,14 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
 
   // -------------------- Données dérivées --------------------
   const titre   = titreFiche(ficheData);
-  const sousT   = sousTitreFiche(ficheData);
-  const dateFR  = formatDateHumaine(new Date());
   const cursusValue   = contexte?.cursus    || '';
   const millesimeStr  = String(contexte?.millesime ?? '');
+  // Sous-titre : « <cursus> · <identité secondaire> ». Préfixer
+  // par le cursus rend la fiche autoporteuse — un lecteur qui ne
+  // voit que l'en-tête sait à quel type de diplôme se rapporte
+  // l'indicateur affiché.
+  const sousT   = sousTitreFiche(ficheData, cursusValue);
+  const dateFR  = formatDateHumaine(new Date());
 
   // -------------------- Capture des graphiques --------------------
   const cardsEls = panneauEl.querySelectorAll(
@@ -165,38 +178,23 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     ficheData, contexte,
   }));
 
-  // Indicateurs du quadrant.
+  // Indicateurs du quadrant — cards X et Y côte à côte dans un
+  // tableau invisible 2 colonnes. Chaque cellule contient le bloc
+  // complet (titre H3, valeur, détail, image mini-graphe). Si on n'a
+  // qu'une seule card (cas non standard), elle prend la pleine
+  // largeur via la même fonction (pairs gère l'élément seul).
   children.push(headingParagraph(
     HeadingLevel.HEADING_2,
     'Indicateurs du quadrant',
     { Paragraph, TextRun, BorderStyle, spacingBefore: 240 },
   ));
-  for (const card of cards) {
-    children.push(headingParagraph(
-      HeadingLevel.HEADING_3,
-      card.libelle || 'Indicateur',
-      { Paragraph, TextRun },
+  if (cards.length > 0) {
+    children.push(tableImagesCoteACote(
+      cards.map((card) => contenuCellulaireCardIndicateur(card, {
+        Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
+      })),
+      { Table, TableRow, TableCell, Paragraph, WidthType, BorderStyle },
     ));
-    if (card.valeur) {
-      children.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text: card.valeur, bold: true, size: 32 })],
-      }));
-    }
-    if (card.detail) {
-      children.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 120 },
-        children: [new TextRun({
-          text: card.detail, italics: true, color: COULEUR_GRIS, size: 18,
-        })],
-      }));
-    }
-    if (card.image) {
-      children.push(paragrapheImage(card.image, LARGEUR_MINI_GRAPHE, {
-        Paragraph, ImageRun, AlignmentType,
-      }));
-    }
   }
 
   // Évolution historique.
@@ -215,17 +213,16 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     }));
   }
 
-  for (const g of multiCourbes) {
-    if (g.titre) {
-      children.push(headingParagraph(HeadingLevel.HEADING_3, g.titre, {
-        Paragraph, TextRun,
-      }));
-    }
-    if (g.image) {
-      children.push(paragrapheImage(g.image, LARGEUR_MULTI_GRAPHE, {
-        Paragraph, ImageRun, AlignmentType,
-      }));
-    }
+  // Multi-courbes : côte à côte 2 par ligne, dernier seul sur sa
+  // ligne si nombre impair. Le titre H3 vit dans la cellule pour
+  // qu'il reste collé à son graphique.
+  if (multiCourbes.length > 0) {
+    children.push(tableImagesCoteACote(
+      multiCourbes.map((g) => contenuCellulaireMultiCourbes(g, {
+        Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
+      })),
+      { Table, TableRow, TableCell, Paragraph, WidthType, BorderStyle },
+    ));
   }
 
   if (lignesSimples.length > 0) {
@@ -241,8 +238,10 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
 
   // Annexe Méthodologie (saut de page + section générale + bloc cursus
   // courant). Pas de bloc « tous cursus » — le contexte du document est
-  // un seul cursus, on évite la surcharge.
-  ajouterAnnexeMethodologie(children, cursusValue, {
+  // un seul cursus, on évite la surcharge. Le contenu vient du cache
+  // async chargé en début de fonction ; si le fetch a échoué, on
+  // saute proprement l'annexe.
+  ajouterAnnexeMethodologie(children, cursusValue, methodologie, {
     Paragraph, TextRun, HeadingLevel, BorderStyle, PageBreak,
   });
 
@@ -316,6 +315,19 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     description:  `Export Quadrant - ${titre} - ${cursusValue} - millésime ${millesimeStr}`,
     lastModifiedBy: 'Application Quadrant',
     customProperties,
+    // Police par défaut du document — appliquée à TOUS les TextRun qui
+    // ne déclarent pas explicitement une autre police. Les couleurs,
+    // tailles et italiques posés au cas par cas restent en place.
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: FONT_DOC,
+            size: FONT_DOC_SIZE,
+          },
+        },
+      },
+    },
     sections: [{
       properties: {
         page: {
@@ -536,15 +548,141 @@ function paragrapheImage(image, largeurCible, deps) {
 }
 
 // =====================================================================
+// Composition « images côte à côte »
+// =====================================================================
+//
+// Layout 2 colonnes sans bordures pour rapprocher visuellement deux
+// blocs corrélés (card X / card Y, ou deux multi-courbes
+// consécutives). Si le nombre d'items est impair, le dernier reste
+// seul sur sa ligne dans la cellule de gauche, cellule de droite vide.
+//
+// Chaque cellule reçoit un tableau de Paragraph déjà construit par
+// les helpers `contenuCellulaireCardIndicateur` ou
+// `contenuCellulaireMultiCourbes`.
+
+function bordersInvisibles(BorderStyle) {
+  const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  return {
+    top: none, bottom: none, left: none, right: none,
+    insideHorizontal: none, insideVertical: none,
+  };
+}
+
+function tableImagesCoteACote(cellulesContenu, deps) {
+  const { Table, TableRow, TableCell, Paragraph, WidthType, BorderStyle } = deps;
+  const noBorders = bordersInvisibles(BorderStyle);
+
+  const rows = [];
+  for (let i = 0; i < cellulesContenu.length; i += 2) {
+    const gauche = cellulesContenu[i];
+    const droite = cellulesContenu[i + 1];
+    rows.push(new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 50, type: WidthType.PERCENTAGE },
+          borders: noBorders,
+          children: gauche,
+        }),
+        new TableCell({
+          width: { size: 50, type: WidthType.PERCENTAGE },
+          borders: noBorders,
+          // Cellule vide pour le dernier item d'un nombre impair —
+          // un Paragraph vide est nécessaire (TableCell ne peut pas
+          // avoir un children array vide).
+          children: droite || [new Paragraph({})],
+        }),
+      ],
+    }));
+  }
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows,
+  });
+}
+
+// Contenu d'une cellule pour une card d'indicateur (axe X ou Y) :
+// libellé en gras (substitut H3 — un vrai HEADING_3 dans une cellule
+// génère un comportement de style erratique selon les versions de
+// Word), valeur principale centrée gras, détail centré italique,
+// image mini-graphe.
+function contenuCellulaireCardIndicateur(card, deps) {
+  const { Paragraph, TextRun, ImageRun, AlignmentType } = deps;
+  const paragraphs = [];
+
+  if (card.libelle) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+      children: [new TextRun({
+        text: card.libelle, color: COULEUR_MARIANNE, bold: true, size: 22,
+      })],
+    }));
+  }
+  if (card.valeur) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: card.valeur, bold: true, size: 28 })],
+    }));
+  }
+  if (card.detail) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+      children: [new TextRun({
+        text: card.detail, italics: true, color: COULEUR_GRIS, size: 18,
+      })],
+    }));
+  }
+  if (card.image) {
+    paragraphs.push(paragrapheImage(card.image, LARGEUR_MINI_GRAPHE, {
+      Paragraph, ImageRun, AlignmentType,
+    }));
+  }
+  return paragraphs;
+}
+
+// Contenu d'une cellule pour un multi-courbes : titre du groupe + image.
+function contenuCellulaireMultiCourbes(graphe, deps) {
+  const { Paragraph, TextRun, ImageRun, AlignmentType } = deps;
+  const paragraphs = [];
+
+  if (graphe.titre) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+      children: [new TextRun({
+        text: graphe.titre, color: COULEUR_MARIANNE, bold: true, size: 22,
+      })],
+    }));
+  }
+  if (graphe.image) {
+    paragraphs.push(paragrapheImage(graphe.image, LARGEUR_MULTI_GRAPHE, {
+      Paragraph, ImageRun, AlignmentType,
+    }));
+  }
+  return paragraphs;
+}
+
+// =====================================================================
 // Annexe Méthodologie
 // =====================================================================
 //
 // Saut de page → présentation générale (paragraphes) → section du
 // cursus courant uniquement (champ + indicateurs + insertion). Si le
-// cursus n'est pas couvert par METHODOLOGIE_CURSUS (cas hypothétique
-// BUT), on n'ajoute que la partie générale.
-function ajouterAnnexeMethodologie(children, cursusValue, deps) {
+// cursus n'est pas couvert (cas hypothétique BUT) ou si le cache
+// méthodologie n'a pas chargé (fallback `{ generale: '', cursus: {} }`),
+// on saute proprement les sections concernées.
+function ajouterAnnexeMethodologie(children, cursusValue, methodologie, deps) {
   const { Paragraph, TextRun, HeadingLevel, BorderStyle, PageBreak } = deps;
+
+  // Pas de méthodologie chargée : on ne rajoute rien (évite une
+  // section vide en fin de document).
+  if (!methodologie) return;
+  const aDuContenu = !!methodologie.generale
+    || (methodologie.cursus && methodologie.cursus[cursusValue]);
+  if (!aDuContenu) return;
 
   // Saut de page pour isoler la méthodologie.
   children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -553,21 +691,22 @@ function ajouterAnnexeMethodologie(children, cursusValue, deps) {
     Paragraph, TextRun, BorderStyle,
   }));
 
-  // Présentation générale — un paragraphe par double saut de ligne.
-  for (const para of METHODOLOGIE_GENERALE.split('\n\n')) {
-    children.push(new Paragraph({
-      spacing: { after: 120 },
-      children: [new TextRun({ text: para })],
-    }));
+  if (methodologie.generale) {
+    for (const para of methodologie.generale.split('\n\n')) {
+      children.push(new Paragraph({
+        spacing: { after: 120 },
+        children: [new TextRun({ text: para })],
+      }));
+    }
   }
 
-  const blocCursus = METHODOLOGIE_CURSUS[cursusValue];
+  const blocCursus = methodologie.cursus?.[cursusValue];
   if (!blocCursus) return;
 
   children.push(headingParagraph(HeadingLevel.HEADING_3, blocCursus.libelle, {
     Paragraph, TextRun,
   }));
-  for (const para of blocCursus.champ.split('\n')) {
+  for (const para of (blocCursus.champ || '').split('\n')) {
     if (!para) continue;
     children.push(new Paragraph({
       spacing: { after: 120 },
@@ -575,7 +714,7 @@ function ajouterAnnexeMethodologie(children, cursusValue, deps) {
     }));
   }
 
-  for (const ind of blocCursus.indicateurs) {
+  for (const ind of blocCursus.indicateurs || []) {
     children.push(headingParagraph(HeadingLevel.HEADING_3, ind.libelle, {
       Paragraph, TextRun,
     }));
@@ -585,23 +724,27 @@ function ajouterAnnexeMethodologie(children, cursusValue, deps) {
     }));
   }
 
-  children.push(headingParagraph(
-    HeadingLevel.HEADING_3,
-    `Champ de l'insertion professionnelle`,
-    { Paragraph, TextRun },
-  ));
-  children.push(new Paragraph({
-    spacing: { after: 120 },
-    children: [new TextRun({ text: blocCursus.champ_insertion })],
-  }));
+  if (blocCursus.champ_insertion) {
+    children.push(headingParagraph(
+      HeadingLevel.HEADING_3,
+      `Champ de l'insertion professionnelle`,
+      { Paragraph, TextRun },
+    ));
+    children.push(new Paragraph({
+      spacing: { after: 120 },
+      children: [new TextRun({ text: blocCursus.champ_insertion })],
+    }));
+  }
 
-  children.push(headingParagraph(HeadingLevel.HEADING_3, blocCursus.insertion.libelle, {
-    Paragraph, TextRun,
-  }));
-  children.push(new Paragraph({
-    spacing: { after: 120 },
-    children: [new TextRun({ text: blocCursus.insertion.definition })],
-  }));
+  if (blocCursus.insertion) {
+    children.push(headingParagraph(HeadingLevel.HEADING_3, blocCursus.insertion.libelle, {
+      Paragraph, TextRun,
+    }));
+    children.push(new Paragraph({
+      spacing: { after: 120 },
+      children: [new TextRun({ text: blocCursus.insertion.definition })],
+    }));
+  }
 }
 
 // =====================================================================
@@ -646,12 +789,18 @@ function titreFiche(ficheData) {
   return id.uo_lib || id.id_paysage || '';
 }
 
-function sousTitreFiche(ficheData) {
+function sousTitreFiche(ficheData, cursus) {
   const id = ficheData?.identite || {};
-  if (ficheData?.type === 'mention') return id.secteur || '';
-  const region = id.region?.libelle || id.region?.code || '';
-  const typo   = id.typologie || '';
-  return [region, typo].filter(Boolean).join(' · ');
+  const parts = [];
+  if (cursus) parts.push(cursus);
+  if (ficheData?.type === 'mention') {
+    if (id.secteur) parts.push(id.secteur);
+  } else {
+    const region = id.region?.libelle || id.region?.code || '';
+    if (region) parts.push(region);
+    if (id.typologie) parts.push(id.typologie);
+  }
+  return parts.join(' · ');
 }
 
 // =====================================================================

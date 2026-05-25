@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { getDefinitionIndicateur } from '../data/methodologie.js';
+import {
+  chargerMethodologie,
+  getDefinitionIndicateur,
+} from '../data/methodologie.js';
 
 // Tooltip contextuel affichant la définition méthodologique d'un
-// indicateur. Trois modes de pose :
+// indicateur. Deux modes :
 //   - `inline`  : enveloppe le libellé textuel et ajoute une icône
 //                 d'info à sa droite. Idéal pour titres de cards X/Y
 //                 ou en-têtes de tableau.
@@ -10,27 +13,39 @@ import { getDefinitionIndicateur } from '../data/methodologie.js';
 //                 quand le libellé est déjà porté par le markup
 //                 environnant (ex. <label> d'un <select>).
 //
-// L'icône suit la convention DSFR (`fr-icon-question-line`).
-// Le tooltip s'affiche au survol (mouseenter/leave) et reste
-// toggle-able au clic — utile au clavier (focus → Enter).
-// Fermeture sur Échap et au blur. Aucun positionnement à la souris :
-// le tooltip se place sous l'icône en CSS (position: absolute).
+// Cache asynchrone : `getDefinitionIndicateur` lit le cache (fetch
+// initial déclenché dans `main.jsx`). Tant que le cache n'est pas
+// rempli, le tooltip est absent (mode iconOnly → null, mode inline
+// → libellé brut). On souscrit à `chargerMethodologie()` une fois au
+// montage : dès la résolution, un setState force un re-render pour
+// faire apparaître l'icône d'info.
 //
-// Robustesse : si aucune définition n'est trouvée pour ce couple
-// (libellé, cursus), on rend le libellé brut (mode inline) ou
-// rien du tout (mode iconOnly) — pas d'icône inutile.
+// Robustesse : si la définition n'est jamais trouvée (cursus non
+// couvert, libellé inconnu, fetch raté), l'icône reste absente —
+// pas de plantage, pas de tooltip vide.
 
 export default function IndicateurTooltip({
   libelle,
   cursus,
   mode = 'inline',
 }) {
-  const definition = getDefinitionIndicateur(libelle, cursus);
   const [open, setOpen] = useState(false);
+  // Force un re-render quand le cache async devient disponible.
+  const [, setTick] = useState(0);
   const wrapperRef = useRef(null);
   const tooltipId = useId();
 
-  // Fermer au clic en dehors (Echap est géré par onKeyDown du bouton).
+  // S'assurer que le fetch est lancé et tagger un re-render à
+  // résolution. `chargerMethodologie` est idempotent — pas de coût
+  // si déjà chargé / en cours.
+  useEffect(() => {
+    let cancelled = false;
+    chargerMethodologie().then(() => {
+      if (!cancelled) setTick((t) => t + 1);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     function onDocClick(e) {
@@ -40,6 +55,8 @@ export default function IndicateurTooltip({
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
+
+  const definition = getDefinitionIndicateur(libelle, cursus);
 
   if (!definition) {
     return mode === 'iconOnly' ? null : <span>{libelle}</span>;

@@ -234,6 +234,22 @@ quadrant-projet/
 - `docs/migrations/002_rate_limit.sql` — création de `app_rate_limit` (requis avant le déploiement de `/quadrant/details`).
 - `docs/migrations/003_defaut_cursus.sql` — création de `dim_defaut_cursus` (lue par `/referentiel/variables` pour fournir les défauts métier au frontend). Initialise une ligne par cursus avec toutes valeurs à NULL — à compléter par UPDATE selon les choix métier.
 
+### Mise à jour de la méthodologie sans recompilation
+
+Le contenu de la méthodologie (texte général + bloc par cursus) est externalisé dans un JSON statique chargé par le frontend au démarrage et utilisé par :
+- les tooltips d'indicateurs (cards X/Y du panneau, en-têtes de tableau, sélecteurs de variables),
+- la modale « Méthodologie » accessible depuis le panneau de filtres,
+- la feuille « Méthodologie » du XLSX,
+- l'annexe Méthodologie de la fiche Word.
+
+Source de vérité côté repo : `site-quadrant/frontend/public/methodologie.json` (copié dans `dist/` au build).
+
+**Procédure de mise à jour en production sans rebuild** : éditer directement `/homez.10002/mesouvm/quadsies/dist/methodologie.json` sur OVH (SFTP). Les utilisateurs voient la mise à jour au prochain rechargement de l'app (le fichier est servi statiquement, pas de cache applicatif côté serveur).
+
+Format attendu — clés `cursus` alignées sur les valeurs `formation` renvoyées par l'API (`"Licence générale"`, `"Licence professionnelle"`, `"Master"`). Le BUT n'est volontairement pas couvert à ce stade ; les helpers gèrent l'absence gracieusement (tooltips absents, pas de plantage).
+
+Pour conserver la cohérence dépôt ↔ prod, dupliquer la modification dans le JSON commité une fois validée.
+
 ---
 
 ## 7. Mode dev — IMPORTANT
