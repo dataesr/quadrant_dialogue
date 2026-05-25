@@ -60,12 +60,14 @@ import { chargerMethodologie } from '../data/methodologie.js';
 // les deux. Hauteur calculée à partir du ratio natif (cf.
 // paragrapheImage).
 //
-// Mini-graphes (cards X/Y) : deux images par card (Taux + Effectifs),
-// disposées en sub-tableau 2 colonnes sous la valeur principale.
-// 290 px → laisse une gouttière confortable sur la largeur utile A4.
-// Multi-courbes : deux par ligne, 400 px chacun.
-const LARGEUR_MINI_GRAPHE  = 290;
-const LARGEUR_MULTI_GRAPHE = 400;
+// Disposition empilée verticalement (cards X puis Y empilées, chacune
+// avec Taux puis Effectifs empilés ; multi-courbes empilés). Largeur
+// cible 580 px : laisse une gouttière confortable sur A4 portrait
+// marges 2 cm (largeur utile ~643 px à 96 dpi). Lisibilité prime sur
+// la compacité — les versions précédentes côte à côte tassaient les
+// légendes.
+const LARGEUR_MINI_GRAPHE  = 580;
+const LARGEUR_MULTI_GRAPHE = 580;
 const LARGEUR_SPARKLINE    = 100;
 // Police par défaut du document — choix utilisateur (Calibri lisible,
 // universellement installée sur Word/LibreOffice). Taille en demi-
@@ -213,7 +215,6 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   for (const card of cards) {
     children.push(...blocCardIndicateur(card, {
       Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
-      Table, TableRow, TableCell, WidthType, BorderStyle,
     }));
   }
 
@@ -233,16 +234,21 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     }));
   }
 
-  // Multi-courbes : côte à côte 2 par ligne, dernier seul sur sa
-  // ligne si nombre impair. Le titre H3 vit dans la cellule pour
-  // qu'il reste collé à son graphique.
-  if (multiCourbes.length > 0) {
-    children.push(tableImagesCoteACote(
-      multiCourbes.map((g) => contenuCellulaireMultiCourbes(g, {
-        Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
-      })),
-      { Table, TableRow, TableCell, Paragraph, WidthType, BorderStyle },
-    ));
+  // Multi-courbes empilés verticalement : chaque graphique prend
+  // toute la largeur utile (~580 px). Disposition côte à côte
+  // abandonnée pour gagner en lisibilité des légendes de variantes
+  // (« 6 mois », « 12 mois »…).
+  for (const g of multiCourbes) {
+    if (g.titre) {
+      children.push(headingParagraph(HeadingLevel.HEADING_3, g.titre, {
+        Paragraph, TextRun,
+      }));
+    }
+    if (g.image) {
+      children.push(paragrapheImage(g.image, LARGEUR_MULTI_GRAPHE, {
+        Paragraph, ImageRun, AlignmentType,
+      }));
+    }
   }
 
   if (lignesSimples.length > 0) {
@@ -567,76 +573,19 @@ function paragrapheImage(image, largeurCible, deps) {
   });
 }
 
-// =====================================================================
-// Composition « images côte à côte »
-// =====================================================================
-//
-// Layout 2 colonnes sans bordures pour rapprocher visuellement deux
-// blocs corrélés (card X / card Y, ou deux multi-courbes
-// consécutives). Si le nombre d'items est impair, le dernier reste
-// seul sur sa ligne dans la cellule de gauche, cellule de droite vide.
-//
-// Chaque cellule reçoit un tableau de Paragraph déjà construit par
-// les helpers `contenuCellulaireCardIndicateur` ou
-// `contenuCellulaireMultiCourbes`.
-
-function bordersInvisibles(BorderStyle) {
-  const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
-  return {
-    top: none, bottom: none, left: none, right: none,
-    insideHorizontal: none, insideVertical: none,
-  };
-}
-
-function tableImagesCoteACote(cellulesContenu, deps) {
-  const { Table, TableRow, TableCell, Paragraph, WidthType, BorderStyle } = deps;
-  const noBorders = bordersInvisibles(BorderStyle);
-
-  const rows = [];
-  for (let i = 0; i < cellulesContenu.length; i += 2) {
-    const gauche = cellulesContenu[i];
-    const droite = cellulesContenu[i + 1];
-    rows.push(new TableRow({
-      children: [
-        new TableCell({
-          width: { size: 50, type: WidthType.PERCENTAGE },
-          borders: noBorders,
-          children: gauche,
-        }),
-        new TableCell({
-          width: { size: 50, type: WidthType.PERCENTAGE },
-          borders: noBorders,
-          // Cellule vide pour le dernier item d'un nombre impair —
-          // un Paragraph vide est nécessaire (TableCell ne peut pas
-          // avoir un children array vide).
-          children: droite || [new Paragraph({})],
-        }),
-      ],
-    }));
-  }
-
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: noBorders,
-    rows,
-  });
-}
-
 // Bloc complet pour une card d'indicateur (axe X ou Y) :
-// H3 du libellé, valeur principale centrée, détail centré, puis un
-// sub-tableau 2 colonnes sans bordures contenant l'image Taux à
-// gauche et l'image Effectifs à droite, chacune surmontée d'une
-// légende centrée. Si une seule des deux images est dispo (cas
-// dégénéré : effectifs absents pour une mention non-diffusable),
-// la cellule manquante reste vide — pas de bordure pour rester
-// discret.
+// H3 du libellé, valeur principale centrée, détail centré, puis les
+// deux images (Taux puis Effectifs) empilées verticalement, chacune
+// surmontée — par dessous — d'une légende centrée. Pas de
+// sub-tableau côte à côte : la largeur réservée (~580 px) permet
+// d'afficher chaque graphique en pleine largeur de la page A4, plus
+// lisible que deux images tassées sur une même ligne.
 //
-// Retourne un array de "fils Word" (Paragraph + Table) à pousser
-// dans la liste `children` du document. Un seul item par axe.
+// Retourne un array de "fils Word" (Paragraph) à pousser dans la
+// liste `children` du document.
 function blocCardIndicateur(card, deps) {
   const {
     Paragraph, TextRun, ImageRun, AlignmentType, HeadingLevel,
-    Table, TableRow, TableCell, WidthType, BorderStyle,
   } = deps;
 
   const out = [];
@@ -662,80 +611,39 @@ function blocCardIndicateur(card, deps) {
     }));
   }
 
-  // Sub-tableau 2 colonnes invisibles : Taux | Effectifs.
-  if (card.imageTaux || card.imageEffectifs) {
-    const noBorders = bordersInvisibles(BorderStyle);
-    const celluleTaux = new TableCell({
-      width: { size: 50, type: WidthType.PERCENTAGE },
-      borders: noBorders,
-      children: contenuCellulaireMiniGraphe(card.imageTaux, 'Évolution du taux', {
-        Paragraph, TextRun, ImageRun, AlignmentType,
-      }),
-    });
-    const celluleEffectifs = new TableCell({
-      width: { size: 50, type: WidthType.PERCENTAGE },
-      borders: noBorders,
-      children: contenuCellulaireMiniGraphe(card.imageEffectifs, 'Évolution des effectifs', {
-        Paragraph, TextRun, ImageRun, AlignmentType,
-      }),
-    });
-    out.push(new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      borders: noBorders,
-      rows: [new TableRow({ children: [celluleTaux, celluleEffectifs] })],
+  if (card.imageTaux) {
+    out.push(paragrapheImage(card.imageTaux, LARGEUR_MINI_GRAPHE, {
+      Paragraph, ImageRun, AlignmentType,
     }));
+    out.push(legendeImage('Évolution du taux', { Paragraph, TextRun, AlignmentType }));
+  }
+  if (card.imageEffectifs) {
+    out.push(paragrapheImage(card.imageEffectifs, LARGEUR_MINI_GRAPHE, {
+      Paragraph, ImageRun, AlignmentType,
+    }));
+    out.push(legendeImage('Évolution des effectifs', { Paragraph, TextRun, AlignmentType }));
   }
 
   // Espace après la card pour aérer entre X et Y / avant la section
-  // suivante. Un paragraphe vide est plus fiable qu'un spacing.after
-  // sur la table (varie selon les renderers Word).
+  // suivante.
   out.push(new Paragraph({}));
 
   return out;
 }
 
-// Contenu d'une cellule mini-graphe : image + légende centrée
-// (« Évolution du taux » ou « Évolution des effectifs »). Si
-// l'image manque, on rend juste la légende — la cellule garde sa
-// place dans le tableau.
-function contenuCellulaireMiniGraphe(image, legende, deps) {
-  const { Paragraph, TextRun, ImageRun, AlignmentType } = deps;
-  const paragraphs = [];
-  if (image) {
-    paragraphs.push(paragrapheImage(image, LARGEUR_MINI_GRAPHE, {
-      Paragraph, ImageRun, AlignmentType,
-    }));
-  }
-  paragraphs.push(new Paragraph({
+// Légende centrée italique gris à poser SOUS une image (libellé du
+// type « Évolution du taux »).
+function legendeImage(texte, deps) {
+  const { Paragraph, TextRun, AlignmentType } = deps;
+  return new Paragraph({
     alignment: AlignmentType.CENTER,
+    spacing: { after: 120 },
     children: [new TextRun({
-      text: legende, italics: true, color: COULEUR_GRIS, size: 18,
+      text: texte, italics: true, color: COULEUR_GRIS, size: 18,
     })],
-  }));
-  return paragraphs;
+  });
 }
 
-// Contenu d'une cellule pour un multi-courbes : titre du groupe + image.
-function contenuCellulaireMultiCourbes(graphe, deps) {
-  const { Paragraph, TextRun, ImageRun, AlignmentType } = deps;
-  const paragraphs = [];
-
-  if (graphe.titre) {
-    paragraphs.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 60 },
-      children: [new TextRun({
-        text: graphe.titre, color: COULEUR_MARIANNE, bold: true, size: 22,
-      })],
-    }));
-  }
-  if (graphe.image) {
-    paragraphs.push(paragrapheImage(graphe.image, LARGEUR_MULTI_GRAPHE, {
-      Paragraph, ImageRun, AlignmentType,
-    }));
-  }
-  return paragraphs;
-}
 
 // =====================================================================
 // Annexe Méthodologie
