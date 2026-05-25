@@ -11,6 +11,7 @@ import {
   seriesReussite,
   seriesInsertion,
 } from './details/historique.js';
+import { getContexteIdDev } from '../services/api.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
 import { messageErreur } from '../utils/errors.js';
@@ -147,10 +148,11 @@ export default function DetailsPanel() {
           // Traçabilité silencieuse côté Custom Properties du .docx
           // (cf. exportDocx.js). Aligné sur ce que produit
           // BoutonExport.jsx : seul `contexteId` est connu en mode
-          // dev ; les vrais tokens de session ne sont pas exposés au
-          // JS pour l'instant.
+          // dev (depuis l'URL ou VITE_CONTEXTE_ID_DEV, cf.
+          // getContexteIdDev). Les vrais tokens de session ne sont
+          // pas exposés au JS pour l'instant.
           tokens: {
-            contexteId: import.meta.env.VITE_CONTEXTE_ID_DEV || undefined,
+            contexteId: getContexteIdDev() || undefined,
             tokenConnexion: undefined,
             tokenUtilisateur: undefined,
           },

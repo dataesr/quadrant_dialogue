@@ -5,12 +5,57 @@
 // ou rejette avec une Error portant le détail (status HTTP, code d'erreur
 // applicatif, message). Les composants n'ont donc qu'à try/catch.
 //
-// Mode dev : on injecte automatiquement `contexte_id` (lu dans
-// VITE_CONTEXTE_ID_DEV) à chaque appel — cela court-circuite la validation
-// session côté API quand `mode_dev=true` en config serveur.
+// Mode dev : on injecte automatiquement `contexte_id` à chaque appel
+// pour court-circuiter la validation session côté API quand
+// `mode_dev=true` en config serveur. La source du contexte_id suit
+// un ordre de priorité (cf. getContexteIdDev) :
+//   1. query string de la page hôte (`?contexte_id=...`) — utile
+//      pour tester l'app déployée en standalone (par ex.
+//      https://quadsies.dgesip.fr/?contexte_id=zKsfQ) sans rebuilder.
+//   2. variable d'env Vite `VITE_CONTEXTE_ID_DEV` — utilisée par
+//      `npm run dev` local avec un `.env.development.local`.
+//   3. rien : en prod réelle, les tokens passeront par POST iframe.
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const CONTEXTE_ID_DEV = import.meta.env.VITE_CONTEXTE_ID_DEV || '';
+
+// Forme attendue d'un contexte_id : 5 caractères alphanumériques
+// (alphabet a-z + A-Z + 0-9). Conforme à la spec API (cf. CLAUDE.md
+// §10 : « identifiant 5 caractères alphanumériques »). Une valeur
+// non conforme est ignorée — pas la peine de fuiter un input
+// utilisateur arbitraire dans les query strings et les chunks
+// Matomo / PNG / exports.
+const CONTEXTE_ID_REGEX = /^[a-zA-Z0-9]{5}$/;
+
+/**
+ * Récupère le contexte_id à injecter en mode dev.
+ *
+ * Ordre de priorité :
+ *   1. window.location.search → ?contexte_id=...
+ *   2. variable d'env Vite VITE_CONTEXTE_ID_DEV
+ *   3. null
+ *
+ * Valide la forme (5 alphanum) à chaque source. Une valeur mal formée
+ * est ignorée silencieusement (pas d'exception, pas de log : on ne
+ * sait pas si l'utilisateur a juste tapé l'URL au hasard).
+ *
+ * Exporté pour pouvoir être réutilisé côté composants (traçabilité
+ * d'exports, etc.) avec la même règle de fallback.
+ */
+export function getContexteIdDev() {
+  if (typeof window !== 'undefined' && window.location) {
+    try {
+      const fromUrl = new URLSearchParams(window.location.search).get('contexte_id');
+      if (fromUrl && CONTEXTE_ID_REGEX.test(fromUrl)) return fromUrl;
+    } catch {
+      // ignore : URLSearchParams sur un search malformé peut throw
+    }
+  }
+  if (CONTEXTE_ID_DEV && CONTEXTE_ID_REGEX.test(CONTEXTE_ID_DEV)) {
+    return CONTEXTE_ID_DEV;
+  }
+  return null;
+}
 
 /**
  * Erreur API personnalisée : porte le code applicatif et le status HTTP en
@@ -32,8 +77,9 @@ export class ApiError extends Error {
  */
 function buildUrl(path, params = {}) {
   const finalParams = { ...params };
-  if (CONTEXTE_ID_DEV && !('contexte_id' in finalParams)) {
-    finalParams.contexte_id = CONTEXTE_ID_DEV;
+  if (!('contexte_id' in finalParams)) {
+    const contexteId = getContexteIdDev();
+    if (contexteId) finalParams.contexte_id = contexteId;
   }
 
   const usp = new URLSearchParams();

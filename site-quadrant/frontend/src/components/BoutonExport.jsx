@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
+import { getContexteIdDev } from '../services/api.js';
 import { exportQuadrantPng } from '../utils/exportPng.js';
 import { exportQuadrantXlsx } from '../utils/exportXlsx.js';
 import { messageErreur } from '../utils/errors.js';
@@ -179,12 +180,13 @@ function construireContexte(params) {
     },
     surligne: params.surligne || null,
     tokens: {
-      // En mode dev, seul `contexte_id` est connu côté frontend (lu
-      // dans VITE_CONTEXTE_ID_DEV). Les vrais tokens de session
-      // (token_connexion, token_utilisateur) ne sont pas exposés au
-      // JS — ils seront ajoutés ici si un canal frontend les rend
-      // disponibles plus tard.
-      contexteId: import.meta.env.VITE_CONTEXTE_ID_DEV || undefined,
+      // En mode dev, seul `contexte_id` est connu côté frontend. Il
+      // peut venir soit de l'URL hôte (?contexte_id=...), soit de
+      // VITE_CONTEXTE_ID_DEV — cf. getContexteIdDev() pour l'ordre.
+      // Les vrais tokens de session (token_connexion, token_
+      // utilisateur) ne sont pas exposés au JS — ils seront ajoutés
+      // ici si un canal frontend les rend disponibles plus tard.
+      contexteId: getContexteIdDev() || undefined,
       tokenConnexion: undefined,
       tokenUtilisateur: undefined,
     },
