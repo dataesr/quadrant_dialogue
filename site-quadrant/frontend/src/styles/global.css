@@ -568,6 +568,75 @@
    Voir le bloc tableau plus haut. */
 
 /* ----------------------------------------------------------------------
+ * Styles d'export PNG (phase 6)
+ * ----------------------------------------------------------------------
+ * Pendant la capture html-to-image, on pose `body.exporting` qui masque
+ * les éléments interactifs et flottants pour produire un export propre.
+ * Symétrique aux règles @media print plus bas. La source-attribution
+ * écran est aussi masquée : le pied .export-pied injecté la remplace
+ * (il ajoute la date d'export à côté).
+ * -------------------------------------------------------------------- */
+body.exporting .quadrant-zoom-controls,
+body.exporting .quadrant-tooltip,
+body.exporting .panneau-details,
+body.exporting .source-attribution {
+  display: none !important;
+}
+
+/* Bandeau d'export inséré à la volée au-dessus du quadrant (titre étab,
+   contexte, axes, filtres actifs). Style sobre, typographie cohérente
+   avec le DSFR. */
+.export-titre {
+  padding: 0 0 0.75rem 0;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 0.75rem;
+}
+.export-titre h1 {
+  font-size: 1.15rem;
+  margin: 0 0 0.25rem 0;
+  font-weight: 600;
+}
+.export-titre .sous-titre {
+  color: #555;
+  font-size: 0.85rem;
+  margin: 0.1rem 0;
+}
+.export-titre .filtres-actifs {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: #555;
+  font-style: italic;
+}
+
+/* Pied de page intégré à l'image : source (gauche) et date d'export
+   (droite). Remplace la .source-attribution pendant la capture. */
+.export-pied {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #555;
+  font-style: italic;
+}
+
+/* Bouton d'export en pied de la sidebar de filtres. Pleine largeur,
+   centré, fond DSFR primaire. */
+.bouton-export-zone {
+  margin-top: 0.5rem;
+}
+.bouton-export-zone .fr-btn {
+  width: 100%;
+  justify-content: center;
+}
+.bouton-export-zone .fr-error-text {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* ----------------------------------------------------------------------
  * Styles d'impression
  * ----------------------------------------------------------------------
  * Objectif : à l'impression, ne garder que les éléments porteurs de

@@ -10,6 +10,7 @@ import QuadrantTable from './components/QuadrantTable.jsx';
 import MentionSearch from './components/MentionSearch.jsx';
 import AffichageSelector from './components/AffichageSelector.jsx';
 import DetailsPanel from './components/DetailsPanel.jsx';
+import BoutonExport from './components/BoutonExport.jsx';
 
 // Coquille minimale : layout 1000px max (contrainte iframe), composants
 // DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
@@ -62,6 +63,9 @@ function AppShell() {
                     depuis cette session). */}
               {vue === 'mentions' && <MentionSearch />}
               <AdvancedFilters />
+              {/* Bouton d'export : adaptatif graphique→PNG / tableau→Excel,
+                  monté en pied de panneau (cf. BoutonExport.jsx). */}
+              <BoutonExport />
             </aside>
             <main
               className={
