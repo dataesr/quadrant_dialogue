@@ -88,6 +88,12 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   const { groupes, mentionsNonRepresentees, populationX, populationY } =
     preparerDonnees(data);
 
+  // Ordre des feuilles : Métadonnées en 1ère position pour que le
+  // contexte de l'export (cursus, millésime, axes, filtres, source,
+  // diffusion) soit immédiatement visible à l'ouverture du fichier.
+  // Excel ouvre toujours la première feuille du classeur — l'ordre
+  // ici détermine donc l'onglet actif au démarrage.
+  remplirFeuilleMetadonnees(workbook, contexte);
   remplirFeuilleDonnees(workbook, {
     groupes,
     mentionsNonRepresentees,
@@ -100,7 +106,6 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   // rejette…) on garde les autres feuilles et on continue. L'export
   // XLSX ne doit pas casser à cause d'un problème d'image.
   await remplirFeuilleGraphique(workbook, wrapperEl);
-  remplirFeuilleMetadonnees(workbook, contexte);
   remplirFeuilleMethodologie(workbook, methodologie);
   remplirFeuilleMeta(workbook, contexte);
 
