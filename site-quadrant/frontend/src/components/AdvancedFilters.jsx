@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx';
 import ReferentielSelect from './selectors/ReferentielSelect.jsx';
 import TypeMasterSelect from './selectors/TypeMasterSelect.jsx';
 import BinaryToggle from './selectors/BinaryToggle.jsx';
+import MentionFilterCombobox from './MentionFilterCombobox.jsx';
 import ModaleMethodologie from './ModaleMethodologie.jsx';
 
 // Panneau de filtres avancés, replié par défaut. S'ouvre automatiquement
@@ -28,14 +29,12 @@ export default function AdvancedFilters() {
   const {
     etabContexte,
     cursus,
-    vue,
-    affichage,
     referentiels,
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite, ligneReference,
     scaleMode,
-    setDomaine, setDiscipline, setSecteur, setMention,
+    setDomaine, setDiscipline, setSecteur,
     setRepresentativite, setLigneReference,
     setScaleMode,
     resetAdvancedFilters,
@@ -136,19 +135,11 @@ export default function AdvancedFilters() {
               - Vue Positionnement + Tableau : le tableau liste des
                 établissements ; un filtre mention compliquerait la
                 lecture sans bénéfice clair. À ré-évaluer si le besoin
-                remonte. */}
-          {vue === 'etablissements' && affichage === 'graphique' && (
-            <ReferentielSelect
-              id="quadrant-mention"
-              label="Mention"
-              defaultLabel="Toutes"
-              items={disciData?.mentions}
-              value={mention}
-              onChange={setMention}
-              disabled={disabled}
-              loading={disciLoading}
-            />
-          )}
+                remonte.
+              Combobox dédié (cf. MentionFilterCombobox) : autocomplete
+              + liste restreinte aux mentions de l'étab de référence
+              (et non l'ensemble du cursus, beaucoup trop large). */}
+          <MentionFilterCombobox disabled={disabled} />
 
           {/* Options diverses (Master only pour TypeMaster, sinon caché). */}
           {cursus === 'Master' && <TypeMasterSelect disabled={disabled} />}

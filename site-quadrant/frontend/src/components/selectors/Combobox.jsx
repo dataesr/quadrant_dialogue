@@ -26,6 +26,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 //                    omis dans les cas « select strict ».
 //   - disabled     : booléen.
 //   - maxSuggestions : cap d'affichage du panneau (défaut 100).
+//   - topItem      : option { id, libelle } toujours affichée en tête
+//                    de la liste, non triée alphabétiquement, rendue
+//                    en italique pour la distinguer. Sert d'option
+//                    « Tous » dans les filtres (sa sélection efface
+//                    le filtre actif via onSelect avec l'id renseigné).
 //
 // Navigation clavier : ArrowUp/ArrowDown déplacent le surlignage,
 // Entrée valide, Échap ferme. Click-outside (mousedown) ferme aussi.
@@ -42,6 +47,7 @@ export default function Combobox({
   onTextChange,
   disabled = false,
   maxSuggestions = MAX_SUGGESTIONS_DEFAULT,
+  topItem = null,
 }) {
   const itemsSafe = Array.isArray(items) ? items : [];
 
@@ -84,10 +90,14 @@ export default function Combobox({
     const filtres = !t || exact
       ? itemsSafe
       : itemsSafe.filter((it) => it.libelle.toLowerCase().includes(t));
-    return [...filtres]
+    const tries = [...filtres]
       .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'))
       .slice(0, maxSuggestions);
-  }, [texte, itemsSafe, selectedLibelle, maxSuggestions]);
+    // topItem injecté en première position, non trié. Conserve sa
+    // place quel que soit le texte de recherche (il n'est pas filtré
+    // car il représente l'option « tout afficher »).
+    return topItem ? [topItem, ...tries] : tries;
+  }, [texte, itemsSafe, selectedLibelle, maxSuggestions, topItem]);
 
   function selectionner(item) {
     setTexte(item.libelle);
@@ -163,24 +173,28 @@ export default function Combobox({
 
       {open && suggestions.length > 0 && (
         <ul className="combobox-suggestions" role="listbox">
-          {suggestions.map((it, i) => (
-            <li
-              key={it.id}
-              role="option"
-              aria-selected={it.id === value}
-              data-highlighted={i === highlight ? 'true' : undefined}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectionner(it);
-              }}
-              onMouseEnter={() => setHighlight(i)}
-            >
-              <span>{it.libelle}</span>
-              {it.hint && (
-                <span className="combobox-suggestion-hint"> {it.hint}</span>
-              )}
-            </li>
-          ))}
+          {suggestions.map((it, i) => {
+            const estTopItem = topItem && it.id === topItem.id;
+            return (
+              <li
+                key={it.id}
+                role="option"
+                aria-selected={it.id === value}
+                data-highlighted={i === highlight ? 'true' : undefined}
+                className={estTopItem ? 'combobox-top-item' : undefined}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectionner(it);
+                }}
+                onMouseEnter={() => setHighlight(i)}
+              >
+                <span>{it.libelle}</span>
+                {it.hint && (
+                  <span className="combobox-suggestion-hint"> {it.hint}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

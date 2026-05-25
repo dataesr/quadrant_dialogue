@@ -264,6 +264,15 @@
   margin-left: 4px;
 }
 
+/* topItem du combobox (option « Tous » d'un filtre) : italique, fond
+   légèrement teinté pour la distinguer des items de la liste
+   principale. Séparateur fin sous l'entrée. */
+.combobox-suggestions li.combobox-top-item {
+  font-style: italic;
+  color: #444;
+  border-bottom: 1px solid #eee;
+}
+
 /* Liste verticale utilisée à l'intérieur du panneau de filtres avancés
    quand il est déplié (selects + checkbox + segmented empilés). */
 .liste-filtres-avances {
