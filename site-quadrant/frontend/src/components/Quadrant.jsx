@@ -175,15 +175,32 @@ export default function Quadrant() {
   // tous les useMemo/useEffect en aval s'invalident inutilement
   // → boucle infinie via setMentionsAffichees.
   //
-  // En vue=etablissements, on trie en plus par z-index sémantique (cf.
-  // ORDRE_RENDU_ETAB) : le SVG dessine les éléments dans l'ordre de
-  // déclaration → le dernier élément est rendu AU-DESSUS. On veut donc
-  // « autres » en tête de tableau (= en fond visuel) et « selectionne »
-  // en queue (= au premier plan, jamais masqué par un cluster).
-  // En vue=mentions, pas de tri (ordre API préservé).
+  // Le SVG peint dans l'ordre de déclaration → dernier élément du
+  // tableau = AU-DESSUS visuellement (et capteur d'événements en
+  // priorité). On trie donc selon une logique propre à chaque vue :
+  //   - vue=mentions       : par denom décroissant. Les grosses
+  //                          bulles arrivent en tête (= au fond),
+  //                          les petites en queue (= au-dessus).
+  //                          Sans ça, une petite mention nichée
+  //                          derrière une grosse devient impossible
+  //                          à survoler ou cliquer. Le tri ne
+  //                          modifie pas les coordonnées des bulles
+  //                          ni le calcul des médianes (ces dernières
+  //                          viennent de l'API, indépendantes du
+  //                          rendu).
+  //   - vue=etablissements : z-index sémantique (cf. ORDRE_RENDU_ETAB) —
+  //                          « autres » en fond, « selectionne » au
+  //                          premier plan pour garantir la bulle de
+  //                          contexte toujours visible.
   const bulles = useMemo(() => {
     const list = data?.bulles || [];
-    if (vue !== 'etablissements') return list;
+    if (vue === 'mentions') {
+      return [...list].sort((a, b) => {
+        const da = a.denom_x ?? a.denom ?? 0;
+        const db = b.denom_x ?? b.denom ?? 0;
+        return db - da; // grosses d'abord (fond), petites ensuite (1er plan)
+      });
+    }
     return [...list].sort((a, b) => {
       const za = ORDRE_RENDU_ETAB[a.couleur_key] ?? 0;
       const zb = ORDRE_RENDU_ETAB[b.couleur_key] ?? 0;
