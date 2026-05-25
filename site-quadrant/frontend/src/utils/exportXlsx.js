@@ -309,19 +309,30 @@ function ajouterLigneBulle(ws, b) {
 }
 
 function ajouterLigneMentionNonRep(ws, m) {
-  // 3 cas par axe (cf. STATUT_PAR_RAISON) :
+  // Statut effectif par axe — mêmes 3 sorties que côté écran
+  // (CelluleMentionNonRep + CellulePourcentage) :
   //   - 'valeur'         : on rend la valeur comme une bulle ordinaire
   //   - 'non_diffusable' : 'Non diffusable' italique gris
   //   - 'pas_de_donnee'  : 'Pas de donnée' italique gris
-  const statutX = STATUT_PAR_RAISON[m.raison]?.x;
-  const statutY = STATUT_PAR_RAISON[m.raison]?.y;
+  //
+  // La table STATUT_PAR_RAISON déduit le statut à partir de la
+  // `raison` SQL renvoyée par l'API, mais elle ne couvre pas les cas
+  // où raison='pas_de_donnee_var2' (denomY null) avec denomX < 5 :
+  // la raison se base sur le premier elseif qui matche, donc l'axe
+  // X est annoncé en 'valeur' alors que la valeur n'est en réalité
+  // pas diffusable. Côté écran, CellulePourcentage corrige
+  // défensivement (typeof denom !== 'number' || denom < 5 →
+  // « Non diffusable »). On reproduit ici la même règle pour ne pas
+  // laisser de cellule vide dans l'XLSX.
+  const statutX = statutEffectif(STATUT_PAR_RAISON[m.raison]?.x, m.x, m.denom_x);
+  const statutY = statutEffectif(STATUT_PAR_RAISON[m.raison]?.y, m.y, m.denom_y);
 
   const row = ws.addRow([
     m.libelle || m.diplom || '',
-    statutX === 'valeur' && typeof m.x === 'number' ? m.x : null,
-    statutX === 'valeur' && typeof m.denom_x === 'number' ? m.denom_x : null,
-    statutY === 'valeur' && typeof m.y === 'number' ? m.y : null,
-    statutY === 'valeur' && typeof m.denom_y === 'number' ? m.denom_y : null,
+    statutX === 'valeur' ? m.x : null,
+    statutX === 'valeur' ? m.denom_x : null,
+    statutY === 'valeur' ? m.y : null,
+    statutY === 'valeur' ? m.denom_y : null,
   ]);
 
   row.getCell(2).numFmt = '0.0%';
@@ -344,6 +355,25 @@ function ajouterLigneMentionNonRep(ws, m) {
   if (statutY !== 'valeur') {
     formaterStatut(row.getCell(4), row.getCell(5), LIBELLE_STATUT[statutY] || '—');
   }
+}
+
+// Convertit un statut « déclaré » par la table STATUT_PAR_RAISON en
+// statut « effectif » qui prend aussi en compte ce qui est réellement
+// exposé dans la mention. Le bug latent côté API : la chaîne d'elseif
+// dans calculerMentionsNonRepresentees (cf. quadrant.php) classe
+// d'abord sur l'absence (denomY null → pas_de_donnee_var2) avant de
+// regarder l'insuffisance de l'autre axe ; un axe peut donc être
+// annoncé en 'valeur' avec un denom réel < 5. Cette fonction rabat
+// ce cas sur 'non_diffusable', alignant l'XLSX sur le rendu écran.
+function statutEffectif(statutDeclare, taux, denom) {
+  if (statutDeclare === 'pas_de_donnee')  return 'pas_de_donnee';
+  if (statutDeclare === 'non_diffusable') return 'non_diffusable';
+  if (statutDeclare === 'valeur') {
+    if (typeof denom !== 'number' || denom < 5) return 'non_diffusable';
+    if (typeof taux !== 'number')               return 'non_diffusable';
+    return 'valeur';
+  }
+  return 'pas_de_donnee';
 }
 
 function estFragile(denom) {
