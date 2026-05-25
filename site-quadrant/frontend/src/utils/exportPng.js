@@ -16,7 +16,7 @@
 // contexte_id et date d'export. Les tokens de session sont aussi
 // inclus s'ils sont disponibles côté frontend.
 
-import { LIBELLE_SOURCE, NOM_SOURCE } from './constants.js';
+import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE } from './constants.js';
 
 export async function exportQuadrantPng({ wrapperEl, contexte }) {
   if (!wrapperEl) throw new Error('exportQuadrantPng: wrapperEl manquant.');
@@ -141,8 +141,11 @@ function construirePiedExport() {
   const pied = document.createElement('div');
   pied.className = 'export-pied';
 
+  // Source + diffusion fusionnés sur le côté gauche, date sur le côté
+  // droit. Format aligné sur l'écran (cf. .source-attribution) et sur
+  // le footer Word.
   const gauche = document.createElement('span');
-  gauche.textContent = LIBELLE_SOURCE;
+  gauche.textContent = `${LIBELLE_SOURCE} · ${MENTION_DIFFUSION}`;
   pied.appendChild(gauche);
 
   const droite = document.createElement('span');

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx';
 import ReferentielSelect from './selectors/ReferentielSelect.jsx';
 import TypeMasterSelect from './selectors/TypeMasterSelect.jsx';
 import BinaryToggle from './selectors/BinaryToggle.jsx';
+import ModaleMethodologie from './ModaleMethodologie.jsx';
 
 // Panneau de filtres avancés, replié par défaut. S'ouvre automatiquement
 // dès qu'au moins un filtre est positionné différemment de son défaut.
@@ -41,6 +42,7 @@ export default function AdvancedFilters() {
   } = useApp();
 
   const [open, setOpen] = useState(false);
+  const [modaleMethodOpen, setModaleMethodOpen] = useState(false);
   const disabled = !etabContexte;
 
   // Nombre de filtres avancés en écart par rapport à leur défaut.
@@ -206,6 +208,21 @@ export default function AdvancedFilters() {
           </button>
         </div>
       </div>
+
+      {/* Lien vers la méthodologie complète. Posé en pied du panneau
+          d'options pour rester visible quel que soit l'état (replié /
+          déplié) du panneau avancé. */}
+      <button
+        type="button"
+        className="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-btn--icon-left fr-icon-question-line bouton-methodologie"
+        onClick={() => setModaleMethodOpen(true)}
+      >
+        Méthodologie
+      </button>
+      <ModaleMethodologie
+        open={modaleMethodOpen}
+        onClose={() => setModaleMethodOpen(false)}
+      />
     </section>
   );
 }

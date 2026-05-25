@@ -9,6 +9,10 @@
 //  - onChange  : (newLibelle) => void
 //  - disabled  : booléen
 //  - loading   : true tant que le référentiel charge
+//  - cursus    : cursus courant (pour la définition de l'indicateur
+//                affichée dans le tooltip à droite du label)
+
+import IndicateurTooltip from '../IndicateurTooltip.jsx';
 
 const LABEL_AXE = { X: 'Axe horizontal', Y: 'Axe vertical' };
 
@@ -19,6 +23,7 @@ export default function VariableSelect({
   onChange,
   disabled = false,
   loading = false,
+  cursus,
 }) {
   const groupDisabled = disabled || loading || options.length === 0;
   const id = `quadrant-variable-${axis.toLowerCase()}`;
@@ -28,6 +33,9 @@ export default function VariableSelect({
       <label className="fr-label" htmlFor={id}>
         {LABEL_AXE[axis]}
         {loading && <span className="fr-hint-text">Chargement…</span>}
+        {value && cursus && (
+          <IndicateurTooltip libelle={value} cursus={cursus} mode="iconOnly" />
+        )}
       </label>
       <select
         id={id}

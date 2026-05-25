@@ -14,6 +14,7 @@ import {
 } from './details/historique.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
+import IndicateurTooltip from './IndicateurTooltip.jsx';
 
 // Panneau de détails d'une bulle.
 //
@@ -116,6 +117,16 @@ export default function DetailsPanel() {
           variableX, variableY, dateInserX, dateInserY,
           populationX: bulleAssociee?.population_x,
           populationY: bulleAssociee?.population_y,
+          // Traçabilité silencieuse côté Custom Properties du .docx
+          // (cf. exportDocx.js). Aligné sur ce que produit
+          // BoutonExport.jsx : seul `contexteId` est connu en mode
+          // dev ; les vrais tokens de session ne sont pas exposés au
+          // JS pour l'instant.
+          tokens: {
+            contexteId: import.meta.env.VITE_CONTEXTE_ID_DEV || undefined,
+            tokenConnexion: undefined,
+            tokenUtilisateur: undefined,
+          },
         },
         panneauEl: panneauRef.current,
       });
@@ -130,28 +141,29 @@ export default function DetailsPanel() {
   return (
     <aside className="panneau-details" ref={panneauRef}>
       <header>
-        <h2>{titreBulle(identite, data?.type)}</h2>
-        {identite && (
-          <p className="identite-secondaire">{sousTitreBulle(identite, data?.type)}</p>
-        )}
-        <button
-          type="button"
-          className="bouton-export-fiche"
-          onClick={handleExportFiche}
-          disabled={!ficheExportable || exportFiche.running}
-          aria-label="Télécharger cette fiche au format Word"
-          title="Télécharger cette fiche au format Word"
-        >
-          <span className="fr-icon-download-line" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="bouton-fermer"
-          onClick={() => setDetailsCible(null)}
-          aria-label="Fermer le panneau de détails"
-        >
-          ×
-        </button>
+        <div className="titre-zone">
+          <h2>{titreBulle(identite, data?.type)}</h2>
+          {identite && (
+            <p className="identite-secondaire">{sousTitreBulle(identite, data?.type)}</p>
+          )}
+        </div>
+        <div className="actions">
+          <button
+            type="button"
+            className="bouton-action fr-icon-file-download-line"
+            onClick={handleExportFiche}
+            disabled={!ficheExportable || exportFiche.running}
+            aria-label="Télécharger cette fiche au format Word"
+            title="Télécharger cette fiche au format Word"
+          />
+          <button
+            type="button"
+            className="bouton-action fr-icon-close-line"
+            onClick={() => setDetailsCible(null)}
+            aria-label="Fermer le panneau de détails"
+            title="Fermer le panneau"
+          />
+        </div>
       </header>
 
       {exportFiche.erreur && (
@@ -178,6 +190,7 @@ export default function DetailsPanel() {
               historique={data.historique}
               population={bulleAssociee?.population_x}
               millesimeCourant={millesime}
+              cursus={cursus}
             />
             <CardIndicateur
               indicateurName={variableY}
@@ -186,6 +199,7 @@ export default function DetailsPanel() {
               historique={data.historique}
               population={bulleAssociee?.population_y}
               millesimeCourant={millesime}
+              cursus={cursus}
             />
           </section>
 
@@ -194,10 +208,12 @@ export default function DetailsPanel() {
             historique={data.historique}
             indicateursDesAxes={[variableX, variableY]}
             millesimeCourant={millesime}
+            cursus={cursus}
           />
 
-          <p className="source-attribution">{LIBELLE_SOURCE}</p>
-          <p className="mention-diffusion">{MENTION_DIFFUSION}</p>
+          <p className="source-attribution">
+            {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
+          </p>
         </>
       )}
     </aside>
@@ -223,6 +239,7 @@ function CardIndicateur({
   historique,
   population,
   millesimeCourant,
+  cursus,
 }) {
   const ligneCourante = trouverLigneCourante(donneesCourantes, indicateurName, dateInser);
   const libelle = formatLibelleIndicateur(indicateurName, dateInser);
@@ -238,7 +255,9 @@ function CardIndicateur({
 
   return (
     <div className="indicateur-card">
-      <p className="libelle-indicateur">{libelle}</p>
+      <p className="libelle-indicateur">
+        <IndicateurTooltip libelle={libelle} cursus={cursus} mode="inline" />
+      </p>
       <ValeurCourante ligne={ligneCourante} population={population} />
 
       <fieldset className="fr-segmented fr-segmented--sm card-vue-toggle">
@@ -319,6 +338,7 @@ function SectionAutresIndicateurs({
   historique,
   indicateursDesAxes,
   millesimeCourant,
+  cursus,
 }) {
   const { reussite, insertion, simples } = decouperGroupes(
     donneesCourantes, historique, indicateursDesAxes
@@ -378,7 +398,12 @@ function SectionAutresIndicateurs({
         <table className="table-autres-indicateurs">
           <tbody>
             {lignesSimples.map((r) => (
-              <LigneSimple key={r.indicateur} ligne={r} historique={historique} />
+              <LigneSimple
+                key={r.indicateur}
+                ligne={r}
+                historique={historique}
+                cursus={cursus}
+              />
             ))}
           </tbody>
         </table>
@@ -401,11 +426,13 @@ function SectionAutresIndicateurs({
   );
 }
 
-function LigneSimple({ ligne, historique }) {
+function LigneSimple({ ligne, historique, cursus }) {
   const serie = extraireSerie(historique, ligne.indicateur, '');
   return (
     <tr>
-      <td className="cellule-libelle">{ligne.indicateur}</td>
+      <td className="cellule-libelle">
+        <IndicateurTooltip libelle={ligne.indicateur} cursus={cursus} mode="inline" />
+      </td>
       <td className="cellule-taux">
         {ligne.taux !== null && ligne.taux !== undefined ? (
           formatPourcent(ligne.taux)

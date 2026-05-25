@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import IndicateurTooltip from './IndicateurTooltip.jsx';
 
 // Vue alternative au quadrant SVG : présente les mêmes données sous
 // forme de tableaux regroupés par cadran (haut-droite / haut-gauche /
@@ -177,8 +178,12 @@ export default function QuadrantTable() {
               <thead>
                 <tr>
                   <th scope="col">{entiteHeader}</th>
-                  <th scope="col">{libelleX}</th>
-                  <th scope="col">{libelleY}</th>
+                  <th scope="col">
+                    <IndicateurTooltip libelle={libelleX} cursus={cursus} mode="inline" />
+                  </th>
+                  <th scope="col">
+                    <IndicateurTooltip libelle={libelleY} cursus={cursus} mode="inline" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -227,8 +232,12 @@ export default function QuadrantTable() {
                 <thead>
                   <tr>
                     <th scope="col">Mention</th>
-                    <th scope="col">{libelleX}</th>
-                    <th scope="col">{libelleY}</th>
+                    <th scope="col">
+                      <IndicateurTooltip libelle={libelleX} cursus={cursus} mode="inline" />
+                    </th>
+                    <th scope="col">
+                      <IndicateurTooltip libelle={libelleY} cursus={cursus} mode="inline" />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -246,8 +255,9 @@ export default function QuadrantTable() {
         </section>
       )}
 
-      <p className="source-attribution">{LIBELLE_SOURCE}</p>
-      <p className="mention-diffusion">{MENTION_DIFFUSION}</p>
+      <p className="source-attribution">
+        {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
+      </p>
     </div>
   );
 }

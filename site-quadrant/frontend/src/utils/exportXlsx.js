@@ -12,8 +12,12 @@
 // regroupements de cadrans DOIVENT rester alignés avec ceux de
 // QuadrantTable.jsx (constantes LIBELLES_CADRANS + SEMANTIQUE).
 
-import { NOM_SOURCE, MENTION_DIFFUSION } from './constants.js';
+import { LIBELLE_SOURCE, NOM_SOURCE, MENTION_DIFFUSION } from './constants.js';
 import { construireNomFichier } from './exportPng.js';
+import {
+  METHODOLOGIE_GENERALE,
+  METHODOLOGIE_CURSUS,
+} from '../data/methodologie.js';
 
 const ORDRE_CADRANS = ['haut_droite', 'haut_gauche', 'bas_droite', 'bas_gauche'];
 
@@ -90,6 +94,7 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   // XLSX ne doit pas casser à cause d'un problème d'image.
   await remplirFeuilleGraphique(workbook, wrapperEl);
   remplirFeuilleMetadonnees(workbook, contexte);
+  remplirFeuilleMethodologie(workbook);
   remplirFeuilleMeta(workbook, contexte);
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -213,6 +218,17 @@ function remplirFeuilleDonnees(workbook, params) {
       for (const m of mentionsNonRepresentees) ajouterLigneMentionNonRep(ws, m);
     }
   }
+
+  // Pied de feuille : source + diffusion fusionnés, sur les 5 colonnes,
+  // italique gris aligné à droite. Aligné sur l'attribution écran et
+  // sur le footer Word (un seul libellé combiné). Une ligne vide juste
+  // au-dessus pour aérer.
+  ws.addRow([]);
+  const piedRow = ws.addRow([`${LIBELLE_SOURCE} · ${MENTION_DIFFUSION}`]);
+  ws.mergeCells(`A${piedRow.number}:E${piedRow.number}`);
+  const piedCell = ws.getCell(`A${piedRow.number}`);
+  piedCell.font = { italic: true, color: { argb: 'FF666666' }, size: 10 };
+  piedCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
   // Fige la double ligne d'entête pour faciliter la lecture des longs tableaux.
   ws.views = [{ state: 'frozen', ySplit: 2 }];
@@ -401,7 +417,6 @@ async function remplirFeuilleGraphique(workbook, wrapperEl) {
         if (cl.contains('quadrant-zoom-controls')) return false;
         if (cl.contains('quadrant-tooltip'))       return false;
         if (cl.contains('source-attribution'))     return false;
-        if (cl.contains('mention-diffusion'))      return false;
         return true;
       },
     });
@@ -517,6 +532,99 @@ function estValeurAbsente(valeur) {
   const s = String(valeur).trim();
   if (s === '') return true;
   return s === 'Aucun' || s === 'Tous' || s === 'Non applicable';
+}
+
+// ---------------------------------------------------------------------
+// Feuille « Méthodologie » : texte de référence (général + tous cursus).
+// Volontairement avant la feuille cachée « Méta » dans l'ordre des
+// onglets, pour que l'utilisateur la voie dès l'ouverture.
+// Colonne unique large, wrap actif, titres en bleu Marianne.
+// ---------------------------------------------------------------------
+function remplirFeuilleMethodologie(workbook) {
+  const ws = workbook.addWorksheet('Méthodologie');
+  ws.columns = [{ width: 100 }];
+
+  let row = 1;
+
+  // Titre.
+  const titreCell = ws.getCell(`A${row}`);
+  titreCell.value = 'Méthodologie';
+  titreCell.font = { bold: true, size: 14, color: { argb: 'FF000091' } };
+  row += 2;
+
+  // Section générale.
+  const sousTitreCell = ws.getCell(`A${row}`);
+  sousTitreCell.value = 'Présentation générale';
+  sousTitreCell.font = { bold: true, size: 12 };
+  row++;
+
+  for (const para of METHODOLOGIE_GENERALE.split('\n\n')) {
+    const cell = ws.getCell(`A${row}`);
+    cell.value = para;
+    cell.alignment = { wrapText: true, vertical: 'top' };
+    ws.getRow(row).height = estimerHauteurParagraphe(para);
+    row += 2;
+  }
+
+  // Une section par cursus couvert par METHODOLOGIE_CURSUS.
+  for (const [code, bloc] of Object.entries(METHODOLOGIE_CURSUS)) {
+    void code; // libellé visuel utilisé, code conservé pour traçabilité.
+    const cellBloc = ws.getCell(`A${row}`);
+    cellBloc.value = bloc.libelle;
+    cellBloc.font = { bold: true, size: 12, color: { argb: 'FF000091' } };
+    row += 2;
+
+    // Champ.
+    const cellChamp = ws.getCell(`A${row}`);
+    cellChamp.value = bloc.champ;
+    cellChamp.alignment = { wrapText: true, vertical: 'top' };
+    ws.getRow(row).height = estimerHauteurParagraphe(bloc.champ);
+    row += 2;
+
+    for (const ind of bloc.indicateurs) {
+      const cellTitre = ws.getCell(`A${row}`);
+      cellTitre.value = ind.libelle;
+      cellTitre.font = { bold: true };
+      row++;
+
+      const cellDef = ws.getCell(`A${row}`);
+      cellDef.value = ind.definition;
+      cellDef.alignment = { wrapText: true, vertical: 'top' };
+      ws.getRow(row).height = estimerHauteurParagraphe(ind.definition);
+      row += 2;
+    }
+
+    const cellTitreChampIns = ws.getCell(`A${row}`);
+    cellTitreChampIns.value = `Champ de l'insertion professionnelle`;
+    cellTitreChampIns.font = { bold: true };
+    row++;
+    const cellChampIns = ws.getCell(`A${row}`);
+    cellChampIns.value = bloc.champ_insertion;
+    cellChampIns.alignment = { wrapText: true, vertical: 'top' };
+    ws.getRow(row).height = estimerHauteurParagraphe(bloc.champ_insertion);
+    row += 2;
+
+    const cellTitreIns = ws.getCell(`A${row}`);
+    cellTitreIns.value = bloc.insertion.libelle;
+    cellTitreIns.font = { bold: true };
+    row++;
+    const cellIns = ws.getCell(`A${row}`);
+    cellIns.value = bloc.insertion.definition;
+    cellIns.alignment = { wrapText: true, vertical: 'top' };
+    ws.getRow(row).height = estimerHauteurParagraphe(bloc.insertion.definition);
+    row += 3;
+  }
+}
+
+// Heuristique de hauteur de ligne pour wrap d'un long paragraphe en
+// colonne de ~100 caractères. Excel n'auto-fit pas la hauteur quand on
+// pose le wrap programmatiquement — on estime grossièrement pour rester
+// lisible sans tronquer.
+function estimerHauteurParagraphe(texte) {
+  if (!texte) return 15;
+  const charsParLigne = 100;
+  const lignes = Math.max(1, Math.ceil(texte.length / charsParLigne));
+  return Math.min(300, lignes * 15);
 }
 
 // ---------------------------------------------------------------------

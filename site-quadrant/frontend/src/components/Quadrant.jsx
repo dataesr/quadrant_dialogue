@@ -419,8 +419,9 @@ export default function Quadrant() {
         </div>
       )}
 
-      <p className="source-attribution">{LIBELLE_SOURCE}</p>
-      <p className="mention-diffusion">{MENTION_DIFFUSION}</p>
+      <p className="source-attribution">
+        {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
+      </p>
     </div>
   );
 }

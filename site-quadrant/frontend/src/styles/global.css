@@ -276,24 +276,13 @@
   margin-bottom: 0;
 }
 
-/* Mention de la source de données, affichée en pied de chaque
-   visualisation (quadrant SVG ET vue tableau). Sobre — c'est une
-   attribution officielle, pas un élément interactif. La phase 6
-   (exports PNG/Excel) reprendra cette mention dans le pied de page
-   généré ; pour l'instant, attribution à l'écran uniquement. */
+/* Mention combinée source + diffusion restreinte, affichée en pied
+   de chaque visualisation (quadrant SVG ET vue tableau). Une seule
+   ligne pour éviter l'effet « deux pieds empilés ». Sobre — c'est
+   une attribution officielle, pas un élément interactif. Les exports
+   PNG / XLSX / Word reprennent ce libellé fusionné dans leur pied. */
 .source-attribution {
   margin-top: 1rem;
-  font-size: 0.85rem;
-  color: #666;
-  font-style: italic;
-  text-align: right;
-}
-
-/* Mention de diffusion restreinte, posée juste sous la source.
-   Visible à l'écran ET dans les captures PNG (non masquée par
-   body.exporting, cf. bloc « Styles d'export PNG » plus bas). */
-.mention-diffusion {
-  margin-top: 0.25rem;
   font-size: 0.85rem;
   color: #666;
   font-style: italic;
@@ -402,10 +391,25 @@
   font-size: 0.9rem;
 }
 
+/* En-tête du panneau de détails : zone titre flexible à gauche,
+   pile d'actions (export Word + fermeture) à droite. Flexbox plutôt
+   qu'un positionnement absolu — les icônes restent alignées
+   verticalement avec le titre, sans réserve de place codée en dur. */
 .panneau-details header {
-  position: relative;
-  padding-right: 58px;     /* place pour la croix + bouton export */
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin-bottom: 1rem;
+}
+.panneau-details header .titre-zone {
+  flex: 1;
+  min-width: 0;
+}
+.panneau-details header .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 .panneau-details h2 {
   font-size: 1.05rem;
@@ -425,44 +429,39 @@
   font-size: 0.85rem;
   margin: 0;
 }
-.panneau-details .bouton-fermer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  border: none;
-  background: transparent;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  color: #555;
-  padding: 0 4px;
-}
-.panneau-details .bouton-fermer:hover {
-  color: #000091;
-}
 
-/* Bouton de téléchargement de la fiche Word, posé à gauche de la
-   croix de fermeture. Icône DSFR seule, hover discret pour ne pas
-   concurrencer visuellement le titre. */
-.panneau-details .bouton-export-fiche {
-  position: absolute;
-  top: 0;
-  right: 26px;
-  border: none;
+/* Boutons d'action de l'entête (téléchargement Word + fermeture).
+   Carrés 2rem, fond transparent, hover et focus DSFR Marianne pour
+   rester homogène avec le reste de l'app. Le bouton désactivé garde
+   sa taille mais perd contraste + curseur. */
+.panneau-details header .actions .bouton-action {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
+  border: none;
   cursor: pointer;
+  border-radius: 4px;
   color: #555;
-  padding: 0 4px;
-  line-height: 1;
+  transition: background-color 0.15s, color 0.15s;
+  padding: 0;
 }
-.panneau-details .bouton-export-fiche:hover {
+.panneau-details header .actions .bouton-action:hover {
+  background-color: rgba(0, 0, 145, 0.08);
   color: #000091;
 }
-.panneau-details .bouton-export-fiche:disabled {
+.panneau-details header .actions .bouton-action:focus-visible {
+  outline: 2px solid #000091;
+  outline-offset: 2px;
+}
+.panneau-details header .actions .bouton-action:disabled {
   color: #bbb;
   cursor: not-allowed;
+  background: transparent;
 }
-.panneau-details .bouton-export-fiche .fr-icon-download-line::before {
+.panneau-details header .actions .bouton-action::before {
   --icon-size: 1rem;
 }
 
@@ -620,6 +619,171 @@
    Voir le bloc tableau plus haut. */
 
 /* ----------------------------------------------------------------------
+ * Modale Méthodologie
+ * ----------------------------------------------------------------------
+ * Overlay full-iframe + boîte centrée. On évite le composant DSFR
+ * fr-modal qui s'attache au DOM par JS et joue mal avec le montage
+ * React conditionnel. Focus initial via JS sur le bouton de fermeture,
+ * Échap géré dans le composant.
+ * -------------------------------------------------------------------- */
+.modale-methodologie-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 30, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modale-methodologie {
+  background: white;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.modale-methodologie header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f6f6f6;
+}
+.modale-methodologie header h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.15rem;
+  color: #000091;
+}
+.modale-methodologie header .bouton-fermer {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #555;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.modale-methodologie header .bouton-fermer::before {
+  --icon-size: 1rem;
+}
+.modale-methodologie header .bouton-fermer:hover {
+  background-color: rgba(0, 0, 145, 0.08);
+  color: #000091;
+}
+.modale-methodologie header .bouton-fermer:focus-visible {
+  outline: 2px solid #000091;
+  outline-offset: 2px;
+}
+.modale-methodologie-contenu {
+  overflow-y: auto;
+  padding: 1rem 1.25rem 1.5rem;
+}
+.modale-methodologie-contenu section {
+  margin-bottom: 1.5rem;
+}
+.modale-methodologie-contenu section:last-child {
+  margin-bottom: 0;
+}
+.modale-methodologie-contenu h3 {
+  font-size: 1rem;
+  color: #000091;
+  margin: 1rem 0 0.5rem;
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 0.25rem;
+}
+.modale-methodologie-contenu h4 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0.75rem 0 0.25rem;
+}
+.modale-methodologie-contenu p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+  color: #333;
+}
+
+/* Bouton « Méthodologie » dans le panneau de filtres latéral. Tertiaire
+   discret pour ne pas concurrencer l'export en pied de panneau. */
+.bouton-methodologie {
+  align-self: flex-start;
+}
+
+/* ----------------------------------------------------------------------
+ * IndicateurTooltip — définition méthodologique au survol/clic
+ * ----------------------------------------------------------------------
+ * Wrapper inline-flex avec icône d'info DSFR à droite du libellé.
+ * Tooltip absolu posé sous l'icône, max 360px de large, ombre douce.
+ * -------------------------------------------------------------------- */
+.indicateur-avec-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  vertical-align: middle;
+}
+.indicateur-avec-tooltip .bouton-info {
+  background: transparent;
+  border: none;
+  cursor: help;
+  color: #666;
+  padding: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  line-height: 1;
+}
+.indicateur-avec-tooltip .bouton-info::before {
+  --icon-size: 1rem;
+}
+.indicateur-avec-tooltip .bouton-info:hover,
+.indicateur-avec-tooltip .bouton-info:focus-visible {
+  color: #000091;
+  outline: none;
+}
+.indicateur-avec-tooltip .bouton-info:focus-visible {
+  box-shadow: 0 0 0 2px rgba(0, 0, 145, 0.25);
+}
+.indicateur-avec-tooltip .tooltip-definition {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  display: block;
+  max-width: 360px;
+  min-width: 240px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #333;
+  font-weight: normal;
+  font-style: normal;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-top: 2px;
+}
+
+/* ----------------------------------------------------------------------
  * Styles d'export PNG (phase 6)
  * ----------------------------------------------------------------------
  * Pendant la capture html-to-image, on pose `body.exporting` qui masque
@@ -634,6 +798,10 @@ body.exporting .panneau-details,
 body.exporting .source-attribution {
   display: none !important;
 }
+/* La .source-attribution écran porte désormais aussi la mention de
+   diffusion (libellés fusionnés). Pour l'export PNG, c'est
+   .export-pied qui prend le relais et inclut les deux libellés sur
+   sa ligne de gauche. */
 
 /* Bandeau d'export inséré à la volée au-dessus du quadrant (titre étab,
    contexte, axes, filtres actifs). Style sobre, typographie cohérente

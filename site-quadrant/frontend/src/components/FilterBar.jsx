@@ -20,6 +20,7 @@ import DateInserSelect from './selectors/DateInserSelect.jsx';
 export default function FilterBar() {
   const {
     etabContexte,
+    cursus,
     referentiels,
     variableX, variableY,
     dateInserX, dateInserY,
@@ -93,6 +94,7 @@ export default function FilterBar() {
         onChange={handleChangeX}
         disabled={disabled}
         loading={variablesLoading}
+        cursus={cursus}
       />
       {declinableX && (
         <DateInserSelect
@@ -111,6 +113,7 @@ export default function FilterBar() {
         onChange={setVariableY}
         disabled={disabled}
         loading={variablesLoading}
+        cursus={cursus}
       />
       {declinableY && (
         <DateInserSelect

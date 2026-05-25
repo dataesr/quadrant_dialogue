@@ -1,12 +1,23 @@
 // Export Word (.docx) d'une fiche issue du panneau de détails.
 //
 // Architecture : éléments natifs Word (Paragraph, Heading, Table,
-// Footer) pour le texte ET les structures ; html-to-image n'est
-// utilisé QUE pour capturer les SVG des graphiques (mini-graphes
-// d'évolution, multi-courbes, sparklines). Le résultat est un
-// document Word « propre » : texte sélectionnable, structure
+// Header, Footer) pour le texte ET les structures ; html-to-image
+// n'est utilisé QUE pour capturer les SVG des graphiques (mini-
+// graphes d'évolution, multi-courbes, sparklines). Le résultat est
+// un document Word « propre » : texte sélectionnable, structure
 // navigable dans le volet de plan, graphiques isolés sans boutons
 // UI ni légendes parasites.
+//
+// Mise en page :
+//   - Format A4 portrait, marges 2 cm sur les 4 côtés.
+//   - En-tête de page « Fiche <libellé> · Millésime <année> »
+//     (italique gris, aligné à droite, sur chaque page).
+//   - Pied de page : source + date + diffusion fusionnés sur une
+//     première ligne, « Page X sur Y » sur une seconde.
+//   - Titres H1/H2/H3 en bleu Marianne (#000091, gras).
+//   - Bordure inférieure fine sous chaque H2 (séparateur de section).
+//   - Tableaux : lignes alternées blanc / gris très clair, bordures
+//     #E5E5E5 pour rester compatible avec le striping.
 //
 // Structure produite :
 //   [H1]   Libellé de la bulle (mention ou établissement)
@@ -25,7 +36,14 @@
 //       [image] Multi-courbe SVG isolé
 //     Pour les indicateurs simples :
 //       [Table 3 colonnes] Indicateur / Taux / Sparkline image
-//   [Footer]  Source · Date  /  Mention de diffusion (italique gris)
+//   [PageBreak]
+//   [H2]   Méthodologie
+//     Texte général + section dédiée au cursus courant.
+//
+// Traçabilité silencieuse : `customProperties` du Document expose
+// contexte_id, tokens éventuels, date ISO et identifiants de la
+// fiche. Rien n'est visible dans le corps du document — uniquement
+// dans Fichier > Informations > Propriétés > Avancées.
 //
 // Captures isolées : on cible les `.graphe-zone` (div interne aux
 // composants de graphique), ce qui exclut le titre HTML (`.graphe-titre`)
@@ -33,11 +51,32 @@
 // préservé en lisant ses dimensions après capture.
 
 import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE } from './constants.js';
+import {
+  METHODOLOGIE_GENERALE,
+  METHODOLOGIE_CURSUS,
+} from '../data/methodologie.js';
 
 // Largeur cible (en pixels Word) pour chaque type d'image.
 const LARGEUR_MINI_GRAPHE  = 480;
 const LARGEUR_MULTI_GRAPHE = 560;
 const LARGEUR_SPARKLINE    = 100;
+
+// Bleu Marianne — couleur titre H1/H2/H3 et accents.
+const COULEUR_MARIANNE = '000091';
+// Gris discret pour le texte secondaire (sous-titre, footer, etc.).
+const COULEUR_GRIS     = '666666';
+// Bordure des séparateurs H2 et tableaux (assez clair pour ne pas
+// concurrencer le zebra striping des lignes).
+const COULEUR_BORDURE  = 'E5E5E5';
+// Fond gris très clair pour les lignes paires des tableaux.
+const FILL_ZEBRA       = 'F8F8F8';
+
+// Format A4 portrait — dimensions en twips (1 cm = 567 twips).
+const PAGE_A4 = {
+  width:  11906, // 210 mm
+  height: 16838, // 297 mm
+  marginCm: 2,
+};
 
 export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   if (!ficheData)  throw new Error('exportFicheDocx: ficheData manquant.');
@@ -54,19 +93,18 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   const {
     Document, Packer, Paragraph, HeadingLevel,
     TextRun, ImageRun, AlignmentType,
-    Table, TableRow, TableCell, WidthType, BorderStyle, Footer,
+    Table, TableRow, TableCell, WidthType, BorderStyle,
+    Header, Footer, PageNumber, PageBreak, PageOrientation, ShadingType,
   } = docx;
 
   // -------------------- Données dérivées --------------------
   const titre   = titreFiche(ficheData);
   const sousT   = sousTitreFiche(ficheData);
   const dateFR  = formatDateHumaine(new Date());
+  const cursusValue   = contexte?.cursus    || '';
+  const millesimeStr  = String(contexte?.millesime ?? '');
 
   // -------------------- Capture des graphiques --------------------
-  // Cards X/Y : on lit les valeurs depuis le DOM rendu (déjà mis en
-  // forme à l'écran) puis on capture la graphe-zone. Cela évite de
-  // re-formatter et garde une fidélité parfaite avec ce que voit
-  // l'utilisateur au moment de l'export.
   const cardsEls = panneauEl.querySelectorAll(
     '.section-indicateurs-principaux .indicateur-card'
   );
@@ -80,9 +118,6 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     cards.push({ libelle, valeur, detail, image });
   }
 
-  // Multi-courbes du bloc « Évolution historique » : direct enfants
-  // .graphe-indicateur de la section. Ordre DOM = Réussite (si
-  // affichable) puis chaque Insertion.
   const sectionAutresEl = panneauEl.querySelector('.section-autres-indicateurs');
   const multiCourbes = [];
   if (sectionAutresEl) {
@@ -95,8 +130,6 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
     }
   }
 
-  // Indicateurs simples : 1 ligne par tr du tableau historique. On
-  // capture chaque sparkline SVG individuellement.
   const lignesSimples = [];
   if (sectionAutresEl) {
     const trs = sectionAutresEl.querySelectorAll('.table-autres-indicateurs tr');
@@ -113,38 +146,37 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   const children = [];
 
   // Titre et sous-titre.
-  children.push(new Paragraph({
-    heading: HeadingLevel.HEADING_1,
-    children: [new TextRun({ text: titre })],
+  children.push(headingParagraph(HeadingLevel.HEADING_1, titre, {
+    Paragraph, TextRun,
   }));
   if (sousT) {
     children.push(new Paragraph({
       spacing: { after: 240 },
-      children: [new TextRun({ text: sousT, italics: true, color: '666666' })],
+      children: [new TextRun({ text: sousT, italics: true, color: COULEUR_GRIS })],
     }));
   }
 
   // Contexte (table 2 colonnes).
-  children.push(new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    children: [new TextRun({ text: 'Contexte' })],
+  children.push(headingParagraph(HeadingLevel.HEADING_2, 'Contexte', {
+    Paragraph, TextRun, BorderStyle,
   }));
   children.push(construireTableContexte({
-    Table, TableRow, TableCell, Paragraph, TextRun, WidthType, BorderStyle,
+    Table, TableRow, TableCell, Paragraph, TextRun, WidthType, BorderStyle, ShadingType,
     ficheData, contexte,
   }));
 
   // Indicateurs du quadrant.
-  children.push(new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 240 },
-    children: [new TextRun({ text: 'Indicateurs du quadrant' })],
-  }));
+  children.push(headingParagraph(
+    HeadingLevel.HEADING_2,
+    'Indicateurs du quadrant',
+    { Paragraph, TextRun, BorderStyle, spacingBefore: 240 },
+  ));
   for (const card of cards) {
-    children.push(new Paragraph({
-      heading: HeadingLevel.HEADING_3,
-      children: [new TextRun({ text: card.libelle || 'Indicateur' })],
-    }));
+    children.push(headingParagraph(
+      HeadingLevel.HEADING_3,
+      card.libelle || 'Indicateur',
+      { Paragraph, TextRun },
+    ));
     if (card.valeur) {
       children.push(new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -156,7 +188,7 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
         alignment: AlignmentType.CENTER,
         spacing: { after: 120 },
         children: [new TextRun({
-          text: card.detail, italics: true, color: '666666', size: 18,
+          text: card.detail, italics: true, color: COULEUR_GRIS, size: 18,
         })],
       }));
     }
@@ -168,11 +200,11 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   }
 
   // Évolution historique.
-  children.push(new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 240 },
-    children: [new TextRun({ text: 'Évolution historique des indicateurs' })],
-  }));
+  children.push(headingParagraph(
+    HeadingLevel.HEADING_2,
+    'Évolution historique des indicateurs',
+    { Paragraph, TextRun, BorderStyle, spacingBefore: 240 },
+  ));
 
   if (multiCourbes.length === 0 && lignesSimples.length === 0) {
     children.push(new Paragraph({
@@ -185,9 +217,8 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
 
   for (const g of multiCourbes) {
     if (g.titre) {
-      children.push(new Paragraph({
-        heading: HeadingLevel.HEADING_3,
-        children: [new TextRun({ text: g.titre })],
+      children.push(headingParagraph(HeadingLevel.HEADING_3, g.titre, {
+        Paragraph, TextRun,
       }));
     }
     if (g.image) {
@@ -198,47 +229,110 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   }
 
   if (lignesSimples.length > 0) {
-    children.push(new Paragraph({
-      heading: HeadingLevel.HEADING_3,
-      children: [new TextRun({ text: 'Indicateurs simples' })],
+    children.push(headingParagraph(HeadingLevel.HEADING_3, 'Indicateurs simples', {
+      Paragraph, TextRun,
     }));
     children.push(construireTableSimples({
       Table, TableRow, TableCell, Paragraph, TextRun,
-      ImageRun, AlignmentType, WidthType, BorderStyle,
+      ImageRun, AlignmentType, WidthType, BorderStyle, ShadingType,
       lignesSimples,
     }));
   }
 
+  // Annexe Méthodologie (saut de page + section générale + bloc cursus
+  // courant). Pas de bloc « tous cursus » — le contexte du document est
+  // un seul cursus, on évite la surcharge.
+  ajouterAnnexeMethodologie(children, cursusValue, {
+    Paragraph, TextRun, HeadingLevel, BorderStyle, PageBreak,
+  });
+
+  // -------------------- En-tête de page --------------------
+  const header = new Header({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [
+          new TextRun({
+            text: `Fiche ${titre}${millesimeStr ? ` · Millésime ${millesimeStr}` : ''}`,
+            italics: true,
+            color: COULEUR_GRIS,
+            size: 16,
+          }),
+        ],
+      }),
+    ],
+  });
+
   // -------------------- Pied de page --------------------
+  // Ligne 1 : source · date · diffusion (fusionnés, aligné sur les
+  // autres pieds — écran, PNG, XLSX).
+  // Ligne 2 : « Page X sur Y » centré.
   const footer = new Footer({
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun({
-            text: LIBELLE_SOURCE,
-            italics: true, color: '666666', size: 16,
-          }),
-          new TextRun({
-            text: '   ·   Exporté le ' + dateFR,
-            italics: true, color: '666666', size: 16,
-          }),
+          new TextRun({ text: LIBELLE_SOURCE, italics: true, color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ text: ' · ', color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ text: `Exporté le ${dateFR}`, italics: true, color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ text: ' · ', color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ text: MENTION_DIFFUSION, italics: true, color: COULEUR_GRIS, size: 16 }),
         ],
       }),
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [new TextRun({
-          text: MENTION_DIFFUSION,
-          italics: true, color: '666666', size: 16,
-        })],
+        children: [
+          new TextRun({ text: 'Page ', color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ children: [PageNumber.CURRENT], color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ text: ' sur ', color: COULEUR_GRIS, size: 16 }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], color: COULEUR_GRIS, size: 16 }),
+        ],
       }),
     ],
   });
 
+  // -------------------- Traçabilité (Custom Properties) --------------------
+  // Invisible dans le corps. Visible dans Fichier > Informations >
+  // Propriétés > Avancées. La liste est filtrée pour ne garder que
+  // les valeurs non vides — éviter les clés à valeur '' qui polluent
+  // l'inspection du fichier.
+  const customProperties = [
+    { name: 'contexte_id',       value: contexte?.tokens?.contexteId },
+    { name: 'token_connexion',   value: contexte?.tokens?.tokenConnexion },
+    { name: 'token_utilisateur', value: contexte?.tokens?.tokenUtilisateur },
+    { name: 'date_export_iso',   value: new Date().toISOString() },
+    { name: 'vue',               value: contexte?.vue },
+    { name: 'cursus',            value: cursusValue },
+    { name: 'millesime',         value: millesimeStr },
+    { name: 'type_fiche',        value: ficheData?.type },
+    { name: 'libelle',           value: titre },
+  ]
+    .filter((p) => p.value != null && String(p.value).length > 0)
+    .map((p) => ({ name: p.name, value: String(p.value) }));
+
   const doc = new Document({
-    creator: NOM_SOURCE,
-    description: `Fiche ${ficheData.type || ''} — ${titre}`,
+    creator:      NOM_SOURCE,
+    title:        `Fiche ${ficheData?.type === 'mention' ? 'mention' : 'établissement'} - ${titre}`,
+    description:  `Export Quadrant - ${titre} - ${cursusValue} - millésime ${millesimeStr}`,
+    lastModifiedBy: 'Application Quadrant',
+    customProperties,
     sections: [{
+      properties: {
+        page: {
+          size: {
+            width:  PAGE_A4.width,
+            height: PAGE_A4.height,
+            orientation: PageOrientation.PORTRAIT,
+          },
+          margin: {
+            top:    cmToTwips(PAGE_A4.marginCm),
+            right:  cmToTwips(PAGE_A4.marginCm),
+            bottom: cmToTwips(PAGE_A4.marginCm),
+            left:   cmToTwips(PAGE_A4.marginCm),
+          },
+        },
+      },
+      headers: { default: header },
       footers: { default: footer },
       children,
     }],
@@ -252,55 +346,91 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
 // Helpers de structure docx
 // =====================================================================
 
+// Crée un paragraphe heading avec la couleur Marianne et, pour H2,
+// une bordure inférieure fine qui sert de séparateur visuel.
+//
+// `opts.spacingBefore` (twips) : espace au-dessus du heading.
+function headingParagraph(level, texte, deps) {
+  const { Paragraph, TextRun, BorderStyle, spacingBefore } = deps;
+  const paragraphOpts = {
+    heading: level,
+    children: [new TextRun({ text: texte, color: COULEUR_MARIANNE, bold: true })],
+  };
+  if (spacingBefore) paragraphOpts.spacing = { before: spacingBefore };
+
+  // Bordure sous chaque H2 — séparateur fin gris.
+  // BorderStyle est requis (undefined sinon en cas d'oubli côté
+  // appelant).
+  if (level === 'Heading2' && BorderStyle) {
+    paragraphOpts.border = {
+      bottom: {
+        color: 'CCCCCC',
+        space: 4,
+        style: BorderStyle.SINGLE,
+        size: 6,
+      },
+    };
+  }
+  return new Paragraph(paragraphOpts);
+}
+
 function construireTableContexte(deps) {
   const {
-    Table, TableRow, TableCell, Paragraph, TextRun, WidthType, BorderStyle,
+    Table, TableRow, TableCell, Paragraph, TextRun, WidthType, BorderStyle, ShadingType,
     ficheData, contexte,
   } = deps;
 
-  const rows = [];
-  ajouterRow(rows, 'Établissement de référence', contexte?.etabInfo?.libelle || '—');
-  // Région + Typologie : pertinents principalement en vue Positionnement
-  // (la bulle est un établissement). On les conserve aussi en vue
-  // Mentions par symétrie informationnelle — c'est l'étab de référence.
+  const lignes = [];
+
+  if (ficheData?.type === 'mention') {
+    lignes.push(['Type', 'Mention']);
+  } else if (ficheData?.type === 'etablissement') {
+    lignes.push(['Type', 'Établissement']);
+  }
+
+  lignes.push(['Établissement de référence', contexte?.etabInfo?.libelle || '—']);
+
   const region = contexte?.etabInfo?.region?.libelle
     || contexte?.etabInfo?.region?.code;
-  if (region)                       ajouterRow(rows, 'Région',     region);
-  if (contexte?.etabInfo?.typologie) ajouterRow(rows, 'Typologie', contexte.etabInfo.typologie);
-  ajouterRow(rows, 'Cursus',    contexte?.cursus || '—');
-  ajouterRow(rows, 'Millésime', String(contexte?.millesime || '—'));
+  if (region) lignes.push(['Région', region]);
+  if (contexte?.etabInfo?.typologie) lignes.push(['Typologie', contexte.etabInfo.typologie]);
 
-  // ficheData type pour exposer le type d'entité (mention / étab) en
-  // tête de tableau — utile quand le doc est consulté isolément.
-  if (ficheData?.type === 'mention') {
-    rows.unshift(rowBrut('Type', 'Mention', deps));
-  } else if (ficheData?.type === 'etablissement') {
-    rows.unshift(rowBrut('Type', 'Établissement', deps));
-  }
+  lignes.push(['Cursus',    contexte?.cursus    || '—']);
+  lignes.push(['Millésime', String(contexte?.millesime || '—')]);
+
+  const rows = lignes.map((paire, idx) => ligneTableZebra(paire[0], paire[1], idx, {
+    TableRow, TableCell, Paragraph, TextRun, WidthType, ShadingType,
+  }));
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: borduresTableContexte(BorderStyle),
+    borders: borduresTable(BorderStyle),
     rows,
   });
-
-  function ajouterRow(rowsArr, label, valeur) {
-    rowsArr.push(rowBrut(label, valeur, deps));
-  }
 }
 
-function rowBrut(label, valeur, deps) {
-  const { TableRow, TableCell, Paragraph, TextRun, WidthType } = deps;
+// Ligne de tableau avec ombrage alterné (zebra striping). `idx` est
+// l'index dans la liste des lignes de données — pas dans le tableau
+// final (l'en-tête est géré séparément si applicable).
+function ligneTableZebra(label, valeur, idx, deps) {
+  const { TableRow, TableCell, Paragraph, TextRun, WidthType, ShadingType } = deps;
+  const shading = {
+    fill: idx % 2 === 0 ? 'FFFFFF' : FILL_ZEBRA,
+    type: ShadingType.CLEAR,
+    color: 'auto',
+  };
   return new TableRow({
     children: [
       new TableCell({
         width: { size: 35, type: WidthType.PERCENTAGE },
+        shading,
         children: [new Paragraph({
           children: [new TextRun({ text: label, bold: true })],
         })],
       }),
       new TableCell({
         width: { size: 65, type: WidthType.PERCENTAGE },
+        shading,
         children: [new Paragraph({
           children: [new TextRun({ text: valeur })],
         })],
@@ -309,8 +439,8 @@ function rowBrut(label, valeur, deps) {
   });
 }
 
-function borduresTableContexte(BorderStyle) {
-  const fine = { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC' };
+function borduresTable(BorderStyle) {
+  const fine = { style: BorderStyle.SINGLE, size: 4, color: COULEUR_BORDURE };
   return {
     top: fine, bottom: fine, left: fine, right: fine,
     insideHorizontal: fine, insideVertical: fine,
@@ -320,14 +450,20 @@ function borduresTableContexte(BorderStyle) {
 function construireTableSimples(deps) {
   const {
     Table, TableRow, TableCell, Paragraph, TextRun,
-    ImageRun, AlignmentType, WidthType, BorderStyle,
+    ImageRun, AlignmentType, WidthType, BorderStyle, ShadingType,
     lignesSimples,
   } = deps;
 
-  // En-tête.
+  // En-tête : fond gris léger, gras.
+  const enteteShading = {
+    fill: 'F0F0F0',
+    type: ShadingType.CLEAR,
+    color: 'auto',
+  };
   const headerCells = ['Indicateur', 'Taux', 'Évolution'].map((t, i) =>
     new TableCell({
       width: { size: [60, 15, 25][i], type: WidthType.PERCENTAGE },
+      shading: enteteShading,
       children: [new Paragraph({
         children: [new TextRun({ text: t, bold: true })],
       })],
@@ -336,21 +472,29 @@ function construireTableSimples(deps) {
 
   const rows = [new TableRow({ tableHeader: true, children: headerCells })];
 
-  for (const l of lignesSimples) {
+  lignesSimples.forEach((l, idx) => {
+    const shading = {
+      fill: idx % 2 === 0 ? 'FFFFFF' : FILL_ZEBRA,
+      type: ShadingType.CLEAR,
+      color: 'auto',
+    };
     rows.push(new TableRow({
       children: [
         new TableCell({
+          shading,
           children: [new Paragraph({
             children: [new TextRun({ text: l.libelle || '' })],
           })],
         }),
         new TableCell({
+          shading,
           children: [new Paragraph({
             alignment: AlignmentType.RIGHT,
             children: [new TextRun({ text: l.taux || '—' })],
           })],
         }),
         new TableCell({
+          shading,
           children: [
             l.sparkline
               ? paragrapheImage(l.sparkline, LARGEUR_SPARKLINE, {
@@ -363,18 +507,17 @@ function construireTableSimples(deps) {
         }),
       ],
     }));
-  }
+  });
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: borduresTableContexte(BorderStyle),
+    borders: borduresTable(BorderStyle),
     rows,
   });
 }
 
 function paragrapheImage(image, largeurCible, deps) {
   const { Paragraph, ImageRun, AlignmentType } = deps;
-  // Préserve le ratio natif : largeur cible imposée, hauteur déduite.
   const ratio = image.height && image.width
     ? image.height / image.width
     : 0.5;
@@ -390,6 +533,75 @@ function paragrapheImage(image, largeurCible, deps) {
       }),
     ],
   });
+}
+
+// =====================================================================
+// Annexe Méthodologie
+// =====================================================================
+//
+// Saut de page → présentation générale (paragraphes) → section du
+// cursus courant uniquement (champ + indicateurs + insertion). Si le
+// cursus n'est pas couvert par METHODOLOGIE_CURSUS (cas hypothétique
+// BUT), on n'ajoute que la partie générale.
+function ajouterAnnexeMethodologie(children, cursusValue, deps) {
+  const { Paragraph, TextRun, HeadingLevel, BorderStyle, PageBreak } = deps;
+
+  // Saut de page pour isoler la méthodologie.
+  children.push(new Paragraph({ children: [new PageBreak()] }));
+
+  children.push(headingParagraph(HeadingLevel.HEADING_2, 'Méthodologie', {
+    Paragraph, TextRun, BorderStyle,
+  }));
+
+  // Présentation générale — un paragraphe par double saut de ligne.
+  for (const para of METHODOLOGIE_GENERALE.split('\n\n')) {
+    children.push(new Paragraph({
+      spacing: { after: 120 },
+      children: [new TextRun({ text: para })],
+    }));
+  }
+
+  const blocCursus = METHODOLOGIE_CURSUS[cursusValue];
+  if (!blocCursus) return;
+
+  children.push(headingParagraph(HeadingLevel.HEADING_3, blocCursus.libelle, {
+    Paragraph, TextRun,
+  }));
+  for (const para of blocCursus.champ.split('\n')) {
+    if (!para) continue;
+    children.push(new Paragraph({
+      spacing: { after: 120 },
+      children: [new TextRun({ text: para })],
+    }));
+  }
+
+  for (const ind of blocCursus.indicateurs) {
+    children.push(headingParagraph(HeadingLevel.HEADING_3, ind.libelle, {
+      Paragraph, TextRun,
+    }));
+    children.push(new Paragraph({
+      spacing: { after: 120 },
+      children: [new TextRun({ text: ind.definition })],
+    }));
+  }
+
+  children.push(headingParagraph(
+    HeadingLevel.HEADING_3,
+    `Champ de l'insertion professionnelle`,
+    { Paragraph, TextRun },
+  ));
+  children.push(new Paragraph({
+    spacing: { after: 120 },
+    children: [new TextRun({ text: blocCursus.champ_insertion })],
+  }));
+
+  children.push(headingParagraph(HeadingLevel.HEADING_3, blocCursus.insertion.libelle, {
+    Paragraph, TextRun,
+  }));
+  children.push(new Paragraph({
+    spacing: { after: 120 },
+    children: [new TextRun({ text: blocCursus.insertion.definition })],
+  }));
 }
 
 // =====================================================================
@@ -422,8 +634,12 @@ async function capturerImage(el, toPng) {
 }
 
 // =====================================================================
-// Helpers de libellés (alignés sur DetailsPanel.jsx)
+// Conversion + libellés
 // =====================================================================
+function cmToTwips(cm) {
+  return Math.round(cm * 567);
+}
+
 function titreFiche(ficheData) {
   const id = ficheData?.identite || {};
   if (ficheData?.type === 'mention') return id.libelle || id.diplom || '';
