@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { useQuadrantDetails } from '../hooks/useQuadrantDetails.js';
@@ -13,6 +13,7 @@ import {
   seriesInsertion,
 } from './details/historique.js';
 import { LIBELLE_SOURCE } from '../utils/constants.js';
+import { exportFicheDocx } from '../utils/exportDocx.js';
 
 // Panneau de détails d'une bulle.
 //
@@ -50,10 +51,16 @@ export default function DetailsPanel() {
     variableX, variableY,
     dateInserX, dateInserY,
     etabContexte,
+    etabInfo,
     mention,
     domaine, discipline, secteur, typeMaster,
     representativite, ligneReference,
   } = useApp();
+
+  // Ref vers <aside> pour permettre à l'export Word de cibler le
+  // panneau (capture des sous-éléments via html-to-image).
+  const panneauRef = useRef(null);
+  const [exportFiche, setExportFiche] = useState({ running: false, erreur: null });
 
   const details = useQuadrantDetails({
     vue,
@@ -92,13 +99,49 @@ export default function DetailsPanel() {
   const data = details.data;
   const identite = data?.identite;
 
+  // Pré-conditions pour l'export Word : le panneau doit être chargé,
+  // au moins une donnée courante, et un ref DOM cible disponible.
+  const ficheExportable =
+    !!data && !!identite && !details.loading && !details.error;
+
+  async function handleExportFiche() {
+    if (!ficheExportable || !panneauRef.current) return;
+    setExportFiche({ running: true, erreur: null });
+    try {
+      await exportFicheDocx({
+        ficheData: data,
+        contexte: {
+          etabInfo,
+          cursus, vue, millesime,
+          variableX, variableY, dateInserX, dateInserY,
+        },
+        panneauEl: panneauRef.current,
+      });
+      setExportFiche({ running: false, erreur: null });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Export fiche Word :', err);
+      setExportFiche({ running: false, erreur: err?.message || 'Échec de l\'export.' });
+    }
+  }
+
   return (
-    <aside className="panneau-details">
+    <aside className="panneau-details" ref={panneauRef}>
       <header>
         <h2>{titreBulle(identite, data?.type)}</h2>
         {identite && (
           <p className="identite-secondaire">{sousTitreBulle(identite, data?.type)}</p>
         )}
+        <button
+          type="button"
+          className="bouton-export-fiche"
+          onClick={handleExportFiche}
+          disabled={!ficheExportable || exportFiche.running}
+          aria-label="Télécharger cette fiche au format Word"
+          title="Télécharger cette fiche au format Word"
+        >
+          <span className="fr-icon-download-line" aria-hidden="true" />
+        </button>
         <button
           type="button"
           className="bouton-fermer"
@@ -108,6 +151,12 @@ export default function DetailsPanel() {
           ×
         </button>
       </header>
+
+      {exportFiche.erreur && (
+        <div className="fr-alert fr-alert--error fr-alert--sm" role="alert">
+          <p>Export Word : {exportFiche.erreur}</p>
+        </div>
+      )}
 
       {details.loading && <p className="info">Chargement…</p>}
       {details.error && (

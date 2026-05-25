@@ -75,7 +75,22 @@ function AppShell() {
             >
               {etabContexte ? (
                 <>
-                  {affichage === 'graphique' ? <Quadrant /> : <QuadrantTable />}
+                  {affichage === 'graphique' ? (
+                    <Quadrant />
+                  ) : (
+                    <>
+                      {/* En mode tableau, on garde le quadrant SVG
+                          monté hors écran : il alimente la capture
+                          d'image insérée dans la feuille « Graphique »
+                          du XLSX. Coût : un fetch /quadrant
+                          supplémentaire (même payload que celui de
+                          QuadrantTable, mais isolé par instance). */}
+                      <div className="quadrant-offscreen" aria-hidden="true">
+                        <Quadrant />
+                      </div>
+                      <QuadrantTable />
+                    </>
+                  )}
                   <DetailsPanel />
                 </>
               ) : (

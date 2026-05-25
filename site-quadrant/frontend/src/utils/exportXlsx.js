@@ -60,7 +60,7 @@ const BORDER_THIN = {
   right:  { style: 'thin', color: { argb: BORDER_COLOR } },
 };
 
-export async function exportQuadrantXlsx({ data, contexte }) {
+export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
   if (!data) throw new Error('exportQuadrantXlsx: data manquant.');
 
   const ExcelJS = (await import('exceljs')).default;
@@ -84,8 +84,13 @@ export async function exportQuadrantXlsx({ data, contexte }) {
     populationY,
     contexte,
   });
+  // Feuille « Graphique » — capture de l'image du quadrant. Tolérante
+  // à l'échec : si la capture échoue (wrapper absent, html-to-image
+  // rejette…) on garde les autres feuilles et on continue. L'export
+  // XLSX ne doit pas casser à cause d'un problème d'image.
+  await remplirFeuilleGraphique(workbook, wrapperEl);
   remplirFeuilleMetadonnees(workbook, contexte);
-  remplirFeuilleTracabilite(workbook, contexte);
+  remplirFeuilleMeta(workbook, contexte);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -355,6 +360,55 @@ function styliserEntete(cell) {
 }
 
 // ---------------------------------------------------------------------
+// Feuille « Graphique » : image PNG du quadrant captée depuis le DOM.
+// En mode tableau le wrapper est rendu hors écran (cf. App.jsx +
+// `.quadrant-offscreen` dans global.css) ; en mode graphique il est
+// directement visible. html-to-image opère sur l'élément peu importe.
+//
+// Image insérée à l'origine de la feuille, dimensionnée pour rester
+// lisible sans débordement : 960×680 px (ratio ≈ celui du quadrant).
+// Si la capture échoue (lib absente, wrapper manquant, contenu non
+// stylé), on log et on continue — l'absence d'image ne doit pas casser
+// l'export tabulaire qui reste le contenu principal.
+// ---------------------------------------------------------------------
+async function remplirFeuilleGraphique(workbook, wrapperEl) {
+  if (!wrapperEl) return;
+
+  let buffer;
+  try {
+    const { toPng } = await import('html-to-image');
+    const dataUrl = await toPng(wrapperEl, {
+      pixelRatio: 2,
+      backgroundColor: '#ffffff',
+      cacheBust: true,
+    });
+    // dataUrl est de la forme "data:image/png;base64,XXXX". On
+    // n'utilise pas fetch(dataUrl).blob() pour éviter une étape réseau
+    // (même locale) — décodage base64 direct.
+    const base64 = dataUrl.split(',', 2)[1];
+    const bin = atob(base64);
+    buffer = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buffer[i] = bin.charCodeAt(i);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('Capture du quadrant pour XLSX échouée :', err);
+    return;
+  }
+
+  const ws = workbook.addWorksheet('Graphique');
+  const imageId = workbook.addImage({
+    buffer,
+    extension: 'png',
+  });
+  // Placement TL = colonne 0 / ligne 0 ; extent en pixels pour une
+  // image autoportée (les colonnes Excel restent par défaut).
+  ws.addImage(imageId, {
+    tl: { col: 0, row: 0 },
+    ext: { width: 960, height: 680 },
+  });
+}
+
+// ---------------------------------------------------------------------
 // Feuille « Métadonnées » : clé-valeur en 2 colonnes.
 // La traçabilité (contexte_id, tokens…) est isolée dans une feuille
 // cachée — cf. remplirFeuilleTracabilite plus bas.
@@ -366,6 +420,11 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
   const vueLib = contexte?.vue === 'mentions' ? 'Mentions' : 'Positionnement';
   const filtres = contexte?.filtres || {};
 
+  // Toutes les valeurs « marqueurs d'absence » (Aucun / Tous /
+  // Non applicable / vide) sont omises de la feuille : un filtre
+  // disciplinaire vide n'apporte pas d'information à l'utilisateur,
+  // autant économiser la ligne pour ne garder que ce qui est
+  // signifiant.
   const lignes = [
     ['Titre',                  `Export quadrant — ${vueLib}`],
     ['Établissement réf.',     contexte?.etabInfo?.libelle || ''],
@@ -380,27 +439,43 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Représentativité',       filtres.representativite
                                  ? 'Représentatif uniquement (denom ≥ 20)'
                                  : 'Toutes (denom ≥ 5)'],
-    ['Filtres disciplinaires', formatFiltresDisciplinaires(filtres) || 'Aucun'],
-    ['Filtre Mention',         filtres.mention || 'Tous'],
-    ['Type de Master',         filtres.typeMaster || 'Non applicable'],
+    ['Filtres disciplinaires', formatFiltresDisciplinaires(filtres)],
+    ['Filtre Mention',         filtres.mention || ''],
+    ['Type de Master',         filtres.typeMaster || ''],
     ['Date d\'export',         formatDateTimeIso(new Date())],
     ['Source de données',      NOM_SOURCE],
   ];
 
-  for (const [k, v] of lignes) ajouterLigneMeta(ws, k, v);
+  for (const [k, v] of lignes) {
+    if (estValeurAbsente(v)) continue;
+    ajouterLigneMeta(ws, k, v);
+  }
+}
+
+// Une « valeur absente » est null/undefined, chaîne vide, ou un
+// libellé conventionnel d'absence (Aucun, Tous, Non applicable).
+// Évite de polluer la feuille avec des lignes informatives à zéro.
+function estValeurAbsente(valeur) {
+  if (valeur == null) return true;
+  const s = String(valeur).trim();
+  if (s === '') return true;
+  return s === 'Aucun' || s === 'Tous' || s === 'Non applicable';
 }
 
 // ---------------------------------------------------------------------
-// Feuille « Traçabilité » : masquée par défaut (réaffichable par
-// clic-droit sur les onglets > Afficher). Contient le contexte_id, les
-// tokens de session disponibles et la date d'export ISO 8601 — pour
-// permettre une enquête sur l'origine d'un fichier sans pour autant
-// imposer cette information à l'usage courant. Une seconde couche est
-// portée par les propriétés document Excel (workbook.creator,
+// Feuille « Méta » : masquée par défaut (réaffichable par clic-droit
+// sur les onglets > Afficher). Contient le contexte_id, les tokens de
+// session disponibles et la date d'export ISO 8601 — pour permettre
+// une enquête sur l'origine d'un fichier sans pour autant imposer
+// cette information à l'usage courant. Une seconde couche est portée
+// par les propriétés document Excel (workbook.creator,
 // workbook.description) qui restent invisibles à l'œil nu.
+//
+// Nom court et neutre choisi pour rester discret dans la liste
+// d'onglets une fois réaffichée.
 // ---------------------------------------------------------------------
-function remplirFeuilleTracabilite(workbook, contexte) {
-  const ws = workbook.addWorksheet('Traçabilité', { state: 'hidden' });
+function remplirFeuilleMeta(workbook, contexte) {
+  const ws = workbook.addWorksheet('Méta', { state: 'hidden' });
   ws.columns = [{ width: 28 }, { width: 70 }];
 
   const tokens = contexte?.tokens || {};

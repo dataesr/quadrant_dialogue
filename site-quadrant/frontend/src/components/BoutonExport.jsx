@@ -86,7 +86,11 @@ export default function BoutonExport() {
         if (!wrapperEl) throw new Error('Quadrant introuvable dans la page.');
         await exportQuadrantPng({ wrapperEl, contexte });
       } else {
-        await exportQuadrantXlsx({ data, contexte });
+        // En mode tableau le quadrant est rendu hors écran (cf.
+        // App.jsx > .quadrant-offscreen) — la capture pour la feuille
+        // « Graphique » du XLSX se fait sur ce wrapper offscreen.
+        const wrapperEl = document.querySelector('.quadrant-wrapper');
+        await exportQuadrantXlsx({ data, contexte, wrapperEl });
       }
     } catch (err) {
       // eslint-disable-next-line no-console

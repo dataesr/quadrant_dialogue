@@ -58,6 +58,22 @@
   width: 100%;
 }
 
+/* Quadrant rendu hors écran en mode tableau : sert exclusivement à
+   alimenter la capture d'image insérée dans la feuille « Graphique »
+   du XLSX (cf. exportXlsx.js). Position absolue pour ne pas
+   participer au flux, largeur fixe 1000 px pour que le SVG ait des
+   dimensions stables au moment de la capture (sans ça, un parent
+   sans largeur réelle aboutit à un SVG zéro-pixel).
+   `display: none` n'est PAS adapté : html-to-image ne capture pas
+   un élément non rendu. */
+.quadrant-offscreen {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 1000px;
+  pointer-events: none;
+}
+
 /* Cadre léger autour du SVG pour le détacher visuellement de la sidebar
    de filtres. Padding interne minimal pour ne pas étouffer les axes.
    position:relative pour ancrer le tooltip et les boutons de zoom en
@@ -377,7 +393,7 @@
 
 .panneau-details header {
   position: relative;
-  padding-right: 28px;     /* place pour la croix */
+  padding-right: 58px;     /* place pour la croix + bouton export */
   margin-bottom: 1rem;
 }
 .panneau-details h2 {
@@ -412,6 +428,31 @@
 }
 .panneau-details .bouton-fermer:hover {
   color: #000091;
+}
+
+/* Bouton de téléchargement de la fiche Word, posé à gauche de la
+   croix de fermeture. Icône DSFR seule, hover discret pour ne pas
+   concurrencer visuellement le titre. */
+.panneau-details .bouton-export-fiche {
+  position: absolute;
+  top: 0;
+  right: 26px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #555;
+  padding: 0 4px;
+  line-height: 1;
+}
+.panneau-details .bouton-export-fiche:hover {
+  color: #000091;
+}
+.panneau-details .bouton-export-fiche:disabled {
+  color: #bbb;
+  cursor: not-allowed;
+}
+.panneau-details .bouton-export-fiche .fr-icon-download-line::before {
+  --icon-size: 1rem;
 }
 
 .panneau-details .indicateur-card {
