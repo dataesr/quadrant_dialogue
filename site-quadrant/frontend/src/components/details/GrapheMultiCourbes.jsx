@@ -53,7 +53,7 @@ export default function GrapheMultiCourbes({
     const out = [];
     for (const v of variantes) {
       const points = parVariante.get(v.key) || [];
-      for (const p of points) if (p.taux !== null) out.push(p);
+      for (const p of points) if (typeof p.taux === 'number') out.push(p);
     }
     return out;
   }, [variantes, parVariante]);
@@ -63,7 +63,7 @@ export default function GrapheMultiCourbes({
     for (const v of variantes) {
       const points = parVariante.get(v.key) || [];
       for (const p of points) {
-        if (p.taux !== null || p.nonDiffusable || p.denominateur !== null) {
+        if (typeof p.taux === 'number' || p.nonDiffusable || typeof p.denominateur === 'number') {
           set.add(p.millesime);
         }
       }
@@ -191,7 +191,7 @@ function Courbe({
         />
       ))}
       {points.map((p) => {
-        if (p.taux !== null) {
+        if (typeof p.taux === 'number') {
           const cx = xScale(p.millesime);
           const cy = yScale(p.taux);
           const courant = String(p.millesime) === String(millesimeCourant);

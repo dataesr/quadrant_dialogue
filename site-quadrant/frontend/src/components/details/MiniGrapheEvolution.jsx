@@ -44,7 +44,7 @@ export default function MiniGrapheEvolution({
   // avant la fin des useMemo). Le gating est tranché ensuite.
   const domaine = useMemo(() => decouperDomaineSerie(serie), [serie]);
   const tauxValides = useMemo(
-    () => domaine.filter((p) => p.taux !== null).map((p) => p.taux),
+    () => domaine.filter((p) => typeof p.taux === 'number').map((p) => p.taux),
     [domaine]
   );
   const { yMin, yMax, ticks } = useMemo(
@@ -122,7 +122,7 @@ export default function MiniGrapheEvolution({
           {domaine.map((p) => {
             const cx = xScale(p.millesime);
             const courant = String(p.millesime) === String(millesimeCourant);
-            if (p.taux !== null) {
+            if (typeof p.taux === 'number') {
               const cy = yScale(p.taux);
               return (
                 <g key={p.millesime}>

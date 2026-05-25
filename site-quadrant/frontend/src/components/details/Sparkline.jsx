@@ -26,7 +26,7 @@ export default function Sparkline({ serie }) {
   // Échelle Y locale : entre le min et le max de la série pour bien
   // utiliser la hauteur (le sparkline n'a pas besoin de l'échelle
   // absolue 0-100 ; il porte une forme, pas un niveau).
-  const tauxNonNuls = domaine.map((p) => p.taux).filter((t) => t !== null);
+  const tauxNonNuls = domaine.map((p) => p.taux).filter((t) => typeof t === 'number');
   let yMin = Math.min(...tauxNonNuls);
   let yMax = Math.max(...tauxNonNuls);
   if (yMin === yMax) {
@@ -55,7 +55,7 @@ export default function Sparkline({ serie }) {
         />
       ))}
       {domaine.map((p) => {
-        if (p.taux !== null) {
+        if (typeof p.taux === 'number') {
           return (
             <circle key={p.millesime}
               cx={xScale(p.millesime)} cy={yScale(p.taux)} r={1.4}

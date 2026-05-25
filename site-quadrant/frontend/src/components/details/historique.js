@@ -21,6 +21,14 @@
 // Série mono-courbe (utilisée par MiniGrapheEvolution + Sparkline)
 // =============================================================================
 
+// Convertit en number ou null. Convention partagée par tous les
+// consommateurs (segmenter, rendu de points) : null/undefined ≠ valeur.
+// Une valeur de 0 reste une vraie valeur (effectif très faible, taux 0)
+// — ce n'est pas un marqueur de manquant.
+function asNumberOrNull(v) {
+  return typeof v === 'number' && !Number.isNaN(v) ? v : null;
+}
+
 export function extraireSerie(historique, indicateur, dateInser) {
   const out = [];
   for (const h of historique || []) {
@@ -36,11 +44,16 @@ export function extraireSerie(historique, indicateur, dateInser) {
       });
       continue;
     }
+    // Sanitization : tout ce qui n'est pas un Number devient null. Sans
+    // ça, un éventuel `undefined` côté JSON (ou un type inattendu) se
+    // propage et fait basculer des comparaisons « !== null » à true,
+    // ce qui pousse de faux points dans les segments et trace des
+    // lignes vers des coordonnées indéfinies.
     out.push({
       millesime:     Number(h.millesime),
-      taux:          row.taux,
-      numerateur:    row.numerateur,         // exposé pour MiniGrapheEffectifs
-      denominateur:  row.denominateur,
+      taux:          asNumberOrNull(row.taux),
+      numerateur:    asNumberOrNull(row.numerateur),
+      denominateur:  asNumberOrNull(row.denominateur),
       nonDiffusable: row.non_diffusable === true,
     });
   }
@@ -48,31 +61,36 @@ export function extraireSerie(historique, indicateur, dateInser) {
 }
 
 // Borne la série au premier et dernier millésime ayant au moins une
-// trace (diffusable, non-diffusable, ou même simplement denom != null).
-// Conserve les trous intermédiaires pour pouvoir interrompre la ligne
-// proprement entre deux années renseignées.
+// trace (denom numérique). Conserve les trous intermédiaires pour
+// pouvoir interrompre la ligne proprement entre deux années
+// renseignées.
+//
+// Convention « valeur présente » : typeof === 'number'. Un denom
+// undefined ou null est traité comme manquant (cohérent avec
+// segmenterPar et les checks de rendu).
 export function decouperDomaineSerie(serie) {
-  const debut = serie.findIndex((p) => p.denominateur !== null);
+  const debut = serie.findIndex((p) => typeof p.denominateur === 'number');
   if (debut === -1) return [];
   let fin = serie.length - 1;
-  while (fin >= 0 && serie[fin].denominateur === null) fin--;
+  while (fin >= 0 && typeof serie[fin].denominateur !== 'number') fin--;
   return serie.slice(debut, fin + 1);
 }
 
 export function nbPointsValides(serie) {
   let n = 0;
-  for (const p of serie) if (p.taux !== null) n++;
+  for (const p of serie) if (typeof p.taux === 'number') n++;
   return n;
 }
 
-// Tronçonne en segments aux points absents (taux null) — utilisé pour
-// dessiner des polylines séparées au lieu d'une ligne qui sauterait
-// les trous.
+// Tronçonne en segments aux points absents (taux non-numérique) —
+// utilisé pour dessiner des polylines séparées au lieu d'une ligne
+// qui sauterait les trous. Une valeur 0 est traitée comme un vrai
+// point (un taux peut légitimement être 0).
 export function segmenter(serie) {
   const segments = [];
   let courant = [];
   for (const p of serie) {
-    if (p.taux !== null) {
+    if (typeof p.taux === 'number') {
       courant.push(p);
     } else if (courant.length) {
       segments.push(courant);
