@@ -3,30 +3,40 @@ import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { useQuadrantDetails } from '../hooks/useQuadrantDetails.js';
 import MiniGrapheEvolution from './details/MiniGrapheEvolution.jsx';
-import ProfilInsertion from './details/ProfilInsertion.jsx';
+import GrapheMultiCourbes from './details/GrapheMultiCourbes.jsx';
 import Sparkline from './details/Sparkline.jsx';
 import {
   extraireSerie,
-  estIndicateurDeclinable,
-  extraireProfilInsertion,
+  decouperGroupes,
+  seriesReussite,
+  seriesInsertion,
 } from './details/historique.js';
 
-// Panneau de détails d'une bulle. S'ouvre quand `detailsCible` est non
-// null dans AppContext, se ferme via la croix, la touche Échap ou un
-// changement structurel de filtres (géré dans AppContext).
+// Panneau de détails d'une bulle.
 //
-// Trois sections :
-//   1. En-tête : libellé + identité secondaire + bouton de fermeture
-//   2. « Indicateurs du quadrant » : les 2 indicateurs X et Y du
-//      quadrant courant, en grand (taux + num/denom/population +
-//      mini-graphique d'évolution)
-//   3. « Autres indicateurs » : tableau condensé pour les autres
-//      tuples (indicateur, date_inser) du cursus, avec sparkline.
+// Structure :
+//   1. En-tête (libellé, identité secondaire, croix de fermeture)
+//   2. « Indicateurs du quadrant » : 2 cards X et Y avec MiniGrapheEvolution
+//      (1 courbe = la variante exacte choisie pour le quadrant). Pas
+//      de graphique multi-courbes dans les cards — la profondeur
+//      multi-variantes est dans la section « Autres ».
+//   3. « Autres indicateurs » découpée en trois sous-blocs ordonnés :
+//        a. Réussite (regroupement de tous les indicateurs « Taux de
+//           réussite en ... » → un seul GrapheMultiCourbes, une courbe
+//           par durée).
+//        b. Indicateurs simples (non-déclinables hors réussite et hors
+//           axes X/Y) → table compacte, 1 ligne par indicateur.
+//        c. Indicateurs d'insertion (déclinables hors réussite) → un
+//           GrapheMultiCourbes par indicateur, une courbe par délai
+//           (6/12/18/24/30 mois).
+//      Robustesse : si un groupe se retrouve avec 0 ou 1 indicateur
+//      (cas d'un retrait en BDD), on dégrade vers la table simple
+//      plutôt que de produire un graphique multi-courbes dégénéré.
 //
 // Asymétrie API : /quadrant/details ne renvoie pas population_x/y.
-// On les pioche dans les bulles de /quadrant (state useQuadrant) pour
-// les 2 indicateurs du quadrant courant. Pour les autres indicateurs,
-// pas d'année de population — juste le taux + sparkline.
+// On les pioche dans /quadrant (useQuadrant) — affichées uniquement
+// pour les axes X/Y dans la card. Les autres indicateurs n'affichent
+// pas la population.
 
 export default function DetailsPanel() {
   const {
@@ -43,7 +53,6 @@ export default function DetailsPanel() {
     representativite, ligneReference,
   } = useApp();
 
-  // Charge le détail. Le hook fait l'idle si la cible est null.
   const details = useQuadrantDetails({
     vue,
     formation: cursus,
@@ -53,11 +62,7 @@ export default function DetailsPanel() {
     mention: detailsCible?.mention || (vue === 'etablissements' ? mention : undefined),
   });
 
-  // On lit /quadrant en parallèle (état partagé via useQuadrant — pas
-  // de nouvelle requête si le composant Quadrant est déjà monté avec
-  // les mêmes paramètres ; useQuadrant ne fait pas de cache mais on
-  // bénéficie du même état de la page). Sert uniquement à récupérer
-  // population_x / population_y de la bulle ciblée.
+  // /quadrant en parallèle pour les population_x/y de la bulle ciblée.
   const quadrant = useQuadrant({
     cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
@@ -66,7 +71,6 @@ export default function DetailsPanel() {
     representativite, ligneReference,
   });
 
-  // Échap ferme.
   useEffect(() => {
     if (!detailsCible) return;
     function onKey(e) {
@@ -76,10 +80,6 @@ export default function DetailsPanel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [detailsCible, setDetailsCible]);
 
-  // Recherche de la bulle correspondante dans /quadrant pour récupérer
-  // population_x / population_y. Lookup tolérant : si la bulle n'est
-  // pas trouvée (ex. anonymisée — mais on ne devrait pas pouvoir
-  // ouvrir le panneau dans ce cas), on travaille sans population.
   const bulleAssociee = useMemo(() => {
     if (!detailsCible || !quadrant.data?.bulles) return null;
     return quadrant.data.bulles.find((b) => b.id === detailsCible.targetId) || null;
@@ -150,19 +150,10 @@ export default function DetailsPanel() {
   );
 }
 
-// -- Sous-composants internes au panneau -------------------------------
-
-// Card des indicateurs d'axe X/Y. Affiche :
-//  - le libellé de l'indicateur (avec délai si déclinable)
-//  - la valeur courante (taux + numérateur/denom/population, ou
-//    « Non diffusable » / « Pas de donnée »)
-//  - un graphique :
-//      - indicateur DÉCLINABLE → ProfilInsertion (axe X=délai,
-//        une courbe par millésime). Le libellé sert de titre au-dessus
-//        du SVG ; on cache le titre interne pour éviter le doublon.
-//      - indicateur NON déclinable → MiniGrapheEvolution (axe X=
-//        millésime, une courbe). Titre caché aussi (le libellé en
-//        haut suffit).
+// ---------------------------------------------------------------------
+// Card pour un axe X ou Y. Toujours une évolution mono-courbe — la
+// variante affichée est celle choisie dans le quadrant (date_inser).
+// ---------------------------------------------------------------------
 function CardIndicateur({
   indicateurName,
   dateInser,
@@ -172,28 +163,18 @@ function CardIndicateur({
   millesimeCourant,
 }) {
   const ligneCourante = trouverLigneCourante(donneesCourantes, indicateurName, dateInser);
-  const declinable = estIndicateurDeclinable(indicateurName, historique);
   const libelle = formatLibelleIndicateur(indicateurName, dateInser);
 
   return (
     <div className="indicateur-card">
       <p className="libelle-indicateur">{libelle}</p>
       <ValeurCourante ligne={ligneCourante} population={population} />
-      {declinable ? (
-        <ProfilInsertion
-          indicateurName={indicateurName}
-          profil={extraireProfilInsertion(indicateurName, historique)}
-          millesimeCourant={millesimeCourant}
-          showTitle={false}
-        />
-      ) : (
-        <MiniGrapheEvolution
-          serie={extraireSerie(historique, indicateurName, dateInser)}
-          millesimeCourant={millesimeCourant}
-          indicateurName={indicateurName}
-          showTitle={false}
-        />
-      )}
+      <MiniGrapheEvolution
+        serie={extraireSerie(historique, indicateurName, dateInser)}
+        millesimeCourant={millesimeCourant}
+        indicateurName={indicateurName}
+        showTitle={false}
+      />
     </div>
   );
 }
@@ -223,52 +204,43 @@ function ValeurCourante({ ligne, population }) {
   return null;
 }
 
+// ---------------------------------------------------------------------
 // Section « Autres indicateurs ».
-// - Les non-déclinables apparaissent dans une table compacte : libellé,
-//   taux courant, sparkline.
-// - Les déclinables apparaissent en-dessous, chacun avec un profil
-//   d'insertion complet (titre + SVG + légende des millésimes).
-// On exclut intégralement les indicateurs déjà présents en X/Y du
-// quadrant : pour les déclinables, l'exclusion porte sur le nom (un
-// indicateur déclinable couvre déjà ses 5 délais dans la card du
-// quadrant) ; pour les non-déclinables, sur le tuple (indicateur, '').
+// ---------------------------------------------------------------------
 function SectionAutresIndicateurs({
   donneesCourantes,
   historique,
   indicateursDesAxes,
   millesimeCourant,
 }) {
-  const axesSet = new Set(indicateursDesAxes.filter(Boolean));
+  const { reussite, insertion, simples } = decouperGroupes(
+    donneesCourantes, historique, indicateursDesAxes
+  );
 
-  // Regroupe par indicateur en gardant l'ordre canonique d'apparition
-  // dans donnees_courantes (qui suit dim_indicateur_cursus côté API).
-  const ordre = [];
-  const seen = new Set();
-  for (const r of donneesCourantes || []) {
-    if (!seen.has(r.indicateur)) {
-      seen.add(r.indicateur);
-      ordre.push(r.indicateur);
-    }
-  }
+  // Robustesse : si Réussite ne contient qu'UN indicateur (cas où une
+  // variante aurait été supprimée), on évite le graphique multi-
+  // courbes à 1 courbe et on traite cet indicateur comme une ligne
+  // simple. Idem pour Insertion à 1 délai effectif (mais la logique
+  // est portée par GrapheMultiCourbes → on garde le graphe si ≥ 2
+  // points valides au total, donc 1 courbe avec ≥ 2 millésimes
+  // affichera quand même).
+  const reussiteGraphAffichable = reussite.length >= 2;
+  const reussiteEnSimples = !reussiteGraphAffichable ? reussite : [];
 
+  // Lignes simples à rendre : les "simples" du décompte initial, plus
+  // un éventuel rabattement depuis Réussite.
   const lignesSimples = [];
-  const declinables   = [];
-
-  for (const nom of ordre) {
-    if (axesSet.has(nom)) continue; // déjà affiché plus haut
-    const declinable = estIndicateurDeclinable(nom, historique);
-    if (declinable) {
-      declinables.push(nom);
-    } else {
-      // Indicateur non déclinable : un seul tuple (nom, '').
-      const ligne = (donneesCourantes || []).find(
-        (r) => r.indicateur === nom && !r.date_inser
-      );
-      if (ligne) lignesSimples.push(ligne);
-    }
+  for (const nom of reussiteEnSimples.concat(simples)) {
+    const ligne = (donneesCourantes || []).find(
+      (r) => r.indicateur === nom && !r.date_inser
+    );
+    if (ligne) lignesSimples.push(ligne);
   }
 
-  if (lignesSimples.length === 0 && declinables.length === 0) {
+  const rienAAfficher =
+    !reussiteGraphAffichable && lignesSimples.length === 0 && insertion.length === 0;
+
+  if (rienAAfficher) {
     return (
       <section className="section-autres-indicateurs">
         <h3>Autres indicateurs</h3>
@@ -281,6 +253,20 @@ function SectionAutresIndicateurs({
     <section className="section-autres-indicateurs">
       <h3>Autres indicateurs</h3>
 
+      {reussiteGraphAffichable && (
+        (() => {
+          const { variantes, parVariante } = seriesReussite(reussite, historique);
+          return (
+            <GrapheMultiCourbes
+              titre="Réussite"
+              variantes={variantes}
+              parVariante={parVariante}
+              millesimeCourant={millesimeCourant}
+            />
+          );
+        })()
+      )}
+
       {lignesSimples.length > 0 && (
         <table className="table-autres-indicateurs">
           <tbody>
@@ -291,14 +277,19 @@ function SectionAutresIndicateurs({
         </table>
       )}
 
-      {declinables.map((nom) => (
-        <ProfilInsertion
-          key={nom}
-          indicateurName={nom}
-          profil={extraireProfilInsertion(nom, historique)}
-          millesimeCourant={millesimeCourant}
-        />
-      ))}
+      {insertion.map((nom) => {
+        const { variantes, parVariante } = seriesInsertion(nom, historique);
+        if (variantes.length === 0) return null;
+        return (
+          <GrapheMultiCourbes
+            key={nom}
+            titre={nom}
+            variantes={variantes}
+            parVariante={parVariante}
+            millesimeCourant={millesimeCourant}
+          />
+        );
+      })}
     </section>
   );
 }
@@ -324,8 +315,9 @@ function LigneSimple({ ligne, historique }) {
   );
 }
 
-// -- Helpers de formatage ----------------------------------------------
-
+// ---------------------------------------------------------------------
+// Helpers de formatage / lookup
+// ---------------------------------------------------------------------
 function titreBulle(identite, type) {
   if (!identite) return '';
   if (type === 'mention') return identite.libelle || identite.diplom || '';

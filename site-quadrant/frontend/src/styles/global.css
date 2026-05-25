@@ -482,7 +482,8 @@
 }
 
 /* Wrapper « graphe + titre + légende éventuelle ». Sert à la fois aux
-   évolutions temporelles et aux profils d'insertion. */
+   évolutions mono-courbe (MiniGrapheEvolution) et aux graphiques
+   multi-courbes (GrapheMultiCourbes). */
 .panneau-details .graphe-indicateur {
   margin-top: 0.5rem;
 }
@@ -493,8 +494,33 @@
   color: #333;
 }
 
-/* Légende horizontale des millésimes sous un profil d'insertion. */
-.panneau-details .legende-millesimes {
+/* Conteneur des SVG : position relative pour ancrer les tooltips. */
+.panneau-details .graphe-zone {
+  position: relative;
+}
+
+/* Tooltip au survol d'un point. Fond sombre, texte blanc, court ;
+   positionné via inline left/top calculés par le composant. Pas
+   d'interaction (pointer-events:none) pour ne pas perturber le survol
+   des points voisins. */
+.panneau-details .graphe-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.3;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* Légende horizontale des variantes sous un graphique multi-courbes.
+   Une entrée par courbe : puce colorée + libellé court (« 6 mois »,
+   « 2 ans », « 2 ou 3 ans »…). */
+.panneau-details .legende-variantes {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 0.7rem;
@@ -502,11 +528,7 @@
   color: #555;
   margin-top: 0.35rem;
 }
-.panneau-details .legende-millesimes .millesime-courant {
-  color: #0e0e60;
-  font-weight: 500;
-}
-.panneau-details .legende-millesimes .puce {
+.panneau-details .legende-variantes .puce {
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -515,13 +537,8 @@
   vertical-align: middle;
 }
 
-/* Espacement entre les profils d'insertion quand on en a plusieurs
-   à la suite dans la section « Autres indicateurs ». */
-.section-autres-indicateurs .graphe-indicateur + .graphe-indicateur {
-  margin-top: 1rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #f0f0f0;
-}
+/* Séparateurs entre graphiques consécutifs dans la section « Autres ». */
+.section-autres-indicateurs .graphe-indicateur + .graphe-indicateur,
 .section-autres-indicateurs .table-autres-indicateurs + .graphe-indicateur {
   margin-top: 1rem;
   padding-top: 0.5rem;

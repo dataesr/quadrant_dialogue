@@ -1,23 +1,25 @@
-// Utilitaires de manipulation de la série historique d'un indicateur.
+// Utilitaires pour le panneau de détails (phase 5).
 //
-// Entrée typique : un tableau d'objets { millesime, taux, denominateur,
-// non_diffusable? } construit à partir de la réponse /quadrant/details.
+// L'API /quadrant/details renvoie :
+//   - donnees_courantes : liste des tuples (indicateur, date_inser) du
+//     millésime courant — alignée sur dim_indicateur_cursus côté API.
+//   - historique : pour chaque millésime, la même liste de tuples.
 //
-// La logique métier :
-//  - un point « valide » a taux != null (qu'il soit diffusable ou non-
-//    diffusable ; non-diffusable a taux=null donc non valide pour le
-//    tracé — voir plus bas).
-//  - un point « absent » a denominateur === null && taux === null.
-//
-// Pour le tracé :
-//  - point plein  : taux != null
-//  - point creux  : non_diffusable === true ET denominateur >= 1
-//  - pas de point : taux === null ET non_diffusable !== true
-//
-// L'axe X s'adapte aux années de disponibilité de l'indicateur (du
-// premier millésime avec UNE donnée — diffusable, non-diffusable ou pas
-// de matière — au dernier), en gardant les années intermédiaires
-// (lignes interrompues si l'année manque entre deux points valides).
+// Ce module fournit :
+//   1. Extraction d'une série mono-courbe (indicateur, date_inser) →
+//      [{millesime, taux, denominateur, nonDiffusable}].
+//   2. Détection des indicateurs déclinables (≥1 date_inser non vide
+//      dans les données).
+//   3. Découpage en groupes pour la section « Autres » du panneau :
+//      Réussite (regroupé), Insertion (1 groupe par indicateur),
+//      Indicateurs simples (1 ligne chacun).
+//   4. Extraction d'une série multi-courbes (1 courbe par variante)
+//      pour les graphiques de groupe.
+//   5. Calcul d'une échelle Y adaptative + générateur de graduations.
+
+// =============================================================================
+// Série mono-courbe (utilisée par MiniGrapheEvolution + Sparkline)
+// =============================================================================
 
 export function extraireSerie(historique, indicateur, dateInser) {
   const out = [];
@@ -31,20 +33,18 @@ export function extraireSerie(historique, indicateur, dateInser) {
     }
     out.push({
       millesime:     Number(h.millesime),
-      taux:          row.taux,                  // null si non diff ou absent
-      denominateur:  row.denominateur,          // peut être null (pas de donnée)
+      taux:          row.taux,
+      denominateur:  row.denominateur,
       nonDiffusable: row.non_diffusable === true,
     });
   }
   return out.sort((a, b) => a.millesime - b.millesime);
 }
 
-// Renvoie la sous-série « significative » : du premier point qui n'est
-// pas « pas de donnée » au dernier, en gardant les trous intermédiaires.
-// Un point est « significatif » si denominateur !== null (qu'il soit ou
-// non diffusable) ; ainsi les années où l'indicateur n'existait pas
-// encore (insertion T+30 sur 2024) ou plus disparaissent en bord, mais
-// un trou entre deux années renseignées reste visible.
+// Borne la série au premier et dernier millésime ayant au moins une
+// trace (diffusable, non-diffusable, ou même simplement denom != null).
+// Conserve les trous intermédiaires pour pouvoir interrompre la ligne
+// proprement entre deux années renseignées.
 export function decouperDomaineSerie(serie) {
   const debut = serie.findIndex((p) => p.denominateur !== null);
   if (debut === -1) return [];
@@ -53,18 +53,15 @@ export function decouperDomaineSerie(serie) {
   return serie.slice(debut, fin + 1);
 }
 
-// Nombre de points « tracables » : taux non-null. C'est la base du
-// gating UI : on n'affiche pas de graphe si < 2 points valides.
 export function nbPointsValides(serie) {
   let n = 0;
   for (const p of serie) if (p.taux !== null) n++;
   return n;
 }
 
-// Groupe les points consécutifs avec taux != null pour tracer des
-// segments de ligne. Renvoie [[p1,p2,p3], [p5,p6]] pour une série avec
-// un trou à p4. Les points non-diffusables (taux=null mais
-// denom>=1) interrompent aussi la ligne.
+// Tronçonne en segments aux points absents (taux null) — utilisé pour
+// dessiner des polylines séparées au lieu d'une ligne qui sauterait
+// les trous.
 export function segmenter(serie) {
   const segments = [];
   let courant = [];
@@ -80,21 +77,12 @@ export function segmenter(serie) {
   return segments;
 }
 
-// ---------------------------------------------------------------------
-// Profil d'insertion (indicateurs déclinables par délai)
-// ---------------------------------------------------------------------
-//
-// Un indicateur « déclinable_delai » (Taux sortants en emploi salarié,
-// non salarié, stable) existe en 5 versions : date_inser = 6/12/18/
-// 24/30 mois. Plutôt que de tracer 5 évolutions temporelles
-// indépendantes, on les regroupe en UN graphique « profil d'insertion » :
-//   - axe X = délai (6 → 30 mois)
-//   - axe Y = taux
-//   - une courbe par millésime
-//
-// Les non-déclinables ont date_inser='' partout → on les détecte par
-// la présence/absence d'au moins un date_inser non vide.
+// =============================================================================
+// Détection des indicateurs déclinables
+// =============================================================================
 
+// Vrai si l'indicateur a au moins une donnée avec date_inser non vide
+// (= se décline par délai dans la base).
 export function estIndicateurDeclinable(indicateur, historique) {
   for (const h of historique || []) {
     for (const r of h.donnees || []) {
@@ -104,75 +92,196 @@ export function estIndicateurDeclinable(indicateur, historique) {
   return false;
 }
 
-// Ordre canonique des délais (en chaîne pour rester aligné avec l'API).
+// Vrai si le libellé d'indicateur appartient au groupe « Réussite »
+// (regroupement à la durée : « Taux de réussite en 2 ans », « ... en
+// 2 ou 3 ans », etc.). Règle métier figée dans le code car le préfixe
+// est canonique côté API.
+export function estIndicateurReussite(indicateur) {
+  return typeof indicateur === 'string' && indicateur.startsWith('Taux de réussite en ');
+}
+
+// Extrait la « variante » d'un indicateur Réussite à partir du libellé.
+// « Taux de réussite en 2 ou 3 ans » → « 2 ou 3 ans ».
+export function varianteReussite(indicateur) {
+  return indicateur.replace(/^Taux de réussite en\s+/, '');
+}
+
+// =============================================================================
+// Découpage en groupes (utilisé par la section « Autres indicateurs »)
+// =============================================================================
+//
+// Trois groupes mutuellement exclusifs, dans l'ordre de rendu :
+//   - reussite : Array<string> des noms d'indicateurs de réussite
+//                (à présenter en UN graphique multi-courbes si >= 2)
+//   - simples  : Array<string> des indicateurs non-déclinables et hors
+//                réussite (à présenter en lignes compactes)
+//   - insertion: Array<string> des indicateurs déclinables hors réussite
+//                (chacun → un graphique multi-courbes propre)
+//
+// Les indicateurs des axes X/Y du quadrant ne sont PAS exclus des
+// groupes Réussite et Insertion — le graphique de groupe doit
+// inclure TOUTES les variantes (y compris celle déjà affichée en
+// card X/Y), pour montrer l'indicateur du quadrant dans son contexte.
+// En revanche, les indicateurs SIMPLES qui sont en axe sont exclus,
+// car ils seraient affichés en doublon sans contexte additionnel.
+
+export function decouperGroupes(donneesCourantes, historique, indicateursAxes) {
+  const axesSet = new Set((indicateursAxes || []).filter(Boolean));
+
+  // Préserver l'ordre d'apparition dans donnees_courantes (= ordre
+  // canonique dim_indicateur_cursus côté API).
+  const ordre = [];
+  const seen = new Set();
+  for (const r of donneesCourantes || []) {
+    if (!seen.has(r.indicateur)) {
+      seen.add(r.indicateur);
+      ordre.push(r.indicateur);
+    }
+  }
+
+  const reussite = [];
+  const insertion = [];
+  const simples = [];
+
+  for (const nom of ordre) {
+    if (estIndicateurReussite(nom)) {
+      reussite.push(nom);
+    } else if (estIndicateurDeclinable(nom, historique)) {
+      insertion.push(nom);
+    } else if (!axesSet.has(nom)) {
+      simples.push(nom);
+    }
+  }
+
+  return { reussite, insertion, simples };
+}
+
+// =============================================================================
+// Série multi-courbes (utilisée par GrapheMultiCourbes)
+// =============================================================================
+//
+// Structure produite :
+//   { variantes: Array<{ key, libelle }>,
+//     parVariante: Map<key, Array<{millesime, taux, denominateur, nonDiffusable}>> }
+//
+// Pour le groupe Réussite : une variante par indicateur, libellé =
+// fragment de durée extrait du nom.
+// Pour un groupe Insertion : une variante par délai canonique
+// (6/12/18/24/30 mois), libellé = « N mois ».
+
 export const DELAIS_CANONIQUES = ['6', '12', '18', '24', '30'];
 
-// Retourne, pour un indicateur déclinable donné, une Map indexée par
-// millésime → tableau de points { delaiNum, taux, denominateur,
-// nonDiffusable } ordonnés par délai croissant. Les délais sans
-// donnée pour un millésime sont remplis avec { taux: null,
-// denominateur: null } pour préserver l'ordre.
-export function extraireProfilInsertion(indicateur, historique) {
-  const out = new Map();
+export function seriesReussite(reussiteIndicateurs, historique) {
+  const variantes = reussiteIndicateurs.map((nom) => ({
+    key: nom,
+    libelle: varianteReussite(nom),
+  }));
+  const parVariante = new Map();
+  for (const v of variantes) {
+    parVariante.set(v.key, extraireSerie(historique, v.key, ''));
+  }
+  return { variantes, parVariante };
+}
+
+export function seriesInsertion(indicateur, historique) {
+  // Filtre aux délais réellement présents dans les données — robuste
+  // si on retire une variante en BDD demain.
+  const presents = new Set();
   for (const h of historique || []) {
-    const millesime = Number(h.millesime);
-    const pointsParDelai = new Map();
     for (const r of h.donnees || []) {
-      if (r.indicateur !== indicateur) continue;
-      if (!r.date_inser) continue; // sécurité : ignore les tuples non déclinés
-      pointsParDelai.set(r.date_inser, {
-        delaiNum:      Number(r.date_inser),
-        taux:          r.taux,
-        denominateur:  r.denominateur,
-        nonDiffusable: r.non_diffusable === true,
-      });
-    }
-    // Reconstitution ordonnée + remplissage des absents (un millésime
-    // qui n'a pas d'entrée pour un délai donné).
-    const points = DELAIS_CANONIQUES.map((d) =>
-      pointsParDelai.get(d) || {
-        delaiNum: Number(d),
-        taux: null,
-        denominateur: null,
-        nonDiffusable: false,
+      if (r.indicateur === indicateur && r.date_inser) {
+        presents.add(r.date_inser);
       }
-    );
-    out.set(millesime, points);
-  }
-  return out;
-}
-
-// Liste ordonnée chronologiquement des millésimes ayant au moins UNE
-// entrée pour l'indicateur (point valide ou non-diff). Sert à dessiner
-// uniquement les courbes pertinentes et à construire la légende.
-export function millesimesAvecDonnees(profil) {
-  const result = [];
-  for (const [m, points] of profil.entries()) {
-    if (points.some((p) => p.taux !== null || p.nonDiffusable)) {
-      result.push(m);
     }
   }
-  return result.sort((a, b) => a - b);
+  const delais = DELAIS_CANONIQUES.filter((d) => presents.has(d));
+
+  const variantes = delais.map((d) => ({
+    key: d,
+    libelle: `${d} mois`,
+  }));
+  const parVariante = new Map();
+  for (const v of variantes) {
+    parVariante.set(v.key, extraireSerie(historique, indicateur, v.key));
+  }
+  return { variantes, parVariante };
 }
 
-// Palette pour le profil : millésime courant = bleu DSFR primaire,
-// autres = dégradé de gris (du plus clair pour le plus ancien au
-// plus foncé pour le plus récent, en sautant le courant). Discrimine
-// sans surcharger ; le courant reste mis en avant comme « ce que vous
-// regardez dans le quadrant ».
-export function couleursParMillesime(millesimes, millesimeCourant) {
-  const sorted = [...millesimes].sort((a, b) => a - b);
-  const courant = Number(millesimeCourant);
-  const result = new Map();
-  const autres = sorted.filter((m) => m !== courant);
-  const n = autres.length;
-  for (let i = 0; i < n; i++) {
-    const t = n === 1 ? 0.5 : i / (n - 1);
-    // Interpolation linéaire de #d0d0d0 (clair) à #4a4a4a (foncé).
-    const v = Math.round(208 + (74 - 208) * t);
-    const hex = v.toString(16).padStart(2, '0');
-    result.set(autres[i], `#${hex}${hex}${hex}`);
+// =============================================================================
+// Échelle Y adaptative + graduations
+// =============================================================================
+//
+// On ne fige plus l'axe Y à [0, 100] : on s'adapte aux valeurs
+// présentes pour gagner en lisibilité, avec des garde-fous :
+//   - jamais en dehors de [0, 100] (un taux ne peut pas)
+//   - amplitude minimale 15 points (un graphique tassé est illisible)
+//   - bornes arrondies à 5 pour des ticks lisibles
+//
+// Les ticks sont espacés selon l'amplitude :
+//   - <= 20 pts → tous les 5
+//   - <= 50 pts → tous les 10
+//   - sinon    → tous les 25
+
+export function calculerEchelleY(tauxValeurs) {
+  const valides = (tauxValeurs || []).filter((t) => typeof t === 'number');
+  if (valides.length === 0) {
+    return { yMin: 0, yMax: 100, ticks: [0, 25, 50, 75, 100] };
   }
-  if (sorted.includes(courant)) result.set(courant, '#0E0E60');
-  return result;
+  const min = Math.min(...valides);
+  const max = Math.max(...valides);
+  const range = max - min;
+  const marge = Math.max(range * 0.1, 5);
+
+  let yMin = Math.max(0, min - marge);
+  let yMax = Math.min(100, max + marge);
+
+  // Garantir une amplitude visuelle de 15 points (sinon le graphique
+  // semble plat même si les valeurs varient).
+  if (yMax - yMin < 15) {
+    const milieu = (yMax + yMin) / 2;
+    yMin = Math.max(0, milieu - 7.5);
+    yMax = Math.min(100, milieu + 7.5);
+    // Si on a buté sur une borne, on rééquilibre depuis l'autre côté.
+    if (yMax - yMin < 15) {
+      if (yMin === 0) yMax = Math.min(100, 15);
+      else if (yMax === 100) yMin = Math.max(0, 85);
+    }
+  }
+
+  yMin = Math.floor(yMin / 5) * 5;
+  yMax = Math.ceil(yMax / 5) * 5;
+
+  const amplitude = yMax - yMin;
+  let step;
+  if (amplitude <= 20)      step = 5;
+  else if (amplitude <= 50) step = 10;
+  else                      step = 25;
+
+  const ticks = [];
+  for (let t = yMin; t <= yMax + 0.001; t += step) {
+    ticks.push(Math.round(t));
+  }
+
+  return { yMin, yMax, ticks };
+}
+
+// =============================================================================
+// Palette catégorielle pour les courbes
+// =============================================================================
+//
+// Pour un graphique multi-courbes (Réussite ou Insertion), chaque
+// variante doit être discernable. Pas de dégradé — on veut
+// distinguer, pas ordonner. Palette de 5 couleurs DSFR-compatibles
+// (#0E0E60 est le bleu primaire) ; au-delà on cycle (cas peu probable
+// — au plus 5 délais d'insertion).
+const PALETTE_VARIANTES = [
+  '#0E0E60', // bleu DSFR
+  '#C44A4A', // rouge orangé
+  '#1F8E3E', // vert
+  '#B27A00', // ocre
+  '#5A5A5A', // gris foncé
+];
+
+export function couleurVariante(index) {
+  return PALETTE_VARIANTES[index % PALETTE_VARIANTES.length];
 }
