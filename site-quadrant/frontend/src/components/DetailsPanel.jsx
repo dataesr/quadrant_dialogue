@@ -3,8 +3,13 @@ import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { useQuadrantDetails } from '../hooks/useQuadrantDetails.js';
 import MiniGrapheEvolution from './details/MiniGrapheEvolution.jsx';
+import ProfilInsertion from './details/ProfilInsertion.jsx';
 import Sparkline from './details/Sparkline.jsx';
-import { extraireSerie } from './details/historique.js';
+import {
+  extraireSerie,
+  estIndicateurDeclinable,
+  extraireProfilInsertion,
+} from './details/historique.js';
 
 // Panneau de détails d'une bulle. S'ouvre quand `detailsCible` est non
 // null dans AppContext, se ferme via la croix, la touche Échap ou un
@@ -114,32 +119,29 @@ export default function DetailsPanel() {
           <section className="section-indicateurs-principaux">
             <h3>Indicateurs du quadrant</h3>
             <CardIndicateur
-              libelle={formatLibelleIndicateur(variableX, dateInserX)}
-              ligneCourante={trouverLigneCourante(data.donnees_courantes, variableX, dateInserX)}
+              indicateurName={variableX}
+              dateInser={dateInserX}
+              donneesCourantes={data.donnees_courantes}
+              historique={data.historique}
               population={bulleAssociee?.population_x}
-              serie={extraireSerie(data.historique, variableX, dateInserX)}
               millesimeCourant={millesime}
             />
             <CardIndicateur
-              libelle={formatLibelleIndicateur(variableY, dateInserY)}
-              ligneCourante={trouverLigneCourante(data.donnees_courantes, variableY, dateInserY)}
+              indicateurName={variableY}
+              dateInser={dateInserY}
+              donneesCourantes={data.donnees_courantes}
+              historique={data.historique}
               population={bulleAssociee?.population_y}
-              serie={extraireSerie(data.historique, variableY, dateInserY)}
               millesimeCourant={millesime}
             />
           </section>
 
-          <section className="section-autres-indicateurs">
-            <h3>Autres indicateurs</h3>
-            <TableAutres
-              donneesCourantes={data.donnees_courantes}
-              historique={data.historique}
-              exclus={[
-                { indicateur: variableX, date_inser: dateInserX || '' },
-                { indicateur: variableY, date_inser: dateInserY || '' },
-              ]}
-            />
-          </section>
+          <SectionAutresIndicateurs
+            donneesCourantes={data.donnees_courantes}
+            historique={data.historique}
+            indicateursDesAxes={[variableX, variableY]}
+            millesimeCourant={millesime}
+          />
 
           <p className="source-attribution">Source : MESRE - SIES</p>
         </>
@@ -150,77 +152,175 @@ export default function DetailsPanel() {
 
 // -- Sous-composants internes au panneau -------------------------------
 
-function CardIndicateur({ libelle, ligneCourante, population, serie, millesimeCourant }) {
-  const taux  = ligneCourante?.taux;
-  const num   = ligneCourante?.numerateur;
-  const denom = ligneCourante?.denominateur;
-  const nonDiff = ligneCourante?.non_diffusable === true;
+// Card des indicateurs d'axe X/Y. Affiche :
+//  - le libellé de l'indicateur (avec délai si déclinable)
+//  - la valeur courante (taux + numérateur/denom/population, ou
+//    « Non diffusable » / « Pas de donnée »)
+//  - un graphique :
+//      - indicateur DÉCLINABLE → ProfilInsertion (axe X=délai,
+//        une courbe par millésime). Le libellé sert de titre au-dessus
+//        du SVG ; on cache le titre interne pour éviter le doublon.
+//      - indicateur NON déclinable → MiniGrapheEvolution (axe X=
+//        millésime, une courbe). Titre caché aussi (le libellé en
+//        haut suffit).
+function CardIndicateur({
+  indicateurName,
+  dateInser,
+  donneesCourantes,
+  historique,
+  population,
+  millesimeCourant,
+}) {
+  const ligneCourante = trouverLigneCourante(donneesCourantes, indicateurName, dateInser);
+  const declinable = estIndicateurDeclinable(indicateurName, historique);
+  const libelle = formatLibelleIndicateur(indicateurName, dateInser);
 
   return (
     <div className="indicateur-card">
       <p className="libelle-indicateur">{libelle}</p>
-      {taux !== null && taux !== undefined ? (
-        <>
-          <p className="valeur-principale">
-            {formatPourcent(taux)}
-          </p>
-          <p className="detail-numerateur">
-            {num} sur {denom}
-            {population ? ` ${population}` : ''}
-          </p>
-        </>
-      ) : nonDiff ? (
-        <p className="valeur-principale valeur-non-diffusable">Non diffusable</p>
-      ) : denom == null ? (
-        <p className="valeur-principale valeur-non-diffusable">Pas de donnée</p>
-      ) : null}
-
-      <MiniGrapheEvolution serie={serie} millesimeCourant={millesimeCourant} />
+      <ValeurCourante ligne={ligneCourante} population={population} />
+      {declinable ? (
+        <ProfilInsertion
+          indicateurName={indicateurName}
+          profil={extraireProfilInsertion(indicateurName, historique)}
+          millesimeCourant={millesimeCourant}
+          showTitle={false}
+        />
+      ) : (
+        <MiniGrapheEvolution
+          serie={extraireSerie(historique, indicateurName, dateInser)}
+          millesimeCourant={millesimeCourant}
+          indicateurName={indicateurName}
+          showTitle={false}
+        />
+      )}
     </div>
   );
 }
 
-function TableAutres({ donneesCourantes, historique, exclus }) {
-  const lignes = (donneesCourantes || []).filter(
-    (r) => !exclus.some(
-      (e) => e.indicateur === r.indicateur && (e.date_inser || '') === (r.date_inser || '')
-    )
-  );
+function ValeurCourante({ ligne, population }) {
+  const taux = ligne?.taux;
+  const num   = ligne?.numerateur;
+  const denom = ligne?.denominateur;
+  const nonDiff = ligne?.non_diffusable === true;
 
-  if (!lignes.length) {
-    return <p className="info-vide">Aucun autre indicateur disponible.</p>;
+  if (taux !== null && taux !== undefined) {
+    return (
+      <>
+        <p className="valeur-principale">{formatPourcent(taux)}</p>
+        <p className="detail-numerateur">
+          {num} sur {denom}{population ? ` ${population}` : ''}
+        </p>
+      </>
+    );
+  }
+  if (nonDiff) {
+    return <p className="valeur-principale valeur-non-diffusable">Non diffusable</p>;
+  }
+  if (denom == null) {
+    return <p className="valeur-principale valeur-non-diffusable">Pas de donnée</p>;
+  }
+  return null;
+}
+
+// Section « Autres indicateurs ».
+// - Les non-déclinables apparaissent dans une table compacte : libellé,
+//   taux courant, sparkline.
+// - Les déclinables apparaissent en-dessous, chacun avec un profil
+//   d'insertion complet (titre + SVG + légende des millésimes).
+// On exclut intégralement les indicateurs déjà présents en X/Y du
+// quadrant : pour les déclinables, l'exclusion porte sur le nom (un
+// indicateur déclinable couvre déjà ses 5 délais dans la card du
+// quadrant) ; pour les non-déclinables, sur le tuple (indicateur, '').
+function SectionAutresIndicateurs({
+  donneesCourantes,
+  historique,
+  indicateursDesAxes,
+  millesimeCourant,
+}) {
+  const axesSet = new Set(indicateursDesAxes.filter(Boolean));
+
+  // Regroupe par indicateur en gardant l'ordre canonique d'apparition
+  // dans donnees_courantes (qui suit dim_indicateur_cursus côté API).
+  const ordre = [];
+  const seen = new Set();
+  for (const r of donneesCourantes || []) {
+    if (!seen.has(r.indicateur)) {
+      seen.add(r.indicateur);
+      ordre.push(r.indicateur);
+    }
+  }
+
+  const lignesSimples = [];
+  const declinables   = [];
+
+  for (const nom of ordre) {
+    if (axesSet.has(nom)) continue; // déjà affiché plus haut
+    const declinable = estIndicateurDeclinable(nom, historique);
+    if (declinable) {
+      declinables.push(nom);
+    } else {
+      // Indicateur non déclinable : un seul tuple (nom, '').
+      const ligne = (donneesCourantes || []).find(
+        (r) => r.indicateur === nom && !r.date_inser
+      );
+      if (ligne) lignesSimples.push(ligne);
+    }
+  }
+
+  if (lignesSimples.length === 0 && declinables.length === 0) {
+    return (
+      <section className="section-autres-indicateurs">
+        <h3>Autres indicateurs</h3>
+        <p className="info-vide">Aucun autre indicateur disponible.</p>
+      </section>
+    );
   }
 
   return (
-    <table className="table-autres-indicateurs">
-      <tbody>
-        {lignes.map((r) => {
-          const cle = `${r.indicateur}|${r.date_inser || ''}`;
-          const serie = extraireSerie(historique, r.indicateur, r.date_inser);
-          const libelle = r.date_inser
-            ? `${r.indicateur} (${r.date_inser} mois)`
-            : r.indicateur;
+    <section className="section-autres-indicateurs">
+      <h3>Autres indicateurs</h3>
 
-          return (
-            <tr key={cle}>
-              <td className="cellule-libelle">{libelle}</td>
-              <td className="cellule-taux">
-                {r.taux !== null && r.taux !== undefined ? (
-                  formatPourcent(r.taux)
-                ) : r.non_diffusable ? (
-                  <span className="non-diffusable">N/D</span>
-                ) : (
-                  <span className="absent">—</span>
-                )}
-              </td>
-              <td className="cellule-sparkline">
-                <Sparkline serie={serie} />
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+      {lignesSimples.length > 0 && (
+        <table className="table-autres-indicateurs">
+          <tbody>
+            {lignesSimples.map((r) => (
+              <LigneSimple key={r.indicateur} ligne={r} historique={historique} />
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {declinables.map((nom) => (
+        <ProfilInsertion
+          key={nom}
+          indicateurName={nom}
+          profil={extraireProfilInsertion(nom, historique)}
+          millesimeCourant={millesimeCourant}
+        />
+      ))}
+    </section>
+  );
+}
+
+function LigneSimple({ ligne, historique }) {
+  const serie = extraireSerie(historique, ligne.indicateur, '');
+  return (
+    <tr>
+      <td className="cellule-libelle">{ligne.indicateur}</td>
+      <td className="cellule-taux">
+        {ligne.taux !== null && ligne.taux !== undefined ? (
+          formatPourcent(ligne.taux)
+        ) : ligne.non_diffusable ? (
+          <span className="non-diffusable">N/D</span>
+        ) : (
+          <span className="absent">—</span>
+        )}
+      </td>
+      <td className="cellule-sparkline">
+        <Sparkline serie={serie} />
+      </td>
+    </tr>
   );
 }
 

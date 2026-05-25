@@ -32,7 +32,12 @@ const PLOT_H = H - M.top - M.bottom;
 const COULEUR_PRINCIPALE = '#0E0E60'; // bleu DSFR neutre
 const COULEUR_GRILLE     = '#cccccc';
 
-export default function MiniGrapheEvolution({ serie, millesimeCourant }) {
+export default function MiniGrapheEvolution({
+  serie,
+  millesimeCourant,
+  indicateurName,
+  showTitle = true,
+}) {
   const domaine = decouperDomaineSerie(serie);
   if (nbPointsValides(domaine) < 2) return null;
 
@@ -50,7 +55,12 @@ export default function MiniGrapheEvolution({ serie, millesimeCourant }) {
   const segments = segmenter(domaine);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Évolution sur les millésimes">
+    <div className="graphe-indicateur">
+      {showTitle && indicateurName && (
+        <h4 className="graphe-titre">{indicateurName}</h4>
+      )}
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
+           aria-label={`Évolution sur les millésimes${indicateurName ? ' : ' + indicateurName : ''}`}>
       {/* Ligne de repère à 50% — sert d'ancrage visuel rapide. */}
       <line
         x1={M.left} x2={M.left + PLOT_W}
@@ -124,6 +134,7 @@ export default function MiniGrapheEvolution({ serie, millesimeCourant }) {
         }
         return null; // pas de donnée : rien
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }

@@ -79,3 +79,100 @@ export function segmenter(serie) {
   if (courant.length) segments.push(courant);
   return segments;
 }
+
+// ---------------------------------------------------------------------
+// Profil d'insertion (indicateurs déclinables par délai)
+// ---------------------------------------------------------------------
+//
+// Un indicateur « déclinable_delai » (Taux sortants en emploi salarié,
+// non salarié, stable) existe en 5 versions : date_inser = 6/12/18/
+// 24/30 mois. Plutôt que de tracer 5 évolutions temporelles
+// indépendantes, on les regroupe en UN graphique « profil d'insertion » :
+//   - axe X = délai (6 → 30 mois)
+//   - axe Y = taux
+//   - une courbe par millésime
+//
+// Les non-déclinables ont date_inser='' partout → on les détecte par
+// la présence/absence d'au moins un date_inser non vide.
+
+export function estIndicateurDeclinable(indicateur, historique) {
+  for (const h of historique || []) {
+    for (const r of h.donnees || []) {
+      if (r.indicateur === indicateur && r.date_inser) return true;
+    }
+  }
+  return false;
+}
+
+// Ordre canonique des délais (en chaîne pour rester aligné avec l'API).
+export const DELAIS_CANONIQUES = ['6', '12', '18', '24', '30'];
+
+// Retourne, pour un indicateur déclinable donné, une Map indexée par
+// millésime → tableau de points { delaiNum, taux, denominateur,
+// nonDiffusable } ordonnés par délai croissant. Les délais sans
+// donnée pour un millésime sont remplis avec { taux: null,
+// denominateur: null } pour préserver l'ordre.
+export function extraireProfilInsertion(indicateur, historique) {
+  const out = new Map();
+  for (const h of historique || []) {
+    const millesime = Number(h.millesime);
+    const pointsParDelai = new Map();
+    for (const r of h.donnees || []) {
+      if (r.indicateur !== indicateur) continue;
+      if (!r.date_inser) continue; // sécurité : ignore les tuples non déclinés
+      pointsParDelai.set(r.date_inser, {
+        delaiNum:      Number(r.date_inser),
+        taux:          r.taux,
+        denominateur:  r.denominateur,
+        nonDiffusable: r.non_diffusable === true,
+      });
+    }
+    // Reconstitution ordonnée + remplissage des absents (un millésime
+    // qui n'a pas d'entrée pour un délai donné).
+    const points = DELAIS_CANONIQUES.map((d) =>
+      pointsParDelai.get(d) || {
+        delaiNum: Number(d),
+        taux: null,
+        denominateur: null,
+        nonDiffusable: false,
+      }
+    );
+    out.set(millesime, points);
+  }
+  return out;
+}
+
+// Liste ordonnée chronologiquement des millésimes ayant au moins UNE
+// entrée pour l'indicateur (point valide ou non-diff). Sert à dessiner
+// uniquement les courbes pertinentes et à construire la légende.
+export function millesimesAvecDonnees(profil) {
+  const result = [];
+  for (const [m, points] of profil.entries()) {
+    if (points.some((p) => p.taux !== null || p.nonDiffusable)) {
+      result.push(m);
+    }
+  }
+  return result.sort((a, b) => a - b);
+}
+
+// Palette pour le profil : millésime courant = bleu DSFR primaire,
+// autres = dégradé de gris (du plus clair pour le plus ancien au
+// plus foncé pour le plus récent, en sautant le courant). Discrimine
+// sans surcharger ; le courant reste mis en avant comme « ce que vous
+// regardez dans le quadrant ».
+export function couleursParMillesime(millesimes, millesimeCourant) {
+  const sorted = [...millesimes].sort((a, b) => a - b);
+  const courant = Number(millesimeCourant);
+  const result = new Map();
+  const autres = sorted.filter((m) => m !== courant);
+  const n = autres.length;
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    // Interpolation linéaire de #d0d0d0 (clair) à #4a4a4a (foncé).
+    const v = Math.round(208 + (74 - 208) * t);
+    const hex = v.toString(16).padStart(2, '0');
+    result.set(autres[i], `#${hex}${hex}${hex}`);
+  }
+  if (sorted.includes(courant)) result.set(courant, '#0E0E60');
+  return result;
+}

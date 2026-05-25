@@ -481,6 +481,53 @@
   font-style: italic;
 }
 
+/* Wrapper « graphe + titre + légende éventuelle ». Sert à la fois aux
+   évolutions temporelles et aux profils d'insertion. */
+.panneau-details .graphe-indicateur {
+  margin-top: 0.5rem;
+}
+.panneau-details .graphe-titre {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 0.5rem 0 0.25rem;
+  color: #333;
+}
+
+/* Légende horizontale des millésimes sous un profil d'insertion. */
+.panneau-details .legende-millesimes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.7rem;
+  font-size: 0.72rem;
+  color: #555;
+  margin-top: 0.35rem;
+}
+.panneau-details .legende-millesimes .millesime-courant {
+  color: #0e0e60;
+  font-weight: 500;
+}
+.panneau-details .legende-millesimes .puce {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+/* Espacement entre les profils d'insertion quand on en a plusieurs
+   à la suite dans la section « Autres indicateurs ». */
+.section-autres-indicateurs .graphe-indicateur + .graphe-indicateur {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f0f0f0;
+}
+.section-autres-indicateurs .table-autres-indicateurs + .graphe-indicateur {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f0f0f0;
+}
+
 /* Lignes du tableau (vue Tableau du quadrant) cliquables — ouvrent le
    panneau de détails. */
 .tableau-cadran .fr-table tr.ligne-cliquable {
