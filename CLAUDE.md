@@ -468,6 +468,48 @@ L'application est embarquée par iframe dans un site hôte qui impose les dimens
 - **SVG du quadrant** : ~950-960px de large utiles après marges du composant.
 - **Répartition verticale indicative** : bandeau supérieur (~150-200px) + quadrant (~500-550px) + légende / mentions non représentées (~100-150px) = ~750-900px au total.
 
+### Gestion de la hauteur de l'iframe
+
+Par défaut, l'iframe est dimensionnée à **850 px de hauteur avec scroll interne** si le contenu dépasse (tableaux longs en mode Tableau, panneau de détails ouvert, modale méthodologie). C'est le comportement attendu hors box dynamique.
+
+**Option pour iframe dynamiquement redimensionnée** : non implémentée par défaut, à activer si l'équipe du site hôte le souhaite (élimine le scroll interne au prix d'une coordination JS site hôte ↔ app). Nécessite deux modifications symétriques :
+
+**Côté app Quadrant** — ajouter un hook qui mesure la hauteur du contenu via `ResizeObserver` et émet la nouvelle hauteur vers le parent à chaque changement :
+
+```js
+useEffect(() => {
+  const cible = document.documentElement; // ou un wrapper précis
+  const observer = new ResizeObserver(() => {
+    const h = cible.scrollHeight;
+    window.parent.postMessage(
+      { type: 'quadrant:resize', height: h },
+      'https://etablissement.exemple.fr', // origine exacte du site hôte, pas '*'
+    );
+  });
+  observer.observe(cible);
+  return () => observer.disconnect();
+}, []);
+```
+
+**Côté site hôte** — écouter ces messages et ajuster la hauteur de l'iframe :
+
+```js
+window.addEventListener('message', function (event) {
+  if (event.origin !== 'https://quadsies.dgesip.fr') return;
+  if (event.data && event.data.type === 'quadrant:resize') {
+    document.getElementById('quadrant').style.height = event.data.height + 'px';
+  }
+});
+```
+
+Points d'attention si l'option est activée :
+- L'origine cible côté `postMessage` doit être l'origine exacte du site hôte, jamais `'*'` — sinon n'importe quel parent peut intercepter (peu critique pour une simple hauteur, mais bonne hygiène).
+- L'écouteur côté hôte doit filtrer `event.origin` (`'https://quadsies.dgesip.fr'`) pour ne pas se laisser piéger par un autre frame.
+- Pendant une animation (ouverture modale, etc.), `ResizeObserver` peut émettre plusieurs fois en succession — l'effet visuel reste fluide tant que le site hôte applique la hauteur sans transition CSS contraire.
+- En cas de retour au comportement par défaut (scroll interne 850 px), désactiver le hook côté app suffit : l'absence de message laisse l'iframe à sa hauteur statique.
+
+À coordonner avec l'équipe du site hôte avant activation (origine exacte, comportement attendu pour les utilisateurs déjà habitués au scroll interne).
+
 ### Géométrie générale
 
 - **Axes X et Y fixes** : 0% à 100%, échelle linéaire
