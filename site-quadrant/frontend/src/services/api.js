@@ -11,7 +11,7 @@
 // un ordre de priorité (cf. getContexteIdDev) :
 //   1. query string de la page hôte (`?contexte_id=...`) — utile
 //      pour tester l'app déployée en standalone (par ex.
-//      https://quadsies.dgesip.fr/?contexte_id=zKsfQ) sans rebuilder.
+//      https://quadsies.dgesip.fr/?contexte_id=xxxxx) sans rebuilder.
 //   2. variable d'env Vite `VITE_CONTEXTE_ID_DEV` — utilisée par
 //      `npm run dev` local avec un `.env.development.local`.
 //   3. rien : en prod réelle, les tokens passeront par POST iframe.
