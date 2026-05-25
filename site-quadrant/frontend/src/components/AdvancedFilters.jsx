@@ -3,7 +3,6 @@ import { useApp } from '../context/AppContext.jsx';
 import ReferentielSelect from './selectors/ReferentielSelect.jsx';
 import TypeMasterSelect from './selectors/TypeMasterSelect.jsx';
 import BinaryToggle from './selectors/BinaryToggle.jsx';
-import MentionFilterCombobox from './MentionFilterCombobox.jsx';
 import ModaleMethodologie from './ModaleMethodologie.jsx';
 
 // Panneau de filtres avancés, replié par défaut. S'ouvre automatiquement
@@ -127,19 +126,12 @@ export default function AdvancedFilters() {
             disabled={disabled}
             loading={disciLoading}
           />
-          {/* Filtre Mention : utile seulement en vue Établissements +
-              Graphique (cible une mention précise pour comparer les
-              étabs sur cette mention).
-              - Vue Mentions : chaque bulle est déjà une mention, le
-                filtre serait redondant (et l'API l'ignore).
-              - Vue Positionnement + Tableau : le tableau liste des
-                établissements ; un filtre mention compliquerait la
-                lecture sans bénéfice clair. À ré-évaluer si le besoin
-                remonte.
-              Combobox dédié (cf. MentionFilterCombobox) : autocomplete
-              + liste restreinte aux mentions de l'étab de référence
-              (et non l'ensemble du cursus, beaucoup trop large). */}
-          <MentionFilterCombobox disabled={disabled} />
+          {/* Le filtre Mention (vue Positionnement) a été remonté
+              hors d'AdvancedFilters dans le panneau principal — il
+              reste visible quel que soit l'état du toggle « Plus
+              d'options » et quel que soit le mode d'affichage
+              (Graphique / Tableau). Cf. App.jsx +
+              MentionFilterCombobox.jsx. */}
 
           {/* Options diverses (Master only pour TypeMaster, sinon caché). */}
           {cursus === 'Master' && <TypeMasterSelect disabled={disabled} />}

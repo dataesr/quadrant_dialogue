@@ -3,6 +3,7 @@ import EtabSelector from './components/EtabSelector.jsx';
 import ViewTabs from './components/ViewTabs.jsx';
 import CursusTabs from './components/CursusTabs.jsx';
 import FilterBar from './components/FilterBar.jsx';
+import MentionFilterCombobox from './components/MentionFilterCombobox.jsx';
 import AdvancedFilters from './components/AdvancedFilters.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import Quadrant from './components/Quadrant.jsx';
@@ -62,6 +63,13 @@ function AppShell() {
                     de page joue déjà ce rôle (et avec autocomplétion
                     depuis cette session). */}
               {vue === 'mentions' && <MentionSearch />}
+              {/* Filtre Mention en vue Positionnement, juste
+                  au-dessus du toggle « Plus d'options » : il reste
+                  toujours visible, indépendamment du mode d'affichage
+                  (Graphique/Tableau) et de l'état du panneau avancé.
+                  Le composant gère sa propre garde (vue=etablissements
+                  uniquement) — pas de wrapping conditionnel ici. */}
+              <MentionFilterCombobox />
               <AdvancedFilters />
               {/* Bouton d'export : adaptatif graphique→PNG / tableau→Excel,
                   monté en pied de panneau (cf. BoutonExport.jsx). */}

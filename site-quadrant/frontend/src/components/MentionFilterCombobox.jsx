@@ -14,9 +14,10 @@ import Combobox from './selectors/Combobox.jsx';
 //   - Entrée « (Toutes les mentions) » en tête de liste — sa sélection
 //     efface le filtre (setMention(null)).
 //
-// Visible uniquement en vue Positionnement + affichage Graphique
-// (le parent AdvancedFilters porte déjà cette condition, on garde
-// la garde interne pour rester sûr en cas de réutilisation).
+// Visible en vue Positionnement uniquement (Graphique ET Tableau) :
+// le filtre Mention est pris en compte par les deux modes
+// d'affichage, donc le combobox doit rester disponible quand on
+// bascule en Tableau.
 
 const SENTINEL_TOUS = '';
 
@@ -25,11 +26,10 @@ const TOP_ITEM_TOUTES = {
   libelle: '(Toutes les mentions)',
 };
 
-export default function MentionFilterCombobox({ disabled }) {
+export default function MentionFilterCombobox() {
   const {
     cursus,
     vue,
-    affichage,
     millesime,
     etabContexte,
     variableX, variableY,
@@ -54,9 +54,9 @@ export default function MentionFilterCombobox({ disabled }) {
     [mentions]
   );
 
-  if (vue !== 'etablissements' || affichage !== 'graphique') return null;
+  if (vue !== 'etablissements') return null;
 
-  const groupDisabled = disabled || loading || items.length === 0;
+  const groupDisabled = !etabContexte || loading || items.length === 0;
 
   return (
     <div className={`fr-select-group${groupDisabled ? ' fr-select-group--disabled' : ''}`}>
