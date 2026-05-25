@@ -28,6 +28,7 @@ export default function BoutonExport() {
     representativite, ligneReference,
     affichage,
     rechercheMention,
+    referentiels,
   } = useApp();
 
   const [exporting, setExporting] = useState(false);
@@ -73,10 +74,23 @@ export default function BoutonExport() {
       // visuelle, sans trace dans l'export.
       const surligne = resoudreSurlignage(rechercheMention, data?.bulles);
 
+      // Résolution du libellé de la mention : `mention` est un diplom
+      // code interne ('2500180') ; pour les exports on veut le libellé
+      // humain ('ECONOMIE'). Recherche dans la liste des mentions du
+      // référentiel disciplinaire (= toutes les mentions du cursus,
+      // déjà chargée par useReferentiels). Fallback sur le code si
+      // jamais le référentiel n'est pas dispo.
+      const mentionLibelle = resoudreMentionLibelle(
+        mention,
+        referentiels.disciplinaire.data?.mentions
+      );
+
       const contexte = construireContexte({
         etabInfo, cursus, vue, millesime,
         variableX, variableY, dateInserX, dateInserY,
-        domaine, discipline, secteur, mention, typeMaster,
+        domaine, discipline, secteur,
+        mention: mentionLibelle,
+        typeMaster,
         representativite, ligneReference,
         surligne,
       });
@@ -153,6 +167,18 @@ function construireContexte(params) {
       tokenUtilisateur: undefined,
     },
   };
+}
+
+// Résout un diplom (code interne, ex. '2500180') vers son libellé
+// humain via la liste des mentions du référentiel disciplinaire.
+// Retourne null si pas de code (filtre = « Toutes les mentions »),
+// le libellé trouvé si match, ou le code brut en fallback (mieux que
+// rien si le référentiel n'est pas encore chargé — cas peu probable
+// à l'instant du clic Export, mais défensif).
+function resoudreMentionLibelle(diplom, mentions) {
+  if (!diplom) return null;
+  const trouve = (mentions || []).find((m) => m.code === diplom);
+  return trouve?.libelle || diplom;
 }
 
 // Même règle de matching que <Bulles>/libellesMatchent : libellé
