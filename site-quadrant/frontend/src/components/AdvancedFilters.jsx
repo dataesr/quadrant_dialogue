@@ -22,8 +22,9 @@ import ModaleMethodologie from './ModaleMethodologie.jsx';
 // d'AppContext.jsx, sinon le compteur de filtres actifs est faux dès
 // le chargement (un filtre paraîtra actif alors qu'il est à son
 // défaut).
-const DEFAULT_REPRESENTATIVITE = false;
-const DEFAULT_REFERENCE_AXES   = 'mediane_etab';
+const DEFAULT_REPRESENTATIVITE              = false;
+const DEFAULT_REFERENCE_AXES                = 'mediane_etab';
+const DEFAULT_REFERENCE_AXES_POSITIONNEMENT = 'mediane';
 
 export default function AdvancedFilters() {
   const {
@@ -34,6 +35,7 @@ export default function AdvancedFilters() {
     typeMaster,
     representativite,
     referenceAxes, setReferenceAxes,
+    referenceAxesPositionnement, setReferenceAxesPositionnement,
     setDomaine, setDiscipline, setSecteur,
     setRepresentativite,
     resetAdvancedFilters,
@@ -54,9 +56,9 @@ export default function AdvancedFilters() {
   const disabled = !etabContexte;
 
   // Nombre de filtres avancés en écart par rapport à leur défaut.
-  // referenceAxes ne compte que sur vue=mentions (le contrôle n'est
-  // affiché que là — en Positionnement il reste à son défaut sans
-  // visibilité utilisateur).
+  // referenceAxes ne compte que sur vue=mentions, referenceAxesPositionnement
+  // sur vue=etablissements (les contrôles ne sont affichés que dans leur
+  // vue respective — l'autre reste à son défaut sans visibilité).
   const activeCount = useMemo(() => {
     let n = 0;
     if (domaine     !== null) n++;
@@ -66,9 +68,11 @@ export default function AdvancedFilters() {
     if (cursus === 'Master' && typeMaster !== null) n++;
     if (representativite !== DEFAULT_REPRESENTATIVITE) n++;
     if (vue === 'mentions' && referenceAxes !== DEFAULT_REFERENCE_AXES) n++;
+    if (vue === 'etablissements'
+        && referenceAxesPositionnement !== DEFAULT_REFERENCE_AXES_POSITIONNEMENT) n++;
     return n;
   }, [domaine, discipline, secteur, mention, cursus, typeMaster,
-      representativite, vue, referenceAxes]);
+      representativite, vue, referenceAxes, referenceAxesPositionnement]);
 
   // Auto-dépli quand un filtre devient actif (au montage si l'utilisateur
   // recharge avec un état pré-positionné, ou en cours d'utilisation).
@@ -196,6 +200,41 @@ export default function AdvancedFilters() {
                         value={opt.value}
                         checked={referenceAxes === opt.value}
                         onChange={() => setReferenceAxes(opt.value)}
+                      />
+                      <label className="fr-label" htmlFor={inputId}>
+                        {opt.label}
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </fieldset>
+          )}
+
+          {/* Vue Positionnement : 2 options (Médiane / Moyenne).
+              Pas de suffixe « nationale » dans les libellés — la vue
+              est nationale par construction (pas de filtre étab), donc
+              implicite. Distinct du sélecteur Mentions ci-dessus (3
+              modes) pour éviter toute confusion. Propagé au backend
+              via le paramètre `agregation` de /api/quadrant. */}
+          {vue === 'etablissements' && (
+            <fieldset className="fr-fieldset" disabled={disabled}>
+              <legend className="fr-fieldset__legend">Référence des axes</legend>
+              {[
+                { value: 'mediane', label: 'Médiane' },
+                { value: 'moyenne', label: 'Moyenne' },
+              ].map((opt) => {
+                const inputId = `quadrant-reference-axes-pos-${opt.value}`;
+                return (
+                  <div key={opt.value} className="fr-fieldset__element">
+                    <div className="fr-radio-group">
+                      <input
+                        type="radio"
+                        id={inputId}
+                        name="quadrant-reference-axes-positionnement"
+                        value={opt.value}
+                        checked={referenceAxesPositionnement === opt.value}
+                        onChange={() => setReferenceAxesPositionnement(opt.value)}
                       />
                       <label className="fr-label" htmlFor={inputId}>
                         {opt.label}

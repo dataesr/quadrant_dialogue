@@ -2,12 +2,11 @@ import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
 
 // Lignes de référence : médiane ou moyenne. Type porté par
 // `reference.type` :
-//   - vue=mentions  : 'mediane_etab' | 'moyenne_etab' | 'moyenne_nationale'
-//                     (cf. AppContext.referenceAxes)
-//   - vue=etablissements : 'mediane' | 'moyenne' (paramètre agregation
-//                     côté API — bridé à 'mediane' par défaut depuis
-//                     la suppression du sélecteur « Ligne de référence »
-//                     en phase 8 corrections)
+//   - vue=mentions       : 'mediane_etab' | 'moyenne_etab' | 'moyenne_nationale'
+//                          (cf. AppContext.referenceAxes)
+//   - vue=etablissements : 'mediane' | 'moyenne' (cf.
+//                          AppContext.referenceAxesPositionnement —
+//                          propagé à l'API via le paramètre `agregation`).
 //
 // Positionnement des libellés (à l'INTÉRIEUR du plot, dans les
 // zones les MOINS denses) :
@@ -39,7 +38,8 @@ const LABEL = {
   mediane_etab:      'Médiane établissement',
   moyenne_etab:      'Moyenne établissement',
   moyenne_nationale: 'Moyenne nationale',
-  // Vue Positionnement (paramètre `agregation` côté API)
+  // Vue Positionnement (référence pilotée par agregation côté API,
+  // libellés courts puisque la vue est nationale par construction)
   mediane: 'Médiane',
   moyenne: 'Moyenne',
 };

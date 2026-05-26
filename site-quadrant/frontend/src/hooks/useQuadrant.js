@@ -31,6 +31,12 @@ export function useQuadrant({
   mention,
   typeMaster,
   representativite,
+  // En vue Positionnement (= vue=etablissements côté API), 'mediane' ou
+  // 'moyenne' selon le sélecteur. En vue Mentions, le paramètre est
+  // ignoré : data.reference n'y est plus consulté (cf. Quadrant.jsx
+  // qui lit data.axes via referenceAxes) — on laisse 'mediane' par
+  // défaut, ça vaut son comportement historique.
+  agregation = 'mediane',
   // forExport=true ajoute `?for_export=1` à la requête. L'API applique
   // alors le seuil de diffusion configuré (seuil_diffusable, 20 par
   // défaut) : valeurs sous-seuil deviennent null + raison_x/y='effectif
@@ -62,13 +68,13 @@ export function useQuadrant({
       date_inser_var2: dateInserY || '',
       etab_contexte: etabContexte,
       representativite: representativite ? 'representatif' : 'toutes',
-      // `agregation` reste à 'mediane' côté API : depuis la phase 8
-      // le sélecteur « ligne de référence » a été retiré au profit
-      // de `referenceAxes` (3 modes via le bloc data.axes, cf.
-      // Quadrant.jsx). Le paramètre agregation continue à dicter
-      // `data.reference` historique (utilisé en vue Positionnement
-      // comme fallback) — on le laisse à son défaut 'mediane'.
-      agregation: 'mediane',
+      // `agregation` dicte `data.reference` côté API. Pertinent en vue
+      // Positionnement (sélecteur Médiane / Moyenne) ; en vue Mentions
+      // on continue à lire data.axes via `referenceAxes` côté frontend
+      // (cf. Quadrant.jsx) donc la valeur d'agregation n'a pas d'effet
+      // visible, mais on transmet quand même pour préserver le contrat
+      // API.
+      agregation,
     };
 
     // Filtres optionnels : on n'envoie que ce qui est réellement renseigné.
@@ -102,6 +108,7 @@ export function useQuadrant({
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    agregation,
     forExport,
   ]);
 

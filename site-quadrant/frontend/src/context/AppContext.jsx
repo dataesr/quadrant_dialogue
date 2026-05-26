@@ -35,6 +35,17 @@ const DEFAULT_REPRESENTATIVITE = false;
 // Cf. backend quadrant.php §7 bis pour le calcul.
 const DEFAULT_REFERENCE_AXES = 'mediane_etab';
 
+// Mode de référence des axes en vue Positionnement (2 valeurs).
+// 'mediane' (défaut) : médiane des taux sur l'ensemble des bulles
+//                      (toutes France après filtres disciplinaires).
+// 'moyenne'          : équivalent moyenne (selon agregation côté API).
+// Pas de suffixe « nationale » dans le libellé UI — la vue est déjà
+// nationale par construction (pas de filtre étab), donc implicite.
+// Distinct de `referenceAxes` (3 modes Mentions) pour éviter toute
+// confusion sémantique. Propagé au backend via le paramètre
+// `agregation` de /api/quadrant — qui détermine data.reference.
+const DEFAULT_REFERENCE_AXES_POSITIONNEMENT = 'mediane';
+
 // Date d'insertion choisie par défaut quand on bascule sur une variable
 // déclinable (12 mois — milieu de la fourchette canonique 6/12/18/24/30).
 const DEFAULT_DATE_INSER = '12';
@@ -63,6 +74,8 @@ export function AppProvider({ children }) {
   const [typeMaster,        setTypeMaster]        = useState(null);
   const [representativite,  setRepresentativite]  = useState(DEFAULT_REPRESENTATIVITE);
   const [referenceAxes,     setReferenceAxes]     = useState(DEFAULT_REFERENCE_AXES);
+  const [referenceAxesPositionnement, setReferenceAxesPositionnement] =
+    useState(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
 
   // --- Phase 4b : compléments quadrant ---
   // Mode d'échelle des bulles arrêté à 'sqrt' (racine carrée du
@@ -264,8 +277,8 @@ export function AppProvider({ children }) {
   //   nouveaux référentiels arriveront ;
   // - filtres disciplinaires + typeMaster → on les remet à zéro car les
   //   valeurs disponibles changent avec le cursus ;
-  // - representativite + referenceAxes → préservés (préférences UX
-  //   indépendantes du cursus).
+  // - representativite + referenceAxes + referenceAxesPositionnement
+  //   → préservés (préférences UX indépendantes du cursus).
   // - detailsCible → fermé : cible probablement invalide dans le nouveau cursus.
   const setCursus = useCallback((newCursus) => {
     setCursusState(newCursus);
@@ -328,6 +341,7 @@ export function AppProvider({ children }) {
     setTypeMaster(null);
     setRepresentativite(DEFAULT_REPRESENTATIVITE);
     setReferenceAxes(DEFAULT_REFERENCE_AXES);
+    setReferenceAxesPositionnement(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
   }, []);
 
   const value = {
@@ -342,6 +356,7 @@ export function AppProvider({ children }) {
     typeMaster,
     representativite,
     referenceAxes,
+    referenceAxesPositionnement,
     // Phase 4b
     scaleMode,
     rechercheMention,
@@ -363,6 +378,7 @@ export function AppProvider({ children }) {
     setTypeMaster,
     setRepresentativite,
     setReferenceAxes,
+    setReferenceAxesPositionnement,
     resetAdvancedFilters,
     setRechercheMention,
     setMentionsAffichees,

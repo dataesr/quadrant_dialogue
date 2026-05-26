@@ -30,6 +30,7 @@ export default function BoutonExport() {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     referenceAxes,
+    referenceAxesPositionnement,
     affichage,
     rechercheMention,
     referentiels,
@@ -72,6 +73,7 @@ export default function BoutonExport() {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    agregation: vue === 'etablissements' ? referenceAxesPositionnement : 'mediane',
     forExport: true,
   });
 
@@ -126,6 +128,7 @@ export default function BoutonExport() {
         typeMaster,
         representativite,
         referenceAxes,
+        referenceAxesPositionnement,
         surligne,
       });
 
@@ -209,6 +212,7 @@ function construireContexte(params) {
       typeMaster: params.typeMaster,
       representativite: params.representativite,
       referenceAxes: params.referenceAxes,
+      referenceAxesPositionnement: params.referenceAxesPositionnement,
     },
     surligne: params.surligne || null,
     tokens: {

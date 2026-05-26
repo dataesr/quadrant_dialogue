@@ -93,6 +93,7 @@ export default function Quadrant({ forExport = false } = {}) {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     referenceAxes,
+    referenceAxesPositionnement,
     scaleMode,
     rechercheMention,
     setMentionsAffichees,
@@ -127,6 +128,11 @@ export default function Quadrant({ forExport = false } = {}) {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    // Vue Positionnement : le sélecteur Médiane/Moyenne pilote data.reference
+    // via le paramètre `agregation` de l'API. Vue Mentions : data.axes est
+    // consulté via referenceAxes côté Quadrant — on laisse 'mediane' (sans
+    // effet sur l'affichage).
+    agregation: vue === 'etablissements' ? referenceAxesPositionnement : 'mediane',
     forExport,
   });
 
@@ -200,6 +206,7 @@ export default function Quadrant({ forExport = false } = {}) {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     referenceAxes,
+    referenceAxesPositionnement,
   ]);
 
   // Scales effectives : original × transform d3-zoom. Quand transform =

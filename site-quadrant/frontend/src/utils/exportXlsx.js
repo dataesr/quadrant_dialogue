@@ -51,11 +51,16 @@ const LIBELLE_STATUT = {
 };
 
 // Libellés humains des modes de référence des axes (cf. AppContext
-// `referenceAxes`). Utilisés dans la feuille Métadonnées.
+// `referenceAxes` pour Mentions, `referenceAxesPositionnement` pour
+// Positionnement). Utilisés dans la feuille Métadonnées.
 const LIBELLES_REFERENCE_AXES = {
   mediane_etab:      'Médiane établissement',
   moyenne_etab:      'Moyenne établissement',
   moyenne_nationale: 'Moyenne nationale',
+};
+const LIBELLES_REFERENCE_AXES_POSITIONNEMENT = {
+  mediane: 'Médiane',
+  moyenne: 'Moyenne',
 };
 
 // Palette cellules — alignée sur global.css.
@@ -550,7 +555,7 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Millésime',              contexte?.millesime || ''],
     ['Axe horizontal',         formatLibelleAxe(contexte?.variableX, contexte?.dateInserX)],
     ['Axe vertical',           formatLibelleAxe(contexte?.variableY, contexte?.dateInserY)],
-    ['Référence des axes',     LIBELLES_REFERENCE_AXES[filtres.referenceAxes] || 'Médiane établissement'],
+    ['Référence des axes',     formatReferenceAxes(contexte?.vue, filtres)],
     ['Représentativité',       filtres.representativite
                                  ? 'Représentatif uniquement (denom ≥ 20)'
                                  : 'Toutes (denom ≥ 5)'],
@@ -734,6 +739,19 @@ function formatLibelleAxe(variable, dateInser) {
   if (!variable) return '';
   if (!dateInser) return variable;
   return `${variable} (${dateInser} mois)`;
+}
+
+// La feuille Métadonnées affiche le libellé de la référence selon
+// la vue active :
+//   - Mentions       : referenceAxes (3 modes étab/étab/nationale)
+//   - Positionnement : referenceAxesPositionnement (2 modes courts)
+function formatReferenceAxes(vue, filtres) {
+  if (vue === 'etablissements') {
+    return LIBELLES_REFERENCE_AXES_POSITIONNEMENT[filtres.referenceAxesPositionnement]
+      || 'Médiane';
+  }
+  return LIBELLES_REFERENCE_AXES[filtres.referenceAxes]
+    || 'Médiane établissement';
 }
 
 function formatDateTimeIso(d) {

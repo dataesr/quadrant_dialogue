@@ -79,6 +79,7 @@ export default function QuadrantTable() {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     referenceAxes,
+    referenceAxesPositionnement,
     setDetailsCible,
   } = useApp();
 
@@ -106,6 +107,9 @@ export default function QuadrantTable() {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    // Vue Positionnement : Médiane/Moyenne pilote data.reference côté API.
+    // Cf. commentaire identique dans Quadrant.jsx.
+    agregation: vue === 'etablissements' ? referenceAxesPositionnement : 'mediane',
   });
 
   const libelleX = formatLibelle(variableX, dateInserX);
