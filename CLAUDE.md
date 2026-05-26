@@ -382,6 +382,27 @@ Cas d'usage typique : récupérer la nouvelle IP sortante OVH (`outbound_ip.v4`)
 
 La réponse n'expose AUCUNE donnée sensible — pas les credentials BDD, pas les vrais tokens, pas l'`api_key` partagée (juste un booléen `host_verify_api_key_set`).
 
+### IPs OVH — entrante vs sortante
+
+L'hébergement OVH mutualisé (cluster 121) utilise **deux IPv4 distinctes** pour `quadsies.dgesip.fr` :
+
+| Type | IPv4 | Usage |
+|---|---|---|
+| Entrante | `188.165.53.185` | Résolution DNS publique de `quadsies.dgesip.fr` — vue par le navigateur de l'utilisateur. |
+| Sortante (gateway) | `5.135.48.114` | IP source des requêtes HTTP émises par notre PHP (cURL, `file_get_contents`…) vers des services tiers. |
+
+Conséquence concrète : quand l'API quadrant appelle `verify-session.php` côté `dialogue.dgesip.fr` (vérification server-to-server des 3 tokens iframe, cf. §7 bis « Authentification iframe »), c'est l'IP **sortante** qui apparaît dans la requête, pas l'entrante. C'est donc `5.135.48.114` qu'il faut whitelister dans `$ALLOWED_IPS` côté site hôte, jamais `188.165.53.185`.
+
+**Note sécurité**. L'IP sortante `5.135.48.114` est partagée par tous les hébergements mutualisés du cluster 121 (potentiellement plusieurs centaines de sites). Le check IP n'isole donc pas spécifiquement `quadsies.dgesip.fr` — il filtre seulement le cluster. La vraie authentification entre l'API quadrant et le site hôte repose sur la **clé API partagée** (`X-Api-Key`, cf. `host_verify.api_key` dans `config.php`). L'IP whitelist sert de première ligne de défense, pas de garant d'identité.
+
+**Vérification rapide depuis n'importe quel poste** (OVH peut faire évoluer la gateway) :
+```bash
+curl 'https://quadsies.dgesip.fr/api/diagnostic?key=<DIAGNOSTIC_KEY>' | jq .outbound_ip
+```
+La réponse expose `outbound_ip.v4` et `outbound_ip.v6` tels qu'observés depuis OVH au moment de l'appel — source de vérité pour communiquer à l'équipe site hôte.
+
+Source OVH : la liste complète des IPs par pays + l'IP gateway commune est documentée dans la base de connaissances OVH des hébergements mutualisés (chercher « adresses IP du cluster »).
+
 ### Configuration des exports (`exports`)
 
 Bloc `exports` dans `config.php` :
