@@ -7,7 +7,9 @@
 //
 // Ce module fournit :
 //   1. Extraction d'une série mono-courbe (indicateur, date_inser) →
-//      [{millesime, taux, denominateur, nonDiffusable}].
+//      [{millesime, taux, numerateur, denominateur}]. Les entrées
+//      non_diffusable de l'API sont collapsées en « tout null » ici
+//      (= équivalent affichage à une donnée absente).
 //   2. Détection des indicateurs déclinables (≥1 date_inser non vide
 //      dans les données).
 //   3. Découpage en groupes pour la section « Autres » du panneau :
@@ -35,11 +37,26 @@ export function extraireSerie(historique, indicateur, dateInser) {
     const row = (h.donnees || []).find(
       (r) => r.indicateur === indicateur && (r.date_inser ?? '') === (dateInser ?? '')
     );
-    if (!row) {
+    // Une entrée non_diffusable=true est strictement équivalente à
+    // une donnée absente côté affichage. L'API renvoie denom
+    // (information de cohorte) avec non_diffusable=true quand
+    // denom < seuil (5 en mode écran, 20 en mode for_export). Côté
+    // graphes, on ne veut AUCUN point visible : ni cercle creux
+    // (« Non diffusable » sur MiniGrapheEvolution / GrapheMultiCourbes),
+    // ni point de la courbe denom (MiniGrapheEffectifs). En collapse
+    // ces entrées en « tout null » ici, on garantit qu'aucun
+    // consommateur de la série n'a à filtrer en aval — la sémantique
+    // « pas de point, polyline interrompue » découle naturellement de
+    // typeof p.taux/numerateur/denominateur !== 'number'.
+    //
+    // « Non diffusable » reste signalé textuellement par les cards
+    // X/Y (ValeurCourante côté DetailsPanel) à partir de
+    // donnees_courantes — qui n'est pas touché par cette fonction.
+    if (!row || row.non_diffusable === true) {
       out.push({
-        millesime: Number(h.millesime),
-        taux: null,
-        numerateur: null,
+        millesime:    Number(h.millesime),
+        taux:         null,
+        numerateur:   null,
         denominateur: null,
       });
       continue;
@@ -50,11 +67,10 @@ export function extraireSerie(historique, indicateur, dateInser) {
     // ce qui pousse de faux points dans les segments et trace des
     // lignes vers des coordonnées indéfinies.
     out.push({
-      millesime:     Number(h.millesime),
-      taux:          asNumberOrNull(row.taux),
-      numerateur:    asNumberOrNull(row.numerateur),
-      denominateur:  asNumberOrNull(row.denominateur),
-      nonDiffusable: row.non_diffusable === true,
+      millesime:    Number(h.millesime),
+      taux:         asNumberOrNull(row.taux),
+      numerateur:   asNumberOrNull(row.numerateur),
+      denominateur: asNumberOrNull(row.denominateur),
     });
   }
   return out.sort((a, b) => a.millesime - b.millesime);
@@ -186,7 +202,7 @@ export function decouperGroupes(donneesCourantes, historique, indicateursAxes) {
 //
 // Structure produite :
 //   { variantes: Array<{ key, libelle }>,
-//     parVariante: Map<key, Array<{millesime, taux, denominateur, nonDiffusable}>> }
+//     parVariante: Map<key, Array<{millesime, taux, numerateur, denominateur}>> }
 //
 // Pour le groupe Réussite : une variante par indicateur, libellé =
 // fragment de durée extrait du nom.

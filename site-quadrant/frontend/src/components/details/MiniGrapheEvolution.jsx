@@ -17,8 +17,9 @@ import {
 //  - Plus de ligne « 50 % » : remplacée par les graduations, plus
 //    neutres (50 % donnait à tort l'air d'une référence métier).
 //  - Points pleins : taux diffusable.
-//  - Points creux  : non-diffusable (denom < 5). Placés à mi-hauteur
-//    du graphique (pas de taux à représenter).
+//  - Pas de point pour les entrées non-diffusables : collapsées en
+//    données absentes par extraireSerie() — la polyline saute le
+//    millésime, idem qu'un trou dans la série.
 //  - Tooltip au survol : « millésime : XX,X % sur N » à côté du point.
 //
 // Gating : ne rend rien si < 2 points valides dans le domaine.
@@ -63,7 +64,6 @@ export default function MiniGrapheEvolution({
       : M.left + ((m - xMin) / (xMax - xMin)) * PLOT_W;
 
   const yScale = (taux) => M.top + (1 - (taux - yMin) / (yMax - yMin)) * PLOT_H;
-  const yPourNonDiff = M.top + PLOT_H / 2;
 
   const segments = segmenter(domaine);
 
@@ -143,21 +143,6 @@ export default function MiniGrapheEvolution({
                     onMouseLeave={() => setHovered(null)}
                   />
                 </g>
-              );
-            }
-            if (p.nonDiffusable) {
-              return (
-                <circle key={p.millesime}
-                  cx={cx} cy={yPourNonDiff} r={3}
-                  fill="white" stroke={COULEUR_PRINCIPALE} strokeWidth={1.2}
-                  style={{ cursor: 'help' }}
-                  onMouseEnter={() => setHovered({
-                    x: cx + 8, y: yPourNonDiff - 4,
-                    millesime: p.millesime,
-                    contenu: `Non diffusable (denom = ${p.denominateur ?? '?'})`,
-                  })}
-                  onMouseLeave={() => setHovered(null)}
-                />
               );
             }
             return null;

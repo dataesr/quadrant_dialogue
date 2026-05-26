@@ -17,7 +17,11 @@ import LegendeVariantes from './LegendeVariantes.jsx';
 //   variantes    : Array<{ key, libelle }> ordonnées chronologiquement
 //                  (délai croissant ou durée croissante).
 //   parVariante  : Map<key, Array<point>> — point = { millesime, taux,
-//                  denominateur, nonDiffusable }.
+//                  numerateur, denominateur }. extraireSerie() collapse
+//                  les entrées non_diffusable en « tout null » : pas
+//                  besoin d'un flag dédié ici, c'est l'absence de
+//                  typeof === 'number' qui suffit à interrompre la
+//                  polyline et omettre le point.
 //   millesimeCourant : pour le highlight (anneau autour du point).
 //
 // Comportement :
@@ -63,7 +67,7 @@ export default function GrapheMultiCourbes({
     for (const v of variantes) {
       const points = parVariante.get(v.key) || [];
       for (const p of points) {
-        if (typeof p.taux === 'number' || p.nonDiffusable || typeof p.denominateur === 'number') {
+        if (typeof p.taux === 'number' || typeof p.denominateur === 'number') {
           set.add(p.millesime);
         }
       }
@@ -90,7 +94,6 @@ export default function GrapheMultiCourbes({
     xMin === xMax ? M.left + PLOT_W / 2
                   : M.left + ((m - xMin) / (xMax - xMin)) * PLOT_W;
   const yScale = (taux) => M.top + (1 - (taux - yMin) / (yMax - yMin)) * PLOT_H;
-  const yPourNonDiff = M.top + PLOT_H / 2;
 
   return (
     <div className="graphe-indicateur">
@@ -141,7 +144,6 @@ export default function GrapheMultiCourbes({
                 couleur={couleur}
                 xScale={xScale}
                 yScale={yScale}
-                yPourNonDiff={yPourNonDiff}
                 millesimeCourant={millesimeCourant}
                 onHoverPoint={(infos) => setHovered(infos)}
                 onLeavePoint={() => setHovered(null)}
@@ -173,7 +175,6 @@ function Courbe({
   couleur,
   xScale,
   yScale,
-  yPourNonDiff,
   millesimeCourant,
   onHoverPoint,
   onLeavePoint,
@@ -214,24 +215,6 @@ function Courbe({
                 onMouseLeave={onLeavePoint}
               />
             </g>
-          );
-        }
-        if (p.nonDiffusable) {
-          const cx = xScale(p.millesime);
-          return (
-            <circle
-              key={p.millesime}
-              cx={cx} cy={yPourNonDiff} r={3}
-              fill="white" stroke={couleur} strokeWidth={1.2}
-              style={{ cursor: 'help' }}
-              onMouseEnter={() => onHoverPoint({
-                x: cx + 8, y: yPourNonDiff - 4,
-                millesime: p.millesime,
-                libelle: variante.libelle,
-                contenu: `Non diffusable (denom = ${p.denominateur ?? '?'})`,
-              })}
-              onMouseLeave={onLeavePoint}
-            />
           );
         }
         return null;

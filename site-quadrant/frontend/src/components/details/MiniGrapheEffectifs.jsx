@@ -17,9 +17,9 @@ import {
 //  - 2 courbes : denom en gris (#5A5A5A, plus discret), num en bleu
 //    DSFR (#0E0E60, mis en avant).
 //  - Pour chaque courbe : segments interrompus quand la valeur est
-//    null (point absent). Cas non-diffusable : le denom est connu
-//    (5 < denom ≥ 1) mais le num est masqué → un point gris (denom)
-//    sans point bleu (num) ; la courbe num saute le millésime.
+//    null (point absent). Cas non-diffusable : les entrées sont
+//    collapsées en « tout null » par extraireSerie() — le millésime
+//    est sauté sur les deux courbes, pas de point isolé.
 //  - Tooltip au survol : « <millésime> / num = X, denom = Y ».
 //
 // Gating : ≥ 2 points valides total (num et denom confondus).
