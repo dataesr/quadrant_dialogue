@@ -191,14 +191,22 @@ export default function DetailsPanel() {
     //    « Non diffusable » à la place des valeurs fragiles —
     //    nécessaire car exportDocx lit le DOM du panneau pour les
     //    valeurs textuelles (libelle, valeur, detail) et capture
-    //    les SVG des graphes.
+    //    les SVG des graphes (cards X/Y + multi-courbes historiques).
     setPanneauDataOverride(exportData);
 
-    // 3. Attendre 2 frames pour que React peigne le rendu avec
-    //    l'override avant que html-to-image ne capture.
+    // 3. Attendre que React commit le re-render ET que les SVG des
+    //    graphes (MiniGrapheEvolution, MiniGrapheEffectifs,
+    //    GrapheMultiCourbes) aient mis à jour leurs polylines et
+    //    points avec les nouvelles données. 2 rAF + setTimeout 80 ms
+    //    sont empiriquement nécessaires pour les multi-courbes
+    //    historiques (rendus avec useMemo profonds) — sans ce délai
+    //    additionnel, la capture html-to-image peut figer le SVG
+    //    encore sur l'ancienne série (cas TOURISME — historique du
+    //    Taux de poursuivants).
     await new Promise((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(resolve));
     });
+    await new Promise((resolve) => setTimeout(resolve, 80));
 
     try {
       await exportFicheDocx({

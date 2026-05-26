@@ -180,19 +180,27 @@ export default function AdvancedFilters() {
                 { value: 'moyenne_nationale', label: 'Moyenne nationale'     },
               ].map((opt) => {
                 const inputId = `quadrant-reference-axes-${opt.value}`;
+                // Markup DSFR conforme : fr-fieldset__element wrappe
+                // chaque fr-radio-group. Sans cette structure, le CSS
+                // DSFR ne stylise pas les radios (apparence « lune »
+                // partiellement remplie au lieu du cercle plein
+                // attendu). Cf.
+                // https://www.systeme-de-design.gouv.fr/elements-d-interface/composants/case-a-cocher-et-bouton-radio/
                 return (
-                  <div key={opt.value} className="fr-radio-group fr-radio-group--sm">
-                    <input
-                      type="radio"
-                      id={inputId}
-                      name="quadrant-reference-axes"
-                      value={opt.value}
-                      checked={referenceAxes === opt.value}
-                      onChange={() => setReferenceAxes(opt.value)}
-                    />
-                    <label className="fr-label" htmlFor={inputId}>
-                      {opt.label}
-                    </label>
+                  <div key={opt.value} className="fr-fieldset__element">
+                    <div className="fr-radio-group">
+                      <input
+                        type="radio"
+                        id={inputId}
+                        name="quadrant-reference-axes"
+                        value={opt.value}
+                        checked={referenceAxes === opt.value}
+                        onChange={() => setReferenceAxes(opt.value)}
+                      />
+                      <label className="fr-label" htmlFor={inputId}>
+                        {opt.label}
+                      </label>
+                    </div>
                   </div>
                 );
               })}

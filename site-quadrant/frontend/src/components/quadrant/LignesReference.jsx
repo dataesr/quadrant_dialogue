@@ -9,20 +9,27 @@ import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
 //                     la suppression du sélecteur « Ligne de référence »
 //                     en phase 8 corrections)
 //
-// Positionnement des libellés :
-//   - Label de la ligne verticale (axe X) : posé EN BAS du quadrant,
-//     sous l'axe X, centré sur la ligne. Évite le chevauchement avec
-//     les bulles centrales.
-//   - Label de la ligne horizontale (axe Y) : posé À GAUCHE du
-//     quadrant, à gauche de l'axe Y, aligné sur la ligne. Même
-//     justification.
-// Position antérieure (haut/droite) provoquait des collisions
-// systématiques avec les bulles denses.
+// Positionnement des libellés (à l'INTÉRIEUR du plot, près des
+// lignes pointillées pour ne pas déformer les marges externes du
+// quadrant) :
+//   - Label de la verticale (ref X) : posé en haut du plot, juste à
+//     GAUCHE de la ligne pointillée, textAnchor="end" pour que le
+//     texte se termine contre la ligne. Aligné dans le quadrant
+//     haut-gauche pour ne pas se coller aux bulles de la zone
+//     haut-droite (souvent dense).
+//   - Label de l'horizontale (ref Y) : posé à droite du plot, juste
+//     AU-DESSUS de la ligne pointillée, textAnchor="end" pour que le
+//     texte se termine contre le bord droit. Aligné dans le quadrant
+//     haut-droite (zone naturellement moins dense pour les indicateurs
+//     positifs).
 //
-// Style : trait pointillé gris foncé (cf. cadrage §11), épaisseur 1px.
-// Les scales sont passées en props : le zoom les transforme côté
-// orchestrateur (Quadrant.jsx), on n'utilise donc pas les xScale/yScale
-// bruts de geometry.js ici.
+// Apparence discrète : fontSize 11, fill #666. Le but est informatif —
+// si une bulle recouvre brièvement le libellé, c'est acceptable (le
+// zoom permet de lever l'ambiguïté).
+//
+// Style des lignes : trait pointillé gris foncé (cf. cadrage §11),
+// épaisseur 1px. Les scales sont passées en props : le zoom les
+// transforme côté orchestrateur (Quadrant.jsx).
 
 const LABEL = {
   // Vue Mentions (3 modes du nouveau sélecteur)
@@ -41,55 +48,53 @@ export default function LignesReference({ reference, xScale, yScale }) {
   const y = yScale(toPercent(reference.y));
   const label = LABEL[reference.type] || '';
 
+  // Bornes du plot (utiles pour le positionnement des labels).
+  const plotTop    = MARGIN.top;
+  const plotRight  = MARGIN.left + PLOT_WIDTH;
+
   return (
     <g className="quadrant-reference">
       {/* Ligne verticale (x = référence) */}
       <line
         x1={x} x2={x}
-        y1={MARGIN.top} y2={MARGIN.top + PLOT_HEIGHT}
+        y1={plotTop} y2={MARGIN.top + PLOT_HEIGHT}
         stroke="#555"
         strokeWidth={1}
         strokeDasharray="4 3"
       />
       {/* Ligne horizontale (y = référence) */}
       <line
-        x1={MARGIN.left} x2={MARGIN.left + PLOT_WIDTH}
+        x1={MARGIN.left} x2={plotRight}
         y1={y} y2={y}
         stroke="#555"
         strokeWidth={1}
         strokeDasharray="4 3"
       />
 
-      {/* Label de la verticale, en bas (dans la marge inférieure).
-          y = bord bas du plot + 50 px → en-dessous des graduations
-          X (qui sont à y = PLOT_HEIGHT + ~30 px). Marge bottom=80
-          dans geometry.js : il reste donc 30 px sous le label pour
-          le respirer. textAnchor middle pour aligner le label sur
-          la ligne pointillée. */}
+      {/* Label de la verticale : intérieur du plot, en haut, juste à
+          gauche de la pointillée. textAnchor=end → texte aligné à
+          droite contre x-5. */}
       {label && (
         <text
-          x={x}
-          y={MARGIN.top + PLOT_HEIGHT + 50}
+          x={x - 5}
+          y={plotTop + 14}
           fontSize={11}
-          fill="#555"
-          textAnchor="middle"
+          fill="#666"
+          textAnchor="end"
         >
           {label}
         </text>
       )}
 
-      {/* Label de l'horizontale, à gauche (dans la marge gauche).
-          textAnchor="end" et x = MARGIN.left - 8 : le texte s'aligne
-          à droite, juste avant l'axe Y. Marge left=160 dans
-          geometry.js permet d'accueillir « Moyenne établissement »
-          (~145 px à fontSize 11) sans déborder du viewBox. y+4 pour
-          centrer verticalement la ligne de texte sur la pointillée. */}
+      {/* Label de l'horizontale : intérieur du plot, à droite, juste
+          au-dessus de la pointillée. textAnchor=end → texte aligné à
+          droite contre le bord droit du plot. */}
       {label && (
         <text
-          x={MARGIN.left - 8}
-          y={y + 4}
+          x={plotRight - 5}
+          y={y - 5}
           fontSize={11}
-          fill="#555"
+          fill="#666"
           textAnchor="end"
         >
           {label}

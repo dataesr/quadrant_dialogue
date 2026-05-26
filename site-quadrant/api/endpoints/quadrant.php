@@ -695,6 +695,33 @@ if ($forExport) {
         $bullesFiltrees[] = $bulle;
     }
     $bulles = $bullesFiltrees;
+
+    // Post-traitement symétrique sur mentions_non_representees : les
+    // entrées renvoyées par calculerMentionsNonRepresentees() exposent
+    // l'axe diffusable d'une mention quand son denom >= SEUIL_DIFFUSION
+    // (= 5). En mode export on monte le plancher à `seuil_diffusable`
+    // (= 20 par défaut), donc les valeurs d'axe à denom 5-19 doivent
+    // disparaître aussi de la table récap XLSX — sans ça, l'utilisateur
+    // voit des cellules « 29,4 % / 17 entrants » avec fond orange
+    // alors qu'on les considère non diffusables pour l'export
+    // (cf. retour utilisateur Univ Bretagne Sud Master 2023 :
+    // LANGUES, MANAGEMENT SECTORIEL, SCIENCE DES DONNEES).
+    foreach ($mentionsNonRepresentees as $i => $m) {
+        if (isset($m['denom_x']) && (int)$m['denom_x'] < $seuilExport) {
+            unset($mentionsNonRepresentees[$i]['x']);
+            unset($mentionsNonRepresentees[$i]['denom_x']);
+            unset($mentionsNonRepresentees[$i]['population_x']);
+        }
+        if (isset($m['denom_y']) && (int)$m['denom_y'] < $seuilExport) {
+            unset($mentionsNonRepresentees[$i]['y']);
+            unset($mentionsNonRepresentees[$i]['denom_y']);
+            unset($mentionsNonRepresentees[$i]['population_y']);
+        }
+    }
+    // Note : les unset() ci-dessus retirent des clés DANS chaque
+    // entrée (x, denom_x, population_x...), pas les entrées du
+    // tableau. Les indices outer (0, 1, 2…) restent contigus, le
+    // JSON encode bien un Array et pas un Object.
 }
 
 // =============================================================================

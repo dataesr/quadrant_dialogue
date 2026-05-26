@@ -22,14 +22,15 @@ export const HEIGHT = 700;
 // dédié aux bulles (cf. Quadrant.jsx) élargit le plot de 30 px sur chaque
 // côté, donc les marges doivent au minimum absorber ces 30 px.
 //
-// `left` à 160 px (au lieu de 80) pour accueillir le libellé complet
-// de la ligne de référence horizontale (« Moyenne établissement » =
-// ~145 px à fontSize 11). Cf. LignesReference.jsx.
+// Marges latérales équilibrées (left = right = 80, top = 50, bottom = 80)
+// → plot carré PLOT_WIDTH=PLOT_HEIGHT=570 px. Les libellés des lignes
+// de référence sont posés à l'INTÉRIEUR du plot (cf. LignesReference.jsx)
+// donc pas besoin d'élargir les marges externes.
 export const MARGIN = {
   top:    50,
   right:  50,
   bottom: 80,
-  left:   160,
+  left:   80,
 };
 
 // Aire utile du plot (intérieur des axes).
