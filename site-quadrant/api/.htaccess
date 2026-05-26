@@ -23,7 +23,7 @@ RewriteRule ^(config|lib)/ - [F,L]
     Header always set X-Content-Type-Options "nosniff"
     
     # Pas de frame ailleurs que sur le site hôte
-    Header always set Content-Security-Policy "frame-ancestors https://etablissement.exemple.fr"
+    Header always set Content-Security-Policy "frame-ancestors https://dialogue.dgesip.fr/"
     
     # Politique de référent réduite
     Header always set Referrer-Policy "strict-origin-when-cross-origin"

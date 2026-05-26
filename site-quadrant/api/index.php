@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
 /**
  * Point d'entrée unique de l'API.
  *
@@ -15,6 +17,7 @@
  *   GET  /referentiel/variables             → endpoints/referentiel-variables.php
  *   GET  /export/csv                        → endpoints/export-csv.php
  *   GET  /health                            → endpoints/health.php
+ *   GET  /auth/init                         → endpoints/auth-init.php
  */
 
 require_once __DIR__ . '/lib/Response.php';
@@ -44,6 +47,7 @@ $routes = [
     '/referentiel/variables'               => 'referentiel-variables.php',
     '/export/csv'                          => 'export-csv.php',
     '/health'                              => 'health.php',
+    '/auth/init'                           => 'auth-init.php',
 ];
 
 if (!isset($routes[$path])) {

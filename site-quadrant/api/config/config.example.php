@@ -20,7 +20,8 @@ return [
 
     // Endpoint de vérification côté site hôte (PHP 5.6)
     'host_verify' => [
-        'url'       => 'https://etablissement.exemple.fr/api/internal/verify-session.php',
+        'enabled'   => true,
+        'url'       => 'https://dialogue.dgesip.fr/Dial/verify-session.php',
         'api_key'   => 'CHANGE_ME_SHARED_SECRET_WITH_HOST',
         'timeout'   => 5, // secondes
     ],
