@@ -1,6 +1,4 @@
 <?php
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
 /**
  * Point d'entrée unique de l'API.
  *
@@ -17,14 +15,38 @@ ini_set('display_startup_errors', '1');
  *   GET  /referentiel/variables             → endpoints/referentiel-variables.php
  *   GET  /export/csv                        → endpoints/export-csv.php
  *   GET  /health                            → endpoints/health.php
- *   GET  /auth/init                         → endpoints/auth-init.php
+ *   GET  /diagnostic                        → endpoints/diagnostic.php
+ *   POST /auth/init                         → endpoints/auth-init.php
  */
 
 require_once __DIR__ . '/lib/Response.php';
 
-// Désactivation des erreurs PHP affichées (sécurité). Les erreurs vont dans les logs serveur.
-ini_set('display_errors', '0');
+// Affichage des erreurs PHP : activé uniquement en mode_dev.
+// En prod, les erreurs vont dans les logs serveur — pas de stack
+// trace fuitée dans la réponse HTTP. error_reporting reste sur
+// E_ALL pour que les logs serveur restent informatifs.
+//
+// Fail-safe : si config.php n'est pas lisible (typo, perms), on
+// FORCE display_errors=0 pour ne pas devenir le mode dev par
+// défaut. Un 500 minimal est servi via Response::error pour
+// signaler le problème sans cracher de stack trace.
 error_reporting(E_ALL);
+$configPath = __DIR__ . '/config/config.php';
+if (is_readable($configPath)) {
+    $bootConfig = require $configPath;
+    if (!empty($bootConfig['mode_dev'])) {
+        ini_set('display_errors', '1');
+        ini_set('display_startup_errors', '1');
+    } else {
+        ini_set('display_errors', '0');
+    }
+} else {
+    ini_set('display_errors', '0');
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'config_unreadable', 'message' => 'Configuration serveur indisponible.']);
+    exit;
+}
 
 // Le chemin demandé, normalisé (sans query string, sans slash final)
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -47,6 +69,7 @@ $routes = [
     '/referentiel/variables'               => 'referentiel-variables.php',
     '/export/csv'                          => 'export-csv.php',
     '/health'                              => 'health.php',
+    '/diagnostic'                          => 'diagnostic.php',
     '/auth/init'                           => 'auth-init.php',
 ];
 

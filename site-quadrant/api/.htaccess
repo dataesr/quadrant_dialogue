@@ -22,8 +22,11 @@ RewriteRule ^(config|lib)/ - [F,L]
     # Pas de MIME sniffing
     Header always set X-Content-Type-Options "nosniff"
     
-    # Pas de frame ailleurs que sur le site hôte
-    Header always set Content-Security-Policy "frame-ancestors https://dialogue.dgesip.fr/"
+    # Pas de frame ailleurs que sur le site hôte.
+    # frame-ancestors sans slash final (la spec CSP3 attend une origine,
+    # pas un path) — sinon certains parseurs strict invalident la
+    # directive et l'app peut se charger dans n'importe quel frame.
+    Header always set Content-Security-Policy "frame-ancestors https://dialogue.dgesip.fr"
     
     # Politique de référent réduite
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
