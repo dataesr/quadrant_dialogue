@@ -9,19 +9,22 @@ import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
 //                     la suppression du sélecteur « Ligne de référence »
 //                     en phase 8 corrections)
 //
-// Positionnement des libellés (à l'INTÉRIEUR du plot, près des
-// lignes pointillées pour ne pas déformer les marges externes du
-// quadrant) :
-//   - Label de la verticale (ref X) : posé en haut du plot, juste à
-//     GAUCHE de la ligne pointillée, textAnchor="end" pour que le
-//     texte se termine contre la ligne. Aligné dans le quadrant
-//     haut-gauche pour ne pas se coller aux bulles de la zone
-//     haut-droite (souvent dense).
-//   - Label de l'horizontale (ref Y) : posé à droite du plot, juste
-//     AU-DESSUS de la ligne pointillée, textAnchor="end" pour que le
-//     texte se termine contre le bord droit. Aligné dans le quadrant
-//     haut-droite (zone naturellement moins dense pour les indicateurs
-//     positifs).
+// Positionnement des libellés (à l'INTÉRIEUR du plot, dans les
+// zones les MOINS denses) :
+//   - Label de la verticale (ref X) : posé en bas du plot, à gauche
+//     de la ligne pointillée, textAnchor="end" → texte aligné à
+//     droite, qui se termine contre la ligne. Zone bas-gauche du
+//     quadrant : peu de bulles habituellement (= mauvais sur les
+//     deux axes — rare).
+//   - Label de l'horizontale (ref Y) : posé à gauche du plot, juste
+//     AU-DESSUS de la ligne pointillée, textAnchor="start" → texte
+//     aligné à gauche depuis le bord gauche du plot. Zone gauche du
+//     quadrant : également moins fournie que la zone droite.
+//
+// Logique métier : les bulles « intéressantes » (taux élevés sur les
+// deux axes) sont en haut-droite. Les zones bas-gauche et gauche-
+// centrale étaient le précédent emplacement (haut-droite et haut-
+// gauche) systématiquement masquées par les clusters denses.
 //
 // Apparence discrète : fontSize 11, fill #666. Le but est informatif —
 // si une bulle recouvre brièvement le libellé, c'est acceptable (le
@@ -50,6 +53,8 @@ export default function LignesReference({ reference, xScale, yScale }) {
 
   // Bornes du plot (utiles pour le positionnement des labels).
   const plotTop    = MARGIN.top;
+  const plotBottom = MARGIN.top + PLOT_HEIGHT;
+  const plotLeft   = MARGIN.left;
   const plotRight  = MARGIN.left + PLOT_WIDTH;
 
   return (
@@ -71,13 +76,14 @@ export default function LignesReference({ reference, xScale, yScale }) {
         strokeDasharray="4 3"
       />
 
-      {/* Label de la verticale : intérieur du plot, en haut, juste à
+      {/* Label de la verticale : intérieur du plot, EN BAS, juste à
           gauche de la pointillée. textAnchor=end → texte aligné à
-          droite contre x-5. */}
+          droite contre x-5. Zone bas-gauche du quadrant : peu
+          fournie en bulles d'habitude. */}
       {label && (
         <text
           x={x - 5}
-          y={plotTop + 14}
+          y={plotBottom - 8}
           fontSize={11}
           fill="#666"
           textAnchor="end"
@@ -86,16 +92,19 @@ export default function LignesReference({ reference, xScale, yScale }) {
         </text>
       )}
 
-      {/* Label de l'horizontale : intérieur du plot, à droite, juste
-          au-dessus de la pointillée. textAnchor=end → texte aligné à
-          droite contre le bord droit du plot. */}
+      {/* Label de l'horizontale : intérieur du plot, À GAUCHE, juste
+          au-dessus de la pointillée. textAnchor=start → texte aligné
+          à gauche depuis plotLeft+5. Zone gauche-centrale : moins
+          dense que la zone droite (« haut-droite » = bulles les
+          mieux placées sur les deux axes, où les clusters se
+          concentrent). */}
       {label && (
         <text
-          x={plotRight - 5}
+          x={plotLeft + 5}
           y={y - 5}
           fontSize={11}
           fill="#666"
-          textAnchor="end"
+          textAnchor="start"
         >
           {label}
         </text>

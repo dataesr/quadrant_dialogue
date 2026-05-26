@@ -186,13 +186,27 @@ export default function DetailsPanel() {
       return;
     }
 
-    // 2. Swap temporaire : on bascule le rendu du panneau sur les
-    //    données filtrées. Le panneau affiche brièvement
-    //    « Non diffusable » à la place des valeurs fragiles —
-    //    nécessaire car exportDocx lit le DOM du panneau pour les
-    //    valeurs textuelles (libelle, valeur, detail) et capture
-    //    les SVG des graphes (cards X/Y + multi-courbes historiques).
-    setPanneauDataOverride(exportData);
+    // 2. Préparation de l'override.
+    //
+    // L'API renvoie pour les entrées historiques sous-seuil :
+    //   { taux: null, numerateur: null, denominateur: <denom>,
+    //     non_diffusable: true }
+    // — denominateur conservé (taille de cohorte) et flag
+    // non_diffusable posé. Côté écran, c'est ce qui permet à
+    // MiniGrapheEvolution de tracer un cercle creux à mi-hauteur et à
+    // MiniGrapheEffectifs de continuer à tracer la courbe denominateur
+    // qui passe par ce point. C'est l'apparence souhaitée à l'écran
+    // (seuil 5).
+    //
+    // Pour le Word d'export, on veut ZÉRO trace au point (cf. spec :
+    // « les graphiques n'affichent plus aucun point avec denom <
+    // seuil_diffusable, années en gap »). On strip donc les entrées
+    // historiques non_diffusable à tout-null : la courbe taux et la
+    // courbe denom auront toutes deux des gaps. Donnees_courantes
+    // restent intactes — leurs « Non diffusable » textuels sont
+    // attendus dans les cards X/Y.
+    const exportDataStrippe = stripHistoriqueNonDiffusable(exportData);
+    setPanneauDataOverride(exportDataStrippe);
 
     // 3. Attendre que React commit le re-render ET que les SVG des
     //    graphes (MiniGrapheEvolution, MiniGrapheEffectifs,
@@ -210,7 +224,7 @@ export default function DetailsPanel() {
 
     try {
       await exportFicheDocx({
-        ficheData: exportData,
+        ficheData: exportDataStrippe,
         contexte: {
           etabInfo,
           cursus, vue, millesime,
@@ -614,6 +628,37 @@ function trouverLigneCourante(donneesCourantes, indicateur, dateInser) {
 
 function formatPourcent(taux) {
   return `${taux.toFixed(1).replace('.', ',')} %`;
+}
+
+// Strip des entrées historiques marquées non_diffusable=true par
+// l'API (cas for_export=1 avec denom < seuil_diffusable). On nullifie
+// TOUTES les valeurs (numerateur, denominateur, taux) et on retire le
+// flag non_diffusable. Conséquence côté SVG :
+//   - MiniGrapheEvolution n'affiche ni point plein (taux=null) ni
+//     point creux (nonDiffusable=false) → gap pur.
+//   - MiniGrapheEffectifs voit num=null et denom=null → ses deux
+//     polylines (num et denom) sautent ce millésime → gap.
+// Donnees_courantes inchangées : leurs entrées non_diffusable=true
+// continuent à produire « Non diffusable » dans ValeurCourante (card
+// X/Y) — c'est le comportement souhaité pour le Word.
+function stripHistoriqueNonDiffusable(data) {
+  if (!data?.historique) return data;
+  return {
+    ...data,
+    historique: data.historique.map((h) => ({
+      ...h,
+      donnees: (h.donnees || []).map((r) => {
+        if (r.non_diffusable !== true) return r;
+        return {
+          indicateur:   r.indicateur,
+          date_inser:   r.date_inser,
+          numerateur:   null,
+          denominateur: null,
+          taux:         null,
+        };
+      }),
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------
