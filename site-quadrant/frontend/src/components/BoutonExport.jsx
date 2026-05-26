@@ -28,7 +28,8 @@ export default function BoutonExport() {
     etabContexte, etabInfo, cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
+    referenceAxes,
     affichage,
     rechercheMention,
     referentiels,
@@ -70,7 +71,7 @@ export default function BoutonExport() {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
     forExport: true,
   });
 
@@ -123,7 +124,8 @@ export default function BoutonExport() {
         domaine, discipline, secteur,
         mention: mentionLibelle,
         typeMaster,
-        representativite, ligneReference,
+        representativite,
+        referenceAxes,
         surligne,
       });
 
@@ -206,7 +208,7 @@ function construireContexte(params) {
       mention: params.mention,
       typeMaster: params.typeMaster,
       representativite: params.representativite,
-      ligneReference: params.ligneReference,
+      referenceAxes: params.referenceAxes,
     },
     surligne: params.surligne || null,
     tokens: {

@@ -59,7 +59,7 @@ export default function DetailsPanel() {
     etabInfo,
     mention,
     domaine, discipline, secteur, typeMaster,
-    representativite, ligneReference,
+    representativite,
     frontendConfig,
   } = useApp();
 
@@ -104,7 +104,7 @@ export default function DetailsPanel() {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
   });
 
   useEffect(() => {

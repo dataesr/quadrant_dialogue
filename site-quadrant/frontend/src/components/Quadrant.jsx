@@ -46,14 +46,6 @@ const LIBELLES_DOMAINES = {
 
 const ORDRE_DOMAINES = ['DEG', 'LLA', 'SHS', 'STS', 'INTERD'];
 
-// Libellés d'affichage pour la mention sous le quadrant quand
-// l'utilisateur choisit une référence d'axes non standard.
-const LIBELLES_REFERENCE_AXES = {
-  mediane_etab:      'médiane établissement',
-  moyenne_etab:      'moyenne pondérée établissement',
-  moyenne_nationale: 'moyenne pondérée nationale',
-};
-
 // Ordre de rendu de la légende des formes (codé sur la sémantique :
 // du plus fiable au moins fiable, gauche → droite). Les libellés
 // reprennent la convention API (cf. CLAUDE.md §11) : forme = fonction
@@ -99,7 +91,7 @@ export default function Quadrant({ forExport = false } = {}) {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
     referenceAxes,
     scaleMode,
     rechercheMention,
@@ -134,7 +126,7 @@ export default function Quadrant({ forExport = false } = {}) {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
     forExport,
   });
 
@@ -206,7 +198,7 @@ export default function Quadrant({ forExport = false } = {}) {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
     referenceAxes,
   ]);
 
@@ -238,7 +230,19 @@ export default function Quadrant({ forExport = false } = {}) {
   //                          premier plan pour garantir la bulle de
   //                          contexte toujours visible.
   const bulles = useMemo(() => {
-    const list = data?.bulles || [];
+    // Filtre des bulles non plottables en 2D : une bulle avec x=null
+    // ou y=null (cas du post-traitement ?for_export=1 quand un axe
+    // est sous seuil_diffusable) ne peut pas être positionnée sur le
+    // plan SVG. JavaScript coerce null en 0 dans `null * 100`, ce qui
+    // ferait apparaître ces bulles au coin (0%, 0%) du quadrant —
+    // c'est précisément le bug de la PNG d'export observé (triangles
+    // collés à 0% pour des bulles fragiles 5-19). On les retire ici
+    // du flux de rendu SVG. Le tableau et l'XLSX, qui lisent
+    // data.bulles directement, gardent la sémantique « Non
+    // diffusable » par axe — c'est ce qu'on veut côté tableau.
+    const list = (data?.bulles || []).filter(
+      (b) => typeof b.x === 'number' && typeof b.y === 'number'
+    );
     if (vue === 'mentions') {
       return [...list].sort((a, b) => {
         const da = a.denom_x ?? a.denom ?? 0;
@@ -580,15 +584,6 @@ export default function Quadrant({ forExport = false } = {}) {
             ))}
           </div>
         </div>
-      )}
-
-      {/* Mention discrète sur le mode de référence des axes quand
-          l'utilisateur n'est pas sur le défaut (médiane étab). Aide
-          à comprendre pourquoi les bulles se sont redistribuées. */}
-      {vue === 'mentions' && referenceAxes !== 'mediane_etab' && (
-        <p className="reference-axes-note">
-          Axes de référence&nbsp;: {LIBELLES_REFERENCE_AXES[referenceAxes] || referenceAxes}
-        </p>
       )}
 
       <p className="source-attribution">

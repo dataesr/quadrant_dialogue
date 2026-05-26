@@ -18,6 +18,15 @@
 
 import { LIBELLE_SOURCE, MENTION_DIFFUSION, NOM_SOURCE } from './constants.js';
 
+// Libellés des modes de référence des axes (cf. AppContext
+// `referenceAxes`). Affichés dans le bandeau « Filtres » du PNG
+// quand l'utilisateur n'est pas sur le défaut (médiane étab).
+const LIBELLES_REFERENCE_AXES = {
+  mediane_etab:      'Médiane établissement',
+  moyenne_etab:      'Moyenne établissement',
+  moyenne_nationale: 'Moyenne nationale',
+};
+
 export async function exportQuadrantPng({ wrapperEl, contexte }) {
   if (!wrapperEl) throw new Error('exportQuadrantPng: wrapperEl manquant.');
 
@@ -164,8 +173,8 @@ function formaterFiltresActifs(filtres) {
   if (filtres.mention)    parts.push(`Mention = ${filtres.mention}`);
   if (filtres.typeMaster) parts.push(`Type Master = ${filtres.typeMaster}`);
   if (filtres.representativite) parts.push('Représentatif (denom ≥ 20)');
-  if (filtres.ligneReference && filtres.ligneReference !== 'mediane') {
-    parts.push(`Référence = ${filtres.ligneReference}`);
+  if (filtres.referenceAxes && filtres.referenceAxes !== 'mediane_etab') {
+    parts.push(`Réf. axes = ${LIBELLES_REFERENCE_AXES[filtres.referenceAxes] || filtres.referenceAxes}`);
   }
   return parts.join(' · ');
 }

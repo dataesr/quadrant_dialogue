@@ -407,9 +407,9 @@ En vue Mentions, l'utilisateur peut basculer entre 3 modes de référence pour l
 
 Calculé par `/quadrant` dans le bloc `axes` de la réponse (`mediane_etab_x/y`, `moyenne_etab_x/y`, `moyenne_nationale_x/y`). La moyenne nationale réutilise la même requête SQL que les bulles (avant filtrage par étab côté agrégation) — pas de requête supplémentaire. State frontend : `referenceAxes` dans AppContext (défaut `'mediane_etab'`).
 
-Une mention discrète apparaît sous le quadrant quand le mode n'est pas le défaut (« Axes de référence : moyenne nationale »).
+Présenté côté UI comme un groupe de 3 boutons radio empilés verticalement (`fr-fieldset` + `fr-radio-group`) dans le panneau « Plus d'options ». Le segment control horizontal ne tenait pas la largeur du panneau latéral 280 px (libellés tronqués). Les libellés complets sont également reportés directement sur le quadrant : le label de la ligne de référence verticale est en bas (sous l'axe X, centré sur la ligne), celui de la ligne horizontale à gauche (dans la marge gauche, aligné sur la ligne). La marge gauche du SVG (`MARGIN.left` dans `geometry.js`) a été augmentée à 160 px pour accueillir « Moyenne établissement » (~145 px à fontSize 11).
 
-En vue Positionnement le sélecteur est masqué (les axes sont déjà nationaux par construction).
+En vue Positionnement le sélecteur est masqué (les axes sont déjà calculés sur le bloc `data.reference` par l'API, défaut « médiane »). L'ancien sélecteur « Ligne de référence » (Médiane / Moyenne, paramètre `ligneReference`) a été retiré — l'API garde son paramètre `agregation` figé à `'mediane'` côté useQuadrant pour préserver le calcul de `data.reference`.
 
 ### UX — Reset automatique du zoom
 

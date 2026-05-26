@@ -3,7 +3,6 @@ import { useApp } from '../context/AppContext.jsx';
 import { trackEvent } from '../utils/matomo.js';
 import ReferentielSelect from './selectors/ReferentielSelect.jsx';
 import TypeMasterSelect from './selectors/TypeMasterSelect.jsx';
-import BinaryToggle from './selectors/BinaryToggle.jsx';
 import ModaleMethodologie from './ModaleMethodologie.jsx';
 
 // Panneau de filtres avancés, replié par défaut. S'ouvre automatiquement
@@ -24,7 +23,6 @@ import ModaleMethodologie from './ModaleMethodologie.jsx';
 // le chargement (un filtre paraîtra actif alors qu'il est à son
 // défaut).
 const DEFAULT_REPRESENTATIVITE = false;
-const DEFAULT_LIGNE_REFERENCE  = 'mediane';
 const DEFAULT_REFERENCE_AXES   = 'mediane_etab';
 
 export default function AdvancedFilters() {
@@ -34,10 +32,10 @@ export default function AdvancedFilters() {
     referentiels,
     domaine, discipline, secteur, mention,
     typeMaster,
-    representativite, ligneReference,
+    representativite,
     referenceAxes, setReferenceAxes,
     setDomaine, setDiscipline, setSecteur,
-    setRepresentativite, setLigneReference,
+    setRepresentativite,
     resetAdvancedFilters,
   } = useApp();
 
@@ -67,11 +65,10 @@ export default function AdvancedFilters() {
     if (mention     !== null) n++;
     if (cursus === 'Master' && typeMaster !== null) n++;
     if (representativite !== DEFAULT_REPRESENTATIVITE) n++;
-    if (ligneReference   !== DEFAULT_LIGNE_REFERENCE)  n++;
     if (vue === 'mentions' && referenceAxes !== DEFAULT_REFERENCE_AXES) n++;
     return n;
   }, [domaine, discipline, secteur, mention, cursus, typeMaster,
-      representativite, ligneReference, vue, referenceAxes]);
+      representativite, vue, referenceAxes]);
 
   // Auto-dépli quand un filtre devient actif (au montage si l'utilisateur
   // recharge avec un état pré-positionné, ou en cours d'utilisation).
@@ -165,35 +162,41 @@ export default function AdvancedFilters() {
             </label>
           </div>
 
-          <BinaryToggle
-            id="quadrant-ligne-ref"
-            legend="Ligne de référence"
-            options={[
-              { value: 'mediane', label: 'Médiane' },
-              { value: 'moyenne', label: 'Moyenne' },
-            ]}
-            value={ligneReference}
-            onChange={setLigneReference}
-            disabled={disabled}
-          />
-
-          {/* Mode de référence des axes — vue Mentions uniquement.
+          {/* Référence des axes — vue Mentions uniquement.
               En vue Positionnement, les axes sont déjà calculés sur
-              l'ensemble France (médiane / moyenne sur les bulles
-              d'étabs), le sélecteur n'a pas de sens. */}
+              l'ensemble France (cf. data.reference côté API), le
+              sélecteur n'a pas de sens et reste masqué.
+
+              Layout vertical via fr-radio-group plutôt que segment
+              control : les libellés complets (« Moyenne nationale »
+              etc.) débordent du panneau latéral 280 px en disposition
+              horizontale. */}
           {vue === 'mentions' && (
-            <BinaryToggle
-              id="quadrant-reference-axes"
-              legend="Référence des axes"
-              options={[
-                { value: 'mediane_etab',      label: 'Médiane étab' },
-                { value: 'moyenne_etab',      label: 'Moyenne étab' },
-                { value: 'moyenne_nationale', label: 'Moyenne nationale' },
-              ]}
-              value={referenceAxes}
-              onChange={setReferenceAxes}
-              disabled={disabled}
-            />
+            <fieldset className="fr-fieldset" disabled={disabled}>
+              <legend className="fr-fieldset__legend">Référence des axes</legend>
+              {[
+                { value: 'mediane_etab',      label: 'Médiane établissement' },
+                { value: 'moyenne_etab',      label: 'Moyenne établissement' },
+                { value: 'moyenne_nationale', label: 'Moyenne nationale'     },
+              ].map((opt) => {
+                const inputId = `quadrant-reference-axes-${opt.value}`;
+                return (
+                  <div key={opt.value} className="fr-radio-group fr-radio-group--sm">
+                    <input
+                      type="radio"
+                      id={inputId}
+                      name="quadrant-reference-axes"
+                      value={opt.value}
+                      checked={referenceAxes === opt.value}
+                      onChange={() => setReferenceAxes(opt.value)}
+                    />
+                    <label className="fr-label" htmlFor={inputId}>
+                      {opt.label}
+                    </label>
+                  </div>
+                );
+              })}
+            </fieldset>
           )}
 
           <button

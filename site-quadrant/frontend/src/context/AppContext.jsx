@@ -24,7 +24,6 @@ const AppContext = createContext(null);
 
 // Valeurs par défaut des filtres avancés. Resetables via resetAdvancedFilters.
 const DEFAULT_REPRESENTATIVITE = false;
-const DEFAULT_LIGNE_REFERENCE  = 'mediane';
 
 // Mode de référence des axes en vue Mentions (3 valeurs possibles).
 // 'mediane_etab' (défaut) : reproduit le comportement historique.
@@ -63,7 +62,6 @@ export function AppProvider({ children }) {
   const [mention,           setMention]           = useState(null);
   const [typeMaster,        setTypeMaster]        = useState(null);
   const [representativite,  setRepresentativite]  = useState(DEFAULT_REPRESENTATIVITE);
-  const [ligneReference,    setLigneReference]    = useState(DEFAULT_LIGNE_REFERENCE);
   const [referenceAxes,     setReferenceAxes]     = useState(DEFAULT_REFERENCE_AXES);
 
   // --- Phase 4b : compléments quadrant ---
@@ -266,7 +264,7 @@ export function AppProvider({ children }) {
   //   nouveaux référentiels arriveront ;
   // - filtres disciplinaires + typeMaster → on les remet à zéro car les
   //   valeurs disponibles changent avec le cursus ;
-  // - representativite + ligneReference → préservés (préférences UX
+  // - representativite + referenceAxes → préservés (préférences UX
   //   indépendantes du cursus).
   // - detailsCible → fermé : cible probablement invalide dans le nouveau cursus.
   const setCursus = useCallback((newCursus) => {
@@ -329,7 +327,7 @@ export function AppProvider({ children }) {
     setMention(null);
     setTypeMaster(null);
     setRepresentativite(DEFAULT_REPRESENTATIVITE);
-    setLigneReference(DEFAULT_LIGNE_REFERENCE);
+    setReferenceAxes(DEFAULT_REFERENCE_AXES);
   }, []);
 
   const value = {
@@ -343,7 +341,6 @@ export function AppProvider({ children }) {
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite,
-    ligneReference,
     referenceAxes,
     // Phase 4b
     scaleMode,
@@ -364,7 +361,7 @@ export function AppProvider({ children }) {
     setDateInserX, setDateInserY,
     setDomaine, setDiscipline, setSecteur, setMention,
     setTypeMaster,
-    setRepresentativite, setLigneReference,
+    setRepresentativite,
     setReferenceAxes,
     resetAdvancedFilters,
     setRechercheMention,

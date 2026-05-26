@@ -50,6 +50,14 @@ const LIBELLE_STATUT = {
   non_diffusable: 'Non diffusable',
 };
 
+// Libellés humains des modes de référence des axes (cf. AppContext
+// `referenceAxes`). Utilisés dans la feuille Métadonnées.
+const LIBELLES_REFERENCE_AXES = {
+  mediane_etab:      'Médiane établissement',
+  moyenne_etab:      'Moyenne établissement',
+  moyenne_nationale: 'Moyenne nationale',
+};
+
 // Palette cellules — alignée sur global.css.
 const FILL_HEADER       = 'FFF0F0F0';
 const FILL_REGROUPEMENT = 'FFE0E0E0';
@@ -542,7 +550,7 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Millésime',              contexte?.millesime || ''],
     ['Axe horizontal',         formatLibelleAxe(contexte?.variableX, contexte?.dateInserX)],
     ['Axe vertical',           formatLibelleAxe(contexte?.variableY, contexte?.dateInserY)],
-    ['Ligne de référence',     filtres.ligneReference === 'moyenne' ? 'Moyenne' : 'Médiane'],
+    ['Référence des axes',     LIBELLES_REFERENCE_AXES[filtres.referenceAxes] || 'Médiane établissement'],
     ['Représentativité',       filtres.representativite
                                  ? 'Représentatif uniquement (denom ≥ 20)'
                                  : 'Toutes (denom ≥ 5)'],

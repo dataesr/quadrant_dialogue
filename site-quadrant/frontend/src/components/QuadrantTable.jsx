@@ -77,7 +77,7 @@ export default function QuadrantTable() {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
     referenceAxes,
     setDetailsCible,
   } = useApp();
@@ -105,7 +105,7 @@ export default function QuadrantTable() {
     variableX, variableY, dateInserX, dateInserY,
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
-    representativite, ligneReference,
+    representativite,
   });
 
   const libelleX = formatLibelle(variableX, dateInserX);

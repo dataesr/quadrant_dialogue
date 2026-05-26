@@ -48,7 +48,6 @@ export function useMentionsEtab({
     mention: null,
     typeMaster: null,
     representativite: false,
-    ligneReference: 'mediane',
   });
 
   const mentions = useMemo(() => {
