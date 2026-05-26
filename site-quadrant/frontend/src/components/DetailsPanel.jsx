@@ -11,7 +11,7 @@ import {
   seriesReussite,
   seriesInsertion,
 } from './details/historique.js';
-import { getContexteIdDev } from '../services/api.js';
+import { getContexteIdDev, getQuadrantDetails } from '../services/api.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
 import { messageErreur } from '../utils/errors.js';
@@ -72,6 +72,11 @@ export default function DetailsPanel() {
   // panneau (capture des sous-éléments via html-to-image).
   const panneauRef = useRef(null);
   const [exportFiche, setExportFiche] = useState({ running: false, erreur: null });
+  // Override des données du panneau pendant la capture Word (cf.
+  // handleExportFiche). null en temps normal — un objet ficheData
+  // pendant la fenêtre de capture, qu'on lit en priorité sur
+  // details.data quelques lignes plus bas.
+  const [panneauDataOverride, setPanneauDataOverride] = useState(null);
 
   // Auto-effacement du message d'erreur d'export Word après 5 s
   // (toast-like). L'utilisateur peut retenter sans avoir à fermer.
@@ -118,7 +123,16 @@ export default function DetailsPanel() {
 
   if (!detailsCible) return null;
 
-  const data = details.data;
+  // `panneauDataOverride` permet de temporairement basculer le rendu
+  // du panneau sur les données filtrées pour l'export (?for_export=1
+  // côté /quadrant/details), pendant la durée de la capture
+  // html-to-image du Word. Hors export, l'override est null →
+  // l'utilisateur voit toujours les données écran (seuil 5). Après
+  // capture, on remet à null → le panneau retrouve son état d'origine.
+  // L'utilisateur peut voir un très bref flash si l'override prend
+  // > 100 ms à se stabiliser, mais le toast « Génération en cours… »
+  // (bouton Word désactivé) signale l'opération.
+  const data = panneauDataOverride ?? details.data;
   const identite = data?.identite;
 
   // Pré-conditions pour l'export Word : le panneau doit être chargé,
@@ -142,9 +156,53 @@ export default function DetailsPanel() {
       cursus,
       millesime,
     });
+
+    // 1. Fetch dédié /quadrant/details avec for_export=1. L'API
+    //    applique le seuil_diffusable (20 par défaut) : les valeurs
+    //    fragiles 5-19 deviennent non_diffusable=true côté
+    //    donnees_courantes et historique. Le panneau écran reste
+    //    sur ses données initiales (seuil 5) tant que l'override
+    //    n'est pas posé.
+    let exportData;
+    try {
+      exportData = await getQuadrantDetails({
+        vue,
+        formation:   cursus,
+        millesime,
+        target_id:   detailsCible.targetId,
+        etab_contexte: etabContexte,
+        ...(detailsCible.mention ? { mention: detailsCible.mention } : (
+          vue === 'etablissements' && mention ? { mention } : {}
+        )),
+        for_export: 1,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Export fiche Word — fetch for_export :', err);
+      setExportFiche({
+        running: false,
+        erreur: messageErreur(err) || 'Échec de l\'export.',
+      });
+      return;
+    }
+
+    // 2. Swap temporaire : on bascule le rendu du panneau sur les
+    //    données filtrées. Le panneau affiche brièvement
+    //    « Non diffusable » à la place des valeurs fragiles —
+    //    nécessaire car exportDocx lit le DOM du panneau pour les
+    //    valeurs textuelles (libelle, valeur, detail) et capture
+    //    les SVG des graphes.
+    setPanneauDataOverride(exportData);
+
+    // 3. Attendre 2 frames pour que React peigne le rendu avec
+    //    l'override avant que html-to-image ne capture.
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+
     try {
       await exportFicheDocx({
-        ficheData: data,
+        ficheData: exportData,
         contexte: {
           etabInfo,
           cursus, vue, millesime,
@@ -173,6 +231,12 @@ export default function DetailsPanel() {
         running: false,
         erreur: messageErreur(err) || 'Échec de l\'export.',
       });
+    } finally {
+      // 4. Restaurer le rendu d'origine du panneau (données
+      //    affichage écran avec seuil 5). L'utilisateur retrouve
+      //    son état initial — quel que soit le résultat de la
+      //    capture (succès ou exception).
+      setPanneauDataOverride(null);
     }
   }
 

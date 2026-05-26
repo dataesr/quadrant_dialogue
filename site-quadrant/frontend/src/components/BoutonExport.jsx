@@ -137,17 +137,20 @@ export default function BoutonExport() {
         millesime,
       };
 
+      // On capture systématiquement depuis l'instance off-screen
+      // dédiée aux exports (cf. App.jsx > .quadrant-export-offscreen).
+      // Cette instance utilise forExport=true côté useQuadrant donc
+      // les bulles sous seuil_diffusable ont déjà été retirées /
+      // marquées par l'API. La même cible sert au PNG et à l'image
+      // embarquée du XLSX — cohérence garantie entre les deux exports.
+      const wrapperEl = document.querySelector('.quadrant-wrapper--export');
+      if (!wrapperEl) throw new Error('Quadrant d\'export introuvable dans la page.');
+
       if (affichage === 'graphique') {
         trackEvent('Export', 'export_png', null, trackContexte);
-        const wrapperEl = document.querySelector('.quadrant-wrapper');
-        if (!wrapperEl) throw new Error('Quadrant introuvable dans la page.');
         await exportQuadrantPng({ wrapperEl, contexte });
       } else {
         trackEvent('Export', 'export_xlsx', null, trackContexte);
-        // En mode tableau le quadrant est rendu hors écran (cf.
-        // App.jsx > .quadrant-offscreen) — la capture pour la feuille
-        // « Graphique » du XLSX se fait sur ce wrapper offscreen.
-        const wrapperEl = document.querySelector('.quadrant-wrapper');
         await exportQuadrantXlsx({ data, contexte, wrapperEl });
       }
     } catch (err) {

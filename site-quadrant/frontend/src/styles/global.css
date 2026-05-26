@@ -74,6 +74,21 @@
   pointer-events: none;
 }
 
+/* Instance off-screen du Quadrant avec forExport=true (cf. App.jsx).
+   Sert de source aux captures html-to-image pour PNG et l'image
+   embarquée du XLSX — les bulles sous le seuil_diffusable configuré
+   y sont déjà filtrées par l'API. Décalée plus loin que
+   .quadrant-offscreen pour ne pas se chevaucher dans le viewport
+   logique du navigateur (paranoia pour certaines extensions qui
+   inspectent les éléments proches de l'écran). */
+.quadrant-export-offscreen {
+  position: absolute;
+  left: -20000px;
+  top: 0;
+  width: 1000px;
+  pointer-events: none;
+}
+
 /* Cadre léger autour du SVG pour le détacher visuellement de la sidebar
    de filtres. Padding interne minimal pour ne pas étouffer les axes.
    position:relative pour ancrer le tooltip et les boutons de zoom en

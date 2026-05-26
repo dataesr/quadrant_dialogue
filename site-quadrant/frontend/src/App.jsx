@@ -107,6 +107,18 @@ function AppShell() {
                   >
                     <Quadrant />
                   </div>
+                  {/* Instance off-screen avec forExport=true : sert de
+                      source aux captures html-to-image pour les exports
+                      PNG (et l'image embarquée du XLSX), qui doivent
+                      respecter le seuil de diffusion configuré
+                      (seuil_diffusable=20 par défaut). Toujours montée
+                      tant qu'un étab est sélectionné — la fetch
+                      supplémentaire est légère et garantit que l'image
+                      est prête au moment du clic Export.
+                      Cf. .quadrant-export-offscreen dans global.css. */}
+                  <div className="quadrant-export-offscreen" aria-hidden="true">
+                    <Quadrant forExport={true} />
+                  </div>
                   {affichage === 'tableau' && <QuadrantTable />}
                   <DetailsPanel />
                 </>

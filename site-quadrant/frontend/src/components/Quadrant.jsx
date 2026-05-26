@@ -86,7 +86,14 @@ const ORDRE_RENDU_ETAB = {
 // sont dimensionnées pour absorber ces 30 px.
 const OVERFLOW = 30;
 
-export default function Quadrant() {
+// Prop `forExport` (default false) : quand true, le Quadrant alimente
+// sa requête /quadrant avec ?for_export=1. Utilisé par l'instance
+// off-screen montée en parallèle dans App.jsx, qui sert de source au
+// capture html-to-image pour les exports PNG (respecte le seuil de
+// diffusion configuré côté API). L'instance visible reste en
+// forExport=false — l'écran continue à afficher les bulles fragiles
+// (5-19) avec leurs formes spéciales.
+export default function Quadrant({ forExport = false } = {}) {
   const {
     cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
@@ -128,6 +135,7 @@ export default function Quadrant() {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
+    forExport,
   });
 
   // ---------------- Tooltip ----------------
@@ -304,6 +312,11 @@ export default function Quadrant() {
     // écraserait une valeur correcte précédente. Critique pour la
     // safety useEffect plus bas (qui repose sur nbBullesAccessibles).
     if (!data) return;
+    // L'instance off-screen montée pour l'export (forExport=true) ne
+    // doit PAS publier dans AppContext — sinon son fetch filtré
+    // (seuil_diffusable=20) écraserait la liste utilisée par la
+    // combobox de recherche et le safety toggle Graphique/Tableau.
+    if (forExport) return;
     const source = vue === 'mentions'
       ? bulles
       : bulles.filter((b) => b.details_accessibles);
@@ -315,7 +328,7 @@ export default function Quadrant() {
         ? prev
         : libelles
     ));
-  }, [data, bulles, vue, setMentionsAffichees]);
+  }, [data, bulles, vue, setMentionsAffichees, forExport]);
 
   // Publier le nombre de bulles accessibles (= avec details_accessibles).
   // Sert à conditionner la visibilité du toggle Graphique/Tableau et
@@ -328,9 +341,14 @@ export default function Quadrant() {
     // affichage='graphique' à tort (bug Positionnement reporté en
     // session précédente).
     if (!data) return;
+    // L'instance off-screen pour l'export (forExport=true) ne publie
+    // pas son décompte — celui-ci pourrait être plus bas que le
+    // décompte visible (seuil_diffusable=20 vs seuil affichage=5) et
+    // déclencher à tort la safety useEffect plus bas.
+    if (forExport) return;
     const nbAccess = bulles.filter((b) => b.details_accessibles).length;
     setNbBullesAccessibles((prev) => (prev === nbAccess ? prev : nbAccess));
-  }, [data, bulles, setNbBullesAccessibles]);
+  }, [data, bulles, setNbBullesAccessibles, forExport]);
 
   // Garde-fou cohérence affichage/contexte : en vue Positionnement, si
   // l'utilisateur est au niveau étab (1 seule bulle accessible),
@@ -338,11 +356,13 @@ export default function Quadrant() {
   // 'tableau' suite à un passage par la vue Mentions, le tableau
   // s'afficherait quand même avec une seule ligne, sans toggle pour
   // en sortir. On force le retour à 'graphique' dans ce cas.
+  // Ne tourne pas sur l'instance off-screen d'export.
   useEffect(() => {
+    if (forExport) return;
     if (vue === 'etablissements' && nbBullesAccessibles < 2 && affichage === 'tableau') {
       setAffichage('graphique');
     }
-  }, [vue, nbBullesAccessibles, affichage, setAffichage]);
+  }, [vue, nbBullesAccessibles, affichage, setAffichage, forExport]);
 
   // ---------------- États d'affichage non-data ----------------
   if (loading) {
@@ -392,7 +412,10 @@ export default function Quadrant() {
   })();
 
   return (
-    <div className="quadrant-wrapper" ref={wrapperRef}>
+    <div
+      className={'quadrant-wrapper' + (forExport ? ' quadrant-wrapper--export' : '')}
+      ref={wrapperRef}
+    >
       <svg
         ref={setSvgEl}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
