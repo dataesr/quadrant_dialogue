@@ -72,6 +72,44 @@ export class ApiError extends Error {
 }
 
 /**
+ * Lit la valeur d'un <meta name="..." content="..."> dans le document
+ * courant. Retourne null si le tag n'existe pas (cas dev local hors
+ * iframe : l'app est servie par Vite, pas par /auth/init).
+ */
+function readMeta(name) {
+  if (typeof document === 'undefined') return null;
+  const meta = document.querySelector(`meta[name="${name}"]`);
+  return meta ? meta.getAttribute('content') : null;
+}
+
+/**
+ * Construit les headers d'authentification iframe (3 tokens) à partir
+ * des <meta> injectés par /auth/init côté API. Cohabite avec les
+ * autres modes :
+ *   - Iframe prod (servi par /auth/init) : meta tags présents →
+ *     headers transmis → Session.php valide la session via cache.
+ *   - Dev local (npm run dev) : pas de meta tag → pas de header →
+ *     mode_dev=true côté API accepte le `contexte_id` en query
+ *     string (cf. getContexteIdDev).
+ *   - URL directe prod (https://quadsies.dgesip.fr/?contexte_id=…
+ *     sans iframe) : pas de meta tag → pas de header →
+ *     mode_dev=false → 401, comportement attendu (sécurité OK).
+ *
+ * Les noms de headers sont alignés sur lib/Session.php :
+ *   X-Connexion-Token, X-User-Token, X-Campagne-Token.
+ */
+function getAuthHeaders() {
+  const headers = {};
+  const tc    = readMeta('token-connexion');
+  const tu    = readMeta('token-utilisateur');
+  const tcamp = readMeta('token-campagne');
+  if (tc)    headers['X-Connexion-Token'] = tc;
+  if (tu)    headers['X-User-Token']      = tu;
+  if (tcamp) headers['X-Campagne-Token']  = tcamp;
+  return headers;
+}
+
+/**
  * Construit une URL absolue (API_BASE_URL + path + query string), en injectant
  * automatiquement le contexte_id de dev si configuré.
  */
@@ -103,7 +141,12 @@ async function request(path, params = {}) {
   try {
     response = await fetch(url, {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        // Headers d'auth iframe — silencieux si pas de meta tag
+        // injecté (dev local, URL directe).
+        ...getAuthHeaders(),
+      },
     });
   } catch (err) {
     // Erreur réseau / DNS / mixed content — pas de status HTTP.
