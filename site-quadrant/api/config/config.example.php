@@ -47,4 +47,20 @@ return [
     // À utiliser UNIQUEMENT en développement.
     // À METTRE IMPÉRATIVEMENT À FALSE EN PRODUCTION.
     'mode_dev' => false,
+
+    // Endpoint de diagnostic infra (/api/diagnostic). Protégé par une
+    // clé secrète passée en query string `?key=...`. Permet de
+    // vérifier sans SSH : IP sortante OVH, joignabilité
+    // verify-session.php, BDD, fichiers frontend.
+    //
+    // - `enabled` à false → l'endpoint renvoie 404 (rien ne fuite).
+    // - `key` à 'CHANGE_ME_BEFORE_DEPLOY' (valeur d'exemple) →
+    //   l'endpoint renvoie 403 même si la query string matche, pour
+    //   éviter qu'un déploiement avec config par défaut soit ouvert.
+    //
+    // Génération de la clé : `openssl rand -hex 32`.
+    'diagnostic' => [
+        'enabled' => true,
+        'key'     => 'CHANGE_ME_BEFORE_DEPLOY',
+    ],
 ];
