@@ -335,6 +335,53 @@ ssh ovh 'cd /homez.10002/mesouvm/quadsies && rm -rf dist && mv dist.bak dist'
 - Cache de session via `app_rate_limit` table (migration 002).
 - HTTPS obligatoire — le site hôte est en HTTPS, le navigateur refuserait sinon un POST cross-origin.
 
+### Authentification iframe (chaîne complète)
+
+Flux : le site hôte (`dialogue.dgesip.fr`) soumet un formulaire POST vers `https://quadsies.dgesip.fr/api/auth/init` avec 3 tokens cachés (`tokenConnexion`, `token`, `token_campagne_utilisateurs`). L'endpoint :
+
+1. valide le format des 3 tokens (20–64 alphanum) ;
+2. relaie au site hôte via `host_verify.url` (POST JSON + `X-Api-Key`) ;
+3. vérifie le `contexte_id` renvoyé (5 alphanum) ;
+4. met à jour `app_session_cache` (best-effort) ;
+5. sert `dist/index.html` en injectant 4 `<meta>` tags juste après `<head>` :
+   - `<meta name="contexte-id" content="…">`
+   - `<meta name="token-connexion" content="…">`
+   - `<meta name="token-utilisateur" content="…">`
+   - `<meta name="token-campagne" content="…">`
+
+Côté frontend (`src/services/api.js`), `getAuthHeaders()` lit ces meta tags et propage 3 headers HTTP sur chaque appel API (`X-Connexion-Token`, `X-User-Token`, `X-Campagne-Token`). `Session.php` valide ces headers contre `app_session_cache` (validité TTL configuré dans `session.cache_ttl_minutes`).
+
+**Cohabitation des modes** :
+- **Iframe prod** : meta tags présents → headers transmis → Session.php OK.
+- **Dev local** (`npm run dev`) : pas de meta tag → pas de header → `mode_dev=true` accepte `contexte_id` en query string.
+- **URL directe prod** (`https://quadsies.dgesip.fr/?contexte_id=...` sans iframe) : pas de meta tag → pas de header → `mode_dev=false` → 401 (sécurité OK).
+
+`display_errors` est activé UNIQUEMENT en `mode_dev=true` (cf. `index.php`). En prod, les stack traces vont dans les logs serveur, jamais dans la réponse HTTP. Si `config.php` est illisible, `index.php` renvoie un 500 minimal sans stack trace plutôt que de basculer en mode dev par défaut.
+
+### Diagnostic infra (`/api/diagnostic`)
+
+Endpoint pour vérifier sans SSH l'état de la chaîne (IP sortante OVH, joignabilité de `verify-session.php` côté site hôte, BDD, fichiers frontend).
+
+Protégé par une clé partagée stockée dans `config.php` :
+```php
+'diagnostic' => [
+    'enabled' => true,
+    'key'     => '<générée via openssl rand -hex 32>',
+],
+```
+
+Triple garde-fou : `enabled=false` → 404 ; clé absente ou laissée à la valeur d'exemple (`CHANGE_ME_BEFORE_DEPLOY`) → 403 ; comparaison via `hash_equals` (anti-timing).
+
+Utilisation :
+```bash
+openssl rand -hex 32                                                 # à faire une fois
+curl 'https://quadsies.dgesip.fr/api/diagnostic?key=<DIAGNOSTIC_KEY>' | jq
+```
+
+Cas d'usage typique : récupérer la nouvelle IP sortante OVH (`outbound_ip.v4`) à communiquer à l'équipe site hôte pour mise à jour de la liste blanche `$ALLOWED_IPS` dans `verify-session.php`.
+
+La réponse n'expose AUCUNE donnée sensible — pas les credentials BDD, pas les vrais tokens, pas l'`api_key` partagée (juste un booléen `host_verify_api_key_set`).
+
 ---
 
 ## 8. Documents clés à consulter
