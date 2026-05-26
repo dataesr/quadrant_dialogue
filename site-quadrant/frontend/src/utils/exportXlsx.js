@@ -15,6 +15,7 @@
 import { LIBELLE_SOURCE, NOM_SOURCE_OUTIL, MENTION_DIFFUSION } from './constants.js';
 import { construireNomFichier } from './exportPng.js';
 import { chargerMethodologie } from '../data/methodologie.js';
+import { libelleReferenceAxes } from './libelleReferenceAxes.js';
 
 const ORDRE_CADRANS = ['haut_droite', 'haut_gauche', 'bas_droite', 'bas_gauche'];
 
@@ -50,18 +51,9 @@ const LIBELLE_STATUT = {
   non_diffusable: 'Non diffusable',
 };
 
-// Libellés humains des modes de référence des axes (cf. AppContext
-// `referenceAxes` pour Mentions, `referenceAxesPositionnement` pour
-// Positionnement). Utilisés dans la feuille Métadonnées.
-const LIBELLES_REFERENCE_AXES = {
-  mediane_etab:      'Médiane établissement',
-  moyenne_etab:      'Moyenne établissement',
-  moyenne_nationale: 'Moyenne nationale',
-};
-const LIBELLES_REFERENCE_AXES_POSITIONNEMENT = {
-  mediane: 'Médiane',
-  moyenne: 'Moyenne',
-};
+// Libellés des modes de référence des axes : centralisés dans
+// utils/libelleReferenceAxes.js (partagé avec QuadrantTable.jsx et
+// exportPng.js).
 
 // Palette cellules — alignée sur global.css.
 const FILL_HEADER       = 'FFF0F0F0';
@@ -101,9 +93,15 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
     `${contexte?.etabInfo?.libelle || ''} - ${contexte?.millesime || ''}`;
 
   // Calcul des groupes et mentions non représentées — même logique que
-  // QuadrantTable.jsx.
+  // QuadrantTable.jsx. La référence utilisée pour classer les bulles
+  // dans les 4 cadrans DOIT suivre le mode actif (referenceAxes en vue
+  // Mentions, referenceAxesPositionnement en vue Positionnement) —
+  // sinon le XLSX et l'écran se contredisent dès que l'utilisateur
+  // bascule sur moyenne_etab / moyenne_nationale (cas où
+  // data.reference renvoyé par l'API ne correspond plus à la ligne
+  // pointillée affichée).
   const { groupes, mentionsNonRepresentees, populationX, populationY } =
-    preparerDonnees(data);
+    preparerDonnees(data, contexte);
 
   // Ordre des feuilles : Métadonnées en 1ère position pour que le
   // contexte de l'export (cursus, millésime, axes, filtres, source,
@@ -138,8 +136,22 @@ export async function exportQuadrantXlsx({ data, contexte, wrapperEl }) {
 // Préparation des données : groupes par cadran, mentions non représentées,
 // libellés de population (pour l'en-tête des colonnes effectifs).
 // ---------------------------------------------------------------------
-function preparerDonnees(data) {
-  const ref = data.reference;
+function preparerDonnees(data, contexte) {
+  // Résolution de la référence cohérente avec QuadrantTable.jsx :
+  //   - vue Mentions       : data.axes[referenceAxes_x/y] si présent,
+  //                          sinon fallback data.reference (cas où le
+  //                          backend ne renvoie pas axes).
+  //   - vue Positionnement : data.reference (la valeur dépend du
+  //                          paramètre agregation passé à l'API, qui
+  //                          suit referenceAxesPositionnement côté
+  //                          frontend).
+  const refMode = contexte?.filtres?.referenceAxes;
+  let ref = data.reference;
+  if (contexte?.vue === 'mentions' && data.axes && refMode) {
+    const x = data.axes[`${refMode}_x`];
+    const y = data.axes[`${refMode}_y`];
+    if (x != null && y != null) ref = { x, y };
+  }
   const bulles = (data.bulles || []).filter((b) => b.details_accessibles);
 
   const groupes = {
@@ -223,6 +235,21 @@ function remplirFeuilleDonnees(workbook, params) {
     const row = ws.addRow(['Aucune donnée à afficher.']);
     ws.mergeCells(`A${row.number}:E${row.number}`);
     row.getCell(1).font = { italic: true, color: { argb: COLOR_NEUTRE } };
+  }
+
+  // Mention du mode de référence des axes — placée juste avant le
+  // premier groupe de cadrans, pour que la lecture du XLSX rappelle
+  // contre quoi les bulles ont été classées. Même libellé que la
+  // feuille Métadonnées (formatReferenceAxes) mais répété ici, vu que
+  // la classification se lit principalement dans l'onglet « Données ».
+  if (cadransNonVides.length > 0) {
+    const libelleRef = libelleReferenceAxes(contexte?.vue, contexte?.filtres || {});
+    const refRow = ws.addRow([`Référence des axes : ${libelleRef}`]);
+    ws.mergeCells(`A${refRow.number}:E${refRow.number}`);
+    const refCell = ws.getCell(`A${refRow.number}`);
+    refCell.font = { italic: true, color: { argb: 'FF666666' }, size: 11 };
+    refCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    refRow.height = 18;
   }
 
   for (const cadran of cadransNonVides) {
@@ -555,7 +582,7 @@ function remplirFeuilleMetadonnees(workbook, contexte) {
     ['Millésime',              contexte?.millesime || ''],
     ['Axe horizontal',         formatLibelleAxe(contexte?.variableX, contexte?.dateInserX)],
     ['Axe vertical',           formatLibelleAxe(contexte?.variableY, contexte?.dateInserY)],
-    ['Référence des axes',     formatReferenceAxes(contexte?.vue, filtres)],
+    ['Référence des axes',     libelleReferenceAxes(contexte?.vue, filtres)],
     ['Représentativité',       filtres.representativite
                                  ? 'Représentatif uniquement (denom ≥ 20)'
                                  : 'Toutes (denom ≥ 5)'],
@@ -739,19 +766,6 @@ function formatLibelleAxe(variable, dateInser) {
   if (!variable) return '';
   if (!dateInser) return variable;
   return `${variable} (${dateInser} mois)`;
-}
-
-// La feuille Métadonnées affiche le libellé de la référence selon
-// la vue active :
-//   - Mentions       : referenceAxes (3 modes étab/étab/nationale)
-//   - Positionnement : referenceAxesPositionnement (2 modes courts)
-function formatReferenceAxes(vue, filtres) {
-  if (vue === 'etablissements') {
-    return LIBELLES_REFERENCE_AXES_POSITIONNEMENT[filtres.referenceAxesPositionnement]
-      || 'Médiane';
-  }
-  return LIBELLES_REFERENCE_AXES[filtres.referenceAxes]
-    || 'Médiane établissement';
 }
 
 function formatDateTimeIso(d) {

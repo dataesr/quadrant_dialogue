@@ -6,6 +6,7 @@ import { trackEvent } from '../utils/matomo.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
+import { libelleReferenceAxes } from '../utils/libelleReferenceAxes.js';
 
 // Vue alternative au quadrant SVG : présente les mêmes données sous
 // forme de tableaux regroupés par cadran (haut-droite / haut-gauche /
@@ -153,7 +154,7 @@ export default function QuadrantTable() {
       g[k].sort((a, b) => distanceAuPointIdeal(a) - distanceAuPointIdeal(b));
     }
     return g;
-  }, [data, vue, referenceAxes]);
+  }, [data, vue, referenceAxes, referenceAxesPositionnement]);
 
   // Mentions non représentées triées par libellé (stable, lisible).
   const mentionsNonRepresentees = useMemo(() => {
@@ -193,6 +194,18 @@ export default function QuadrantTable() {
         <div className="fr-alert fr-alert--info">
           <p>{data.info || 'Aucune donnée à afficher dans le tableau.'}</p>
         </div>
+      )}
+
+      {/* Mention du mode de référence — placée au-dessus du premier
+          sous-tableau, pour que l'utilisateur sache contre quoi les
+          bulles sont classées dans les 4 cadrans. Doublonné dans le
+          XLSX (cf. exportXlsx.js). Masqué quand aucun cadran n'est
+          peuplé (cas vue vide). */}
+      {cadransNonVides.length > 0 && (
+        <p className="mention-reference-axes">
+          Référence des axes :{' '}
+          {libelleReferenceAxes(vue, { referenceAxes, referenceAxesPositionnement })}
+        </p>
       )}
 
       {cadransNonVides.map((cadran) => (

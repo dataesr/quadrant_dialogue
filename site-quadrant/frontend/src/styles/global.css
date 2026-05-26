@@ -338,6 +338,12 @@
 
 /* Vue tableau alternative au quadrant. Une <section> par cadran, plus
    éventuellement une section finale « Mentions non représentées ». */
+.mention-reference-axes {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
 .tableau-cadran {
   margin-bottom: 2rem;
 }
