@@ -39,6 +39,10 @@ const STATUT_PAR_RAISON = {
   denom_var1_et_var2_insuffisants: { x: 'non_diffusable', y: 'non_diffusable' },
   denom_var1_insuffisant:          { x: 'non_diffusable', y: 'valeur'         },
   denom_var2_insuffisant:          { x: 'valeur',         y: 'non_diffusable' },
+  // Cas spécifique aux exports (?for_export=1) : les deux axes sont
+  // sous seuil_diffusable côté API. La bulle est arrivée dans
+  // mentions_non_representees avec ce code uniquement.
+  effectif_insuffisant_export:     { x: 'non_diffusable', y: 'non_diffusable' },
 };
 
 const LIBELLE_STATUT = {

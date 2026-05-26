@@ -60,7 +60,13 @@ export default function DetailsPanel() {
     mention,
     domaine, discipline, secteur, typeMaster,
     representativite, ligneReference,
+    frontendConfig,
   } = useApp();
+
+  // Bouton « Télécharger la fiche Word » activable par config API.
+  // Si désactivé, on n'affiche pas le bouton du tout (cohérent avec
+  // BoutonExport — pas de bouton inerte).
+  const wordExportActif = !!frontendConfig?.exports?.docx_fiche_enabled;
 
   // Ref vers <aside> pour permettre à l'export Word de cibler le
   // panneau (capture des sous-éléments via html-to-image).
@@ -180,14 +186,16 @@ export default function DetailsPanel() {
           )}
         </div>
         <div className="actions">
-          <button
-            type="button"
-            className="bouton-action fr-icon-file-download-line"
-            onClick={handleExportFiche}
-            disabled={!ficheExportable || exportFiche.running}
-            aria-label="Télécharger cette fiche au format Word"
-            title="Télécharger cette fiche au format Word"
-          />
+          {wordExportActif && (
+            <button
+              type="button"
+              className="bouton-action fr-icon-file-download-line"
+              onClick={handleExportFiche}
+              disabled={!ficheExportable || exportFiche.running}
+              aria-label="Télécharger cette fiche au format Word"
+              title="Télécharger cette fiche au format Word"
+            />
+          )}
           <button
             type="button"
             className="bouton-action fr-icon-close-line"

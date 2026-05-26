@@ -70,6 +70,7 @@ $routes = [
     '/export/csv'                          => 'export-csv.php',
     '/health'                              => 'health.php',
     '/diagnostic'                          => 'diagnostic.php',
+    '/frontend-config'                     => 'frontend-config.php',
     '/auth/init'                           => 'auth-init.php',
 ];
 

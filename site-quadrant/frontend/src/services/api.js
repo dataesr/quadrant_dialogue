@@ -204,3 +204,7 @@ export function getReferentielVariables(params) {
 export function getEtablissementsVisibles(params) {
   return request('/etablissements-visibles', params);
 }
+
+export function getFrontendConfig() {
+  return request('/frontend-config');
+}

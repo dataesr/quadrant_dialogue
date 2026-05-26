@@ -382,6 +382,39 @@ Cas d'usage typique : récupérer la nouvelle IP sortante OVH (`outbound_ip.v4`)
 
 La réponse n'expose AUCUNE donnée sensible — pas les credentials BDD, pas les vrais tokens, pas l'`api_key` partagée (juste un booléen `host_verify_api_key_set`).
 
+### Configuration des exports (`exports`)
+
+Bloc `exports` dans `config.php` :
+```php
+'exports' => [
+    'png_enabled'        => true,
+    'xlsx_enabled'       => true,
+    'docx_fiche_enabled' => true,
+    'seuil_diffusable'   => 20,
+],
+```
+
+- `png_enabled`/`xlsx_enabled`/`docx_fiche_enabled` : permet de désactiver un type d'export sans déployer de nouveau bundle JS. Exposés au frontend via `GET /api/frontend-config` (aucune auth, fallback permissif côté JS si l'endpoint est KO).
+- `seuil_diffusable` : effectif minimum pour qu'une valeur soit incluse dans un export (20 par défaut, plus strict que le seuil d'affichage écran = 5). Appliqué par l'API quand le paramètre query `?for_export=1` est passé sur `/quadrant` ou `/quadrant/details`. **Non exposé** au frontend pour ne pas faciliter une déduction des effectifs sous-seuil. Le frontend (BoutonExport, DetailsPanel export Word) demande automatiquement la version filtrée pour ses exports — l'affichage écran continue d'utiliser le seuil 5.
+
+### Référence des axes (vue Mentions)
+
+En vue Mentions, l'utilisateur peut basculer entre 3 modes de référence pour les axes du quadrant (lignes pointillées + classification des cadrans dans le tableau) :
+
+- **Médiane établissement** (défaut) — médiane des taux sur les mentions de l'établissement courant.
+- **Moyenne établissement** — moyenne pondérée `SUM(num)/SUM(denom)` sur les mentions de l'établissement (= « moyenne par tête », ne surreprésente pas les petites mentions).
+- **Moyenne nationale** — moyenne pondérée sur toutes les mentions France entière (filtres disciplinaires appliqués, sans filtre étab).
+
+Calculé par `/quadrant` dans le bloc `axes` de la réponse (`mediane_etab_x/y`, `moyenne_etab_x/y`, `moyenne_nationale_x/y`). La moyenne nationale réutilise la même requête SQL que les bulles (avant filtrage par étab côté agrégation) — pas de requête supplémentaire. State frontend : `referenceAxes` dans AppContext (défaut `'mediane_etab'`).
+
+Une mention discrète apparaît sous le quadrant quand le mode n'est pas le défaut (« Axes de référence : moyenne nationale »).
+
+En vue Positionnement le sélecteur est masqué (les axes sont déjà nationaux par construction).
+
+### UX — Reset automatique du zoom
+
+Le zoom du quadrant est automatiquement réinitialisé à chaque changement de paramètre structurel (vue, cursus, millésime, axes, filtres avancés, `referenceAxes`). Évite de rester zoomé sur une zone sans bulles après une bascule de filtre. Le clic sur une bulle ne change aucun de ces paramètres → le zoom est conservé pendant l'exploration interactive.
+
 ---
 
 ## 8. Documents clés à consulter

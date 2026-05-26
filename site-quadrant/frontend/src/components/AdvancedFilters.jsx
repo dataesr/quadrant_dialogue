@@ -19,11 +19,13 @@ import ModaleMethodologie from './ModaleMethodologie.jsx';
 // large) → contenu en colonne unique, chaque sélecteur prenant toute la
 // largeur de la colonne.
 
-// IMPORTANT : ces deux constantes DOIVENT rester alignées avec celles
-// d'AppContext.jsx, sinon le compteur de filtres actifs est faux dès le
-// chargement (un filtre paraîtra actif alors qu'il est à son défaut).
+// IMPORTANT : ces constantes DOIVENT rester alignées avec celles
+// d'AppContext.jsx, sinon le compteur de filtres actifs est faux dès
+// le chargement (un filtre paraîtra actif alors qu'il est à son
+// défaut).
 const DEFAULT_REPRESENTATIVITE = false;
 const DEFAULT_LIGNE_REFERENCE  = 'mediane';
+const DEFAULT_REFERENCE_AXES   = 'mediane_etab';
 
 export default function AdvancedFilters() {
   const {
@@ -33,6 +35,7 @@ export default function AdvancedFilters() {
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite, ligneReference,
+    referenceAxes, setReferenceAxes,
     setDomaine, setDiscipline, setSecteur,
     setRepresentativite, setLigneReference,
     resetAdvancedFilters,
@@ -53,6 +56,9 @@ export default function AdvancedFilters() {
   const disabled = !etabContexte;
 
   // Nombre de filtres avancés en écart par rapport à leur défaut.
+  // referenceAxes ne compte que sur vue=mentions (le contrôle n'est
+  // affiché que là — en Positionnement il reste à son défaut sans
+  // visibilité utilisateur).
   const activeCount = useMemo(() => {
     let n = 0;
     if (domaine     !== null) n++;
@@ -62,9 +68,10 @@ export default function AdvancedFilters() {
     if (cursus === 'Master' && typeMaster !== null) n++;
     if (representativite !== DEFAULT_REPRESENTATIVITE) n++;
     if (ligneReference   !== DEFAULT_LIGNE_REFERENCE)  n++;
+    if (vue === 'mentions' && referenceAxes !== DEFAULT_REFERENCE_AXES) n++;
     return n;
   }, [domaine, discipline, secteur, mention, cursus, typeMaster,
-      representativite, ligneReference]);
+      representativite, ligneReference, vue, referenceAxes]);
 
   // Auto-dépli quand un filtre devient actif (au montage si l'utilisateur
   // recharge avec un état pré-positionné, ou en cours d'utilisation).
@@ -169,6 +176,25 @@ export default function AdvancedFilters() {
             onChange={setLigneReference}
             disabled={disabled}
           />
+
+          {/* Mode de référence des axes — vue Mentions uniquement.
+              En vue Positionnement, les axes sont déjà calculés sur
+              l'ensemble France (médiane / moyenne sur les bulles
+              d'étabs), le sélecteur n'a pas de sens. */}
+          {vue === 'mentions' && (
+            <BinaryToggle
+              id="quadrant-reference-axes"
+              legend="Référence des axes"
+              options={[
+                { value: 'mediane_etab',      label: 'Médiane étab' },
+                { value: 'moyenne_etab',      label: 'Moyenne étab' },
+                { value: 'moyenne_nationale', label: 'Moyenne nationale' },
+              ]}
+              value={referenceAxes}
+              onChange={setReferenceAxes}
+              disabled={disabled}
+            />
+          )}
 
           <button
             type="button"

@@ -46,6 +46,14 @@ const LIBELLES_DOMAINES = {
 
 const ORDRE_DOMAINES = ['DEG', 'LLA', 'SHS', 'STS', 'INTERD'];
 
+// Libellés d'affichage pour la mention sous le quadrant quand
+// l'utilisateur choisit une référence d'axes non standard.
+const LIBELLES_REFERENCE_AXES = {
+  mediane_etab:      'médiane établissement',
+  moyenne_etab:      'moyenne pondérée établissement',
+  moyenne_nationale: 'moyenne pondérée nationale',
+};
+
 // Ordre de rendu de la légende des formes (codé sur la sémantique :
 // du plus fiable au moins fiable, gauche → droite). Les libellés
 // reprennent la convention API (cf. CLAUDE.md §11) : forme = fonction
@@ -85,6 +93,7 @@ export default function Quadrant() {
     etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
+    referenceAxes,
     scaleMode,
     rechercheMention,
     setMentionsAffichees,
@@ -173,6 +182,25 @@ export default function Quadrant() {
     if (!zoomRef.current || !svgEl) return;
     select(svgEl).transition().duration(180).call(zoomRef.current.transform, zoomIdentity);
   }
+
+  // Reset automatique du zoom au changement de tout paramètre qui
+  // déclenche un rechargement des bulles. Sans ça, un zoom appliqué
+  // pour explorer un sous-ensemble de bulles reste actif après un
+  // changement de cursus / vue / filtre, et peut centrer la vue sur
+  // une zone qui n'a plus aucune bulle visible.
+  // Le clic sur une bulle ne change aucune de ces dépendances → le
+  // zoom est conservé pendant l'exploration interactive.
+  useEffect(() => {
+    zoomReset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    vue, cursus, millesime,
+    variableX, variableY, dateInserX, dateInserY,
+    etabContexte,
+    domaine, discipline, secteur, mention, typeMaster,
+    representativite, ligneReference,
+    referenceAxes,
+  ]);
 
   // Scales effectives : original × transform d3-zoom. Quand transform =
   // identité, on retombe sur xScaleBase / yScaleBase (domaine 0..100).
@@ -348,6 +376,21 @@ export default function Quadrant() {
   const libelleX = formatLibelle(variableX, dateInserX);
   const libelleY = formatLibelle(variableY, dateInserY);
 
+  // Référence à tracer : en vue Positionnement on garde data.reference
+  // historique. En vue Mentions on lit data.axes[<mode>] selon le
+  // sélecteur « Référence des axes » d'AdvancedFilters. Fallback
+  // sur data.reference si data.axes est absent (compat avec une
+  // ancienne version du backend).
+  const referenceTracee = (() => {
+    if (vue !== 'mentions' || !data.axes) return data.reference;
+    const xKey = `${referenceAxes}_x`;
+    const yKey = `${referenceAxes}_y`;
+    const x = data.axes[xKey];
+    const y = data.axes[yKey];
+    if (x == null || y == null) return data.reference; // fallback
+    return { x, y, type: referenceAxes };
+  })();
+
   return (
     <div className="quadrant-wrapper" ref={wrapperRef}>
       <svg
@@ -398,7 +441,7 @@ export default function Quadrant() {
         <Axes xScale={xScale} yScale={yScale} libelleX={libelleX} libelleY={libelleY} />
 
         <g clipPath="url(#quadrant-clip-plot)">
-          <LignesReference reference={data.reference} xScale={xScale} yScale={yScale} />
+          <LignesReference reference={referenceTracee} xScale={xScale} yScale={yScale} />
         </g>
 
         <g clipPath="url(#quadrant-clip-bulles)">
@@ -514,6 +557,15 @@ export default function Quadrant() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Mention discrète sur le mode de référence des axes quand
+          l'utilisateur n'est pas sur le défaut (médiane étab). Aide
+          à comprendre pourquoi les bulles se sont redistribuées. */}
+      {vue === 'mentions' && referenceAxes !== 'mediane_etab' && (
+        <p className="reference-axes-note">
+          Axes de référence&nbsp;: {LIBELLES_REFERENCE_AXES[referenceAxes] || referenceAxes}
+        </p>
       )}
 
       <p className="source-attribution">

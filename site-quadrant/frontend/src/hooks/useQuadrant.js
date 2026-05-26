@@ -32,6 +32,11 @@ export function useQuadrant({
   typeMaster,
   representativite,
   ligneReference,
+  // forExport=true ajoute `?for_export=1` à la requête. L'API applique
+  // alors le seuil de diffusion configuré (seuil_diffusable, 20 par
+  // défaut) : valeurs sous-seuil deviennent null + raison_x/y='effectif
+  // _insuffisant_export'. Utilisé par BoutonExport pour le XLSX.
+  forExport = false,
 }) {
   const [state, setState] = useState({ loading: false, data: null, error: null });
 
@@ -67,6 +72,7 @@ export function useQuadrant({
     if (secteur)    params.secteur  = secteur;
     if (mention)    params.mention  = mention;
     if (typeMaster) params.master   = typeMaster;
+    if (forExport)  params.for_export = 1;
 
     getQuadrant(params)
       .then((data) => {
@@ -91,6 +97,7 @@ export function useQuadrant({
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
+    forExport,
   ]);
 
   return state;

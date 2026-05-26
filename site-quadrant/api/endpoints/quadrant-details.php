@@ -78,6 +78,17 @@ $millesime    = $_GET['millesime']     ?? '';
 $targetId     = $_GET['target_id']     ?? '';
 $etabContexte = $_GET['etab_contexte'] ?? '';
 $mention      = $_GET['mention']       ?? '';
+$forExport    = !empty($_GET['for_export']);
+
+// Seuil de diffusion appliqué sur les valeurs courantes/historiques.
+//   - Affichage écran : Diffusion::SEUIL_DIFFUSION (5).
+//   - Export Word     : `exports.seuil_diffusable` (20 par défaut),
+//                       déclenché par ?for_export=1. Plus strict —
+//                       cohérent avec /quadrant.
+$seuilDetails = (function () {
+    $cfg = require __DIR__ . '/../config/config.php';
+    return (int)($cfg['exports']['seuil_diffusable'] ?? 20);
+})();
 
 if (!in_array($vue, ['mentions', 'etablissements'], true)) {
     Response::error('invalid_vue', 'Paramètre vue invalide.');
@@ -223,7 +234,12 @@ $rowsCourant = chargerDonneesBrutes(
     $pdo, $vue, $targetId, $etabContexte, $mention,
     $formation, $millesime
 );
-$donneesCourantes = normaliserDonnees($canonique, $rowsCourant);
+// Seuil effectif : si on est en mode export (for_export=1), on
+// applique le seuil plus strict configuré (seuil_diffusable), sinon
+// le seuil standard d'affichage (Diffusion::SEUIL_DIFFUSION = 5).
+$seuilEffectif = $forExport ? $seuilDetails : Diffusion::SEUIL_DIFFUSION;
+
+$donneesCourantes = normaliserDonnees($canonique, $rowsCourant, $seuilEffectif);
 
 // =============================================================================
 // 7. Historique (tous les millésimes disponibles, ordre chronologique)
@@ -245,7 +261,7 @@ $historique = [];
 foreach ($parMillesime as $m => $rows) {
     $historique[] = [
         'millesime' => $m,
-        'donnees'   => normaliserDonnees($canonique, $rows),
+        'donnees'   => normaliserDonnees($canonique, $rows, $seuilEffectif),
     ];
 }
 
@@ -420,8 +436,14 @@ function chargerDonneesBrutes(
  *
  * Renvoie la liste dans l'ordre du référentiel.
  */
-function normaliserDonnees(array $canonique, array $rowsBdd): array
+function normaliserDonnees(array $canonique, array $rowsBdd, int $seuil = null): array
 {
+    // Seuil effectif : laisse l'appelant le surdéfinir (mode export
+    // → seuil_diffusable plus strict). Défaut = seuil d'affichage
+    // standard.
+    if ($seuil === null) {
+        $seuil = Diffusion::SEUIL_DIFFUSION;
+    }
     // Index des lignes BDD par (indicateur, date_inser) pour lookup O(1).
     $index = [];
     foreach ($rowsBdd as $r) {
@@ -459,7 +481,7 @@ function normaliserDonnees(array $canonique, array $rowsBdd): array
             continue;
         }
 
-        if ($denom < Diffusion::SEUIL_DIFFUSION) {
+        if ($denom < $seuil) {
             // Sous le seuil : on conserve le denom (information sur la taille
             // de la population) mais on masque le numerateur et le taux.
             $resultat[] = [

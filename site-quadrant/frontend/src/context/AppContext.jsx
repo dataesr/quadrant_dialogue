@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { getEtablissementsVisibles } from '../services/api.js';
 import { useReferentiels } from '../hooks/useReferentiels.js';
+import { useFrontendConfig } from '../hooks/useFrontendConfig.js';
 import { messageErreur } from '../utils/errors.js';
 
 // État global de l'application. Sépare proprement :
@@ -24,6 +25,16 @@ const AppContext = createContext(null);
 // Valeurs par défaut des filtres avancés. Resetables via resetAdvancedFilters.
 const DEFAULT_REPRESENTATIVITE = false;
 const DEFAULT_LIGNE_REFERENCE  = 'mediane';
+
+// Mode de référence des axes en vue Mentions (3 valeurs possibles).
+// 'mediane_etab' (défaut) : reproduit le comportement historique.
+// 'moyenne_etab'          : moyenne pondérée SUM(num)/SUM(denom) sur les
+//                           mentions de l'établissement courant.
+// 'moyenne_nationale'     : idem mais sur toutes les mentions France
+//                           entière (filtres disciplinaires appliqués,
+//                           sans filtre étab).
+// Cf. backend quadrant.php §7 bis pour le calcul.
+const DEFAULT_REFERENCE_AXES = 'mediane_etab';
 
 // Date d'insertion choisie par défaut quand on bascule sur une variable
 // déclinable (12 mois — milieu de la fourchette canonique 6/12/18/24/30).
@@ -53,6 +64,7 @@ export function AppProvider({ children }) {
   const [typeMaster,        setTypeMaster]        = useState(null);
   const [representativite,  setRepresentativite]  = useState(DEFAULT_REPRESENTATIVITE);
   const [ligneReference,    setLigneReference]    = useState(DEFAULT_LIGNE_REFERENCE);
+  const [referenceAxes,     setReferenceAxes]     = useState(DEFAULT_REFERENCE_AXES);
 
   // --- Phase 4b : compléments quadrant ---
   // Mode d'échelle des bulles arrêté à 'sqrt' (racine carrée du
@@ -88,6 +100,11 @@ export function AppProvider({ children }) {
   // --- Référentiels (millesimes, variables, disciplinaire) ---
   // Le hook gère son propre cache par formation / (formation, millesime).
   const referentiels = useReferentiels({ formation: cursus, millesime });
+
+  // Configuration UI exposée par l'API (activation des boutons
+  // d'export). Fetch unique au montage, fallback permissif si KO —
+  // ne casse jamais l'app.
+  const frontendConfig = useFrontendConfig();
 
   // ---------------------------------------------------------------------------
   // Chargement initial : liste des établissements visibles → déduit le mode.
@@ -327,6 +344,7 @@ export function AppProvider({ children }) {
     typeMaster,
     representativite,
     ligneReference,
+    referenceAxes,
     // Phase 4b
     scaleMode,
     rechercheMention,
@@ -336,6 +354,7 @@ export function AppProvider({ children }) {
     detailsCible,
     // Référentiels chargés
     referentiels,
+    frontendConfig,
     // État global
     loading, error,
     // Actions
@@ -346,6 +365,7 @@ export function AppProvider({ children }) {
     setDomaine, setDiscipline, setSecteur, setMention,
     setTypeMaster,
     setRepresentativite, setLigneReference,
+    setReferenceAxes,
     resetAdvancedFilters,
     setRechercheMention,
     setMentionsAffichees,

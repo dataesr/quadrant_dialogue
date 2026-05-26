@@ -102,6 +102,7 @@ $etabContexte     = $_GET['etab_contexte']    ?? '';
 $mention          = $_GET['mention']          ?? '';
 $representativite = $_GET['representativite'] ?? 'toutes';
 $agregation       = $_GET['agregation']       ?? 'mediane';
+$forExport        = !empty($_GET['for_export']);
 
 // Validations basiques
 $formationsAutorisees = [
@@ -524,6 +525,82 @@ if (!empty($pointsCalculables)) {
 }
 
 // =============================================================================
+// 7 bis. Trois références d'axes pour vue=mentions
+// =============================================================================
+// Le frontend offre désormais 3 modes de référence en vue Mentions :
+//   - médiane étab (= comportement historique, déjà calculé dans
+//     `reference` ci-dessus quand agregation=mediane) ;
+//   - moyenne pondérée étab : SUM(num)/SUM(denom) sur les mentions
+//     de l'étab. C'est une vraie « moyenne par tête », pas une
+//     moyenne arithmétique des taux (qui surreprésente les petites
+//     mentions). Cohérent avec la sémantique métier d'un taux global.
+//   - moyenne pondérée nationale : SUM(num)/SUM(denom) sur TOUTES les
+//     mentions remontées par la requête (= France entière avec les
+//     filtres disciplinaires appliqués, mais sans filtre étab). On
+//     réutilise $lignes (variable SQL brute, avant filtrage par
+//     contexte étab à la section 5) pour ne pas relancer une seconde
+//     requête.
+//
+// Les 3 valeurs sont retournées en parallèle dans `axes` ; le frontend
+// choisit laquelle utiliser pour positionner les lignes pointillées.
+// Garde le champ `reference` historique pour compat ascendante.
+//
+// Vue=etablissements : `axes` est null (les axes restent la
+// médiane/moyenne existante sur les bulles agrégées par étab).
+
+$axes = null;
+if ($vue === 'mentions') {
+    // Médiane étab (toujours calculée — indépendamment du paramètre
+    // `agregation` historique qui pouvait l'écraser au profit d'une
+    // moyenne arithmétique). Source : pointsCalculables (= taux x,y
+    // par mention de l'étab).
+    $medEtabX = null;
+    $medEtabY = null;
+    if (!empty($pointsCalculables)) {
+        $medEtabX = round(mediane(array_column($pointsCalculables, 'x')), 4);
+        $medEtabY = round(mediane(array_column($pointsCalculables, 'y')), 4);
+    }
+
+    // Moyenne pondérée étab (sur pointsBruts, filtrés à l'étab côté
+    // section 5). SUM(num)/SUM(denom) — moyenne « par tête » qui ne
+    // surreprésente pas les petites mentions.
+    $sumNumXEtab   = 0;
+    $sumDenomXEtab = 0;
+    $sumNumYEtab   = 0;
+    $sumDenomYEtab = 0;
+    foreach ($pointsBruts as $p) {
+        $sumNumXEtab   += (int)$p['num_x'];
+        $sumDenomXEtab += (int)$p['denom_x'];
+        $sumNumYEtab   += (int)$p['num_y'];
+        $sumDenomYEtab += (int)$p['denom_y'];
+    }
+
+    // Moyenne pondérée nationale (sur $lignes, toutes les mentions
+    // France entière avec filtres disciplinaires appliqués mais sans
+    // filtre étab). Réutilise la requête SQL principale — pas de
+    // requête supplémentaire.
+    $sumNumXNat   = 0;
+    $sumDenomXNat = 0;
+    $sumNumYNat   = 0;
+    $sumDenomYNat = 0;
+    foreach ($lignes as $l) {
+        $sumNumXNat   += (int)$l['num_x'];
+        $sumDenomXNat += (int)$l['denom_x'];
+        $sumNumYNat   += (int)$l['num_y'];
+        $sumDenomYNat += (int)$l['denom_y'];
+    }
+
+    $axes = [
+        'mediane_etab_x'      => $medEtabX,
+        'mediane_etab_y'      => $medEtabY,
+        'moyenne_etab_x'      => $sumDenomXEtab > 0 ? round($sumNumXEtab / $sumDenomXEtab, 4) : null,
+        'moyenne_etab_y'      => $sumDenomYEtab > 0 ? round($sumNumYEtab / $sumDenomYEtab, 4) : null,
+        'moyenne_nationale_x' => $sumDenomXNat  > 0 ? round($sumNumXNat  / $sumDenomXNat,  4) : null,
+        'moyenne_nationale_y' => $sumDenomYNat  > 0 ? round($sumNumYNat  / $sumDenomYNat,  4) : null,
+    ];
+}
+
+// =============================================================================
 // 8. Mentions non représentées (vue=mentions uniquement)
 // =============================================================================
 
@@ -540,6 +617,87 @@ if ($vue === 'mentions') {
 }
 
 // =============================================================================
+// 8 bis. Post-traitement seuil de diffusion pour les exports
+// =============================================================================
+// Quand `?for_export=1` est passé, on applique le seuil
+// `exports.seuil_diffusable` configuré (20 par défaut, plus strict que
+// le seuil d'affichage 5). Objectif : protéger les données fragiles
+// dans les fichiers exportés, qui peuvent circuler hors contexte.
+//
+// Logique :
+//   - pour chaque bulle, si denom_x < seuil → on remet x, num_x,
+//     denom_x à null et on ajoute raison_x='effectif_insuffisant_export'.
+//     Idem pour Y. Le frontend (XLSX/Word) affichera « Non diffusable »
+//     italique gris à la place de la valeur.
+//   - si les DEUX axes sont sous-seuil → la bulle disparaît
+//     entièrement des `bulles` (et en vue=mentions, est rajoutée à
+//     mentions_non_representees pour la table récap XLSX).
+//
+// Ce traitement est en POST-traitement (après SQL + Diffusion::forme)
+// pour ne pas affecter l'affichage écran : la même requête sans
+// `for_export=1` continue à renvoyer les bulles fragiles 5-19 avec
+// leurs valeurs (juste avec une forme spéciale côté SVG).
+
+if ($forExport) {
+    $configForExport = require __DIR__ . '/../config/config.php';
+    $seuilExport     = (int)($configForExport['exports']['seuil_diffusable'] ?? 20);
+
+    $bullesFiltrees = [];
+    foreach ($bulles as $bulle) {
+        // Les bulles anonymes (vue=etablissements hors périmètre) n'ont
+        // que `denom` (brouillé). On les évalue sur ce champ unique.
+        if (!isset($bulle['denom_x'])) {
+            if (isset($bulle['denom']) && (int)$bulle['denom'] < $seuilExport) {
+                continue; // bulle anonyme sous seuil : on la retire.
+            }
+            $bullesFiltrees[] = $bulle;
+            continue;
+        }
+
+        $sousSeuilX = (int)$bulle['denom_x'] < $seuilExport;
+        $sousSeuilY = (int)$bulle['denom_y'] < $seuilExport;
+
+        if ($sousSeuilX && $sousSeuilY) {
+            // Les deux axes sont sous seuil : la bulle est intotalement
+            // retirée. En vue=mentions on la rajoute aux non_representees
+            // pour qu'elle apparaisse dans le récap XLSX. En vue=etabs,
+            // on la perd simplement (la table récap n'existe pas).
+            if ($vue === 'mentions') {
+                $mentionsNonRepresentees[] = [
+                    'diplom'  => $bulle['id'],
+                    'libelle' => $bulle['libelle'],
+                    'raison'  => 'effectif_insuffisant_export',
+                ];
+            }
+            continue;
+        }
+
+        if ($sousSeuilX) {
+            // Axe X non diffusable, axe Y OK : on garde la bulle mais
+            // on null l'axe X. Le frontend marque la cellule X comme
+            // « Non diffusable » (italique gris), Y reste affiché.
+            $bulle['x']            = null;
+            $bulle['denom_x']      = null;
+            $bulle['raison_x']     = 'effectif_insuffisant_export';
+            if (isset($bulle['numerateur_x'])) $bulle['numerateur_x'] = null;
+            if (isset($bulle['taux_x']))       $bulle['taux_x']       = null;
+            if (isset($bulle['population_x'])) $bulle['population_x'] = null;
+        }
+        if ($sousSeuilY) {
+            $bulle['y']            = null;
+            $bulle['denom_y']      = null;
+            $bulle['raison_y']     = 'effectif_insuffisant_export';
+            if (isset($bulle['numerateur_y'])) $bulle['numerateur_y'] = null;
+            if (isset($bulle['taux_y']))       $bulle['taux_y']       = null;
+            if (isset($bulle['population_y'])) $bulle['population_y'] = null;
+        }
+
+        $bullesFiltrees[] = $bulle;
+    }
+    $bulles = $bullesFiltrees;
+}
+
+// =============================================================================
 // 9. Réponse JSON
 // =============================================================================
 
@@ -547,6 +705,13 @@ $reponse = [
     'bulles'    => $bulles,
     'reference' => $reference,
 ];
+
+// Vue Mentions : exposer les 3 références d'axes (cf. section 7 bis)
+// pour permettre au frontend de basculer entre médiane étab,
+// moyenne étab, moyenne nationale.
+if ($axes !== null) {
+    $reponse['axes'] = $axes;
+}
 
 // Distinguer le « pas de données » légitime (combinaison valide mais vide en BDD)
 // d'une erreur silencieuse côté frontend. Ce champ n'apparaît que quand la liste

@@ -32,7 +32,16 @@ export default function BoutonExport() {
     affichage,
     rechercheMention,
     referentiels,
+    frontendConfig,
   } = useApp();
+
+  // Activation des boutons selon la config API (cf. useFrontendConfig).
+  // En mode graphique on a besoin de png_enabled ; en mode tableau de
+  // xlsx_enabled. Si l'export du mode courant est désactivé, le
+  // composant entier disparaît plutôt qu'afficher un bouton inerte.
+  const exportActif = affichage === 'graphique'
+    ? !!frontendConfig?.exports?.png_enabled
+    : !!frontendConfig?.exports?.xlsx_enabled;
 
   const [exporting, setExporting] = useState(false);
   const [erreur, setErreur] = useState(null);
@@ -45,12 +54,24 @@ export default function BoutonExport() {
     return () => clearTimeout(t);
   }, [erreur]);
 
+  // Data dédiée aux exports : on demande à l'API d'appliquer le
+  // seuil de diffusion configuré (`exports.seuil_diffusable`, 20 par
+  // défaut) via for_export=1. Les valeurs 5-19 deviennent null +
+  // raison_x/y='effectif_insuffisant_export' (XLSX les rendra en
+  // « Non diffusable »).
+  //
+  // Note PNG : la capture html-to-image opère sur le DOM affiché
+  // (.quadrant-wrapper du Quadrant principal), qui utilise sa propre
+  // useQuadrant SANS for_export — donc le PNG reflète l'affichage
+  // écran (seuil 5). Si on veut filtrer le PNG aussi, il faudrait
+  // re-render off-screen avec ces données — pas fait à ce stade.
   const { data } = useQuadrant({
     cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
+    forExport: true,
   });
 
   // Au moins une bulle exploitable : vue Mentions = au moins une bulle
@@ -137,6 +158,12 @@ export default function BoutonExport() {
       setExporting(false);
     }
   }
+
+  // Masquage complet si l'export du mode courant est désactivé par
+  // la config (cf. /api/frontend-config). Choix UX : on retire le
+  // composant plutôt que de griser un bouton — l'utilisateur ne voit
+  // pas du tout l'action.
+  if (!exportActif) return null;
 
   return (
     <div className="bouton-export-zone">

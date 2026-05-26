@@ -63,4 +63,31 @@ return [
         'enabled' => true,
         'key'     => 'CHANGE_ME_BEFORE_DEPLOY',
     ],
+
+    // Activation des boutons d'export côté frontend. Permet de
+    // (dés)activer un type d'export par configuration sans déployer
+    // de nouveau bundle JS — utile pour désactiver temporairement
+    // un export en cas de bug bloquant en prod.
+    //
+    // - `png_enabled`        : bouton PNG (mode Graphique)
+    // - `xlsx_enabled`       : bouton XLSX (mode Tableau)
+    // - `docx_fiche_enabled` : bouton fiche Word dans le panneau de
+    //                          détails
+    // - `seuil_diffusable`   : effectif minimum pour qu'une valeur
+    //                          soit incluse dans un export. À 20 par
+    //                          défaut, plus strict que le seuil
+    //                          d'affichage écran (5). Appliqué par
+    //                          l'API quand le paramètre query
+    //                          `?for_export=1` est présent sur les
+    //                          endpoints /quadrant, /quadrant/details
+    //                          et /quadrant/mentions-non-representees.
+    //                          NON exposé au frontend via
+    //                          /api/frontend-config (sécurité : on
+    //                          ne révèle pas le seuil exact).
+    'exports' => [
+        'png_enabled'        => true,
+        'xlsx_enabled'       => true,
+        'docx_fiche_enabled' => true,
+        'seuil_diffusable'   => 20,
+    ],
 ];

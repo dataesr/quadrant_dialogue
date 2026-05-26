@@ -78,6 +78,7 @@ export default function QuadrantTable() {
     etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
     representativite, ligneReference,
+    referenceAxes,
     setDetailsCible,
   } = useApp();
 
@@ -111,13 +112,23 @@ export default function QuadrantTable() {
   const libelleY = formatLibelle(variableY, dateInserY);
   const entiteHeader = vue === 'mentions' ? 'Mention' : 'Établissement';
 
-  // Bulles détaillables, groupées par cadran. La référence (médiane ou
-  // moyenne) vient du backend pour rester cohérente avec le quadrant
-  // graphique — pas de recalcul côté front.
+  // Bulles détaillables, groupées par cadran. Référence cohérente
+  // avec le quadrant graphique : en vue Mentions on lit data.axes
+  // selon le mode `referenceAxes` choisi, sinon on retombe sur
+  // data.reference (vue Positionnement, ou fallback si le backend
+  // ancien ne renvoie pas axes).
   const groupes = useMemo(() => {
-    if (!data || !data.reference) return {};
+    if (!data) return {};
+    let ref = data.reference;
+    if (vue === 'mentions' && data.axes) {
+      const xKey = `${referenceAxes}_x`;
+      const yKey = `${referenceAxes}_y`;
+      const x = data.axes[xKey];
+      const y = data.axes[yKey];
+      if (x != null && y != null) ref = { x, y };
+    }
+    if (!ref) return {};
     const bulles = (data.bulles || []).filter((b) => b.details_accessibles);
-    const ref = data.reference;
     const g = { haut_droite: [], haut_gauche: [], bas_droite: [], bas_gauche: [] };
     for (const b of bulles) {
       const cadran =
@@ -138,7 +149,7 @@ export default function QuadrantTable() {
       g[k].sort((a, b) => distanceAuPointIdeal(a) - distanceAuPointIdeal(b));
     }
     return g;
-  }, [data]);
+  }, [data, vue, referenceAxes]);
 
   // Mentions non représentées triées par libellé (stable, lisible).
   const mentionsNonRepresentees = useMemo(() => {
