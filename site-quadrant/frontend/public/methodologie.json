@@ -120,6 +120,84 @@
       "definition_longue": "Indicateur calculé sur la population des diplômés sortants. Le numérateur compte les diplômés en emploi considéré comme stable (CDI, fonctionnaire, indépendant) au moment de l'observation. Le dénominateur est l'ensemble des diplômés sortants. Le moment de l'observation est sélectionné par l'utilisateur via le filtre « Situation à ».",
       "formule": "Diplômés sortants en emploi stable / Diplômés sortants"
     }
+  },
+  "cursus": {
+    "Licence générale": {
+      "libelle": "Licence générale",
+      "champ": "Le champ des inscrits est constitué des néo-bacheliers inscrits en première année de licence (L1) à la rentrée universitaire N. En sont exclus les étudiants ayant pris une inscription parallèle en STS, DUT ou CPGE ou ayant obtenu le diplôme de Licence à l'issue de la première année.\nLes indicateurs sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en L1.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite en 3 ans",
+          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+2 ou N+3, quels que soit l'établissement ou la mention d'obtention."
+        },
+        {
+          "libelle": "Taux de réussite en 3 ou 4 ans",
+          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+2, N+3 ou N+4, quels que soit l'établissement ou la mention d'obtention."
+        },
+        {
+          "libelle": "Taux de poursuite",
+          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+3 ou N+4, quels que soit l'établissement ou la mention d'obtention, et poursuivant des études supérieures à la rentrée suivant l'obtention du diplôme de licence générale ou professionnelle."
+        }
+      ],
+      "champ_insertion": "Diplômés de licence générale de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
+      }
+    },
+    "Licence professionnelle": {
+      "libelle": "Licence professionnelle",
+      "champ": "Primo-inscrits en licence professionnelle (LP) à la rentrée universitaire N.\nLes indicateurs de réussite sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en licence professionnelle.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite",
+          "definition": "Étudiants du champ ayant obtenu une licence professionnelle à la session N+1, quels que soit l'établissement ou la mention d'obtention. Indicateur calculé sur les LP en 1 an."
+        }
+      ],
+      "champ_insertion": "Diplômés de licence professionnelle de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
+      }
+    },
+    "Bachelor universitaire de technologie": {
+      "libelle": "BUT (Bachelor universitaire de technologie)",
+      "champ": "Le champ des inscrits est constitué des néo-bacheliers inscrits pour la première fois en première année de BUT (BUT1) à la rentrée universitaire N.\nLes indicateurs sont des ratios rapportant des effectifs d'étudiants. La réussite est attribuée à l'établissement d'inscription en première année et non à l'établissement où le diplôme a été obtenu, même si l'étudiant a changé d'établissement entre la première et la deuxième (ou la troisième) année.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite en 3 ans",
+          "definition": "Étudiants du champ ayant obtenu un diplôme de BUT à la session N+3, quelle que soit l'université où le diplôme a été obtenu. Cette année, seule la réussite en trois ans au BUT est disponible ; à partir de l'an prochain sera diffusé un taux de réussite en trois ou quatre ans, comme pour la licence. Les étudiants ayant obtenu le diplôme intermédiaire DUT (bac+2) après les deux premières années sans poursuivre jusqu'au BUT3 ne sont pas comptés comme diplômés du BUT."
+        },
+        {
+          "libelle": "Taux de poursuite",
+          "definition": "Néo-bacheliers inscrits en première année de BUT à la rentrée universitaire N et ayant obtenu leur BUT à la session N+3, qui poursuivent leurs études. La poursuite d'études comprend toute inscription dans l'enseignement supérieur français à la rentrée suivante. Les étudiants ayant obtenu le diplôme intermédiaire DUT et poursuivant leurs études ailleurs ne sont pas comptés ici."
+        }
+      ],
+      "champ_insertion": "Diplômés de BUT de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18 et 24 mois (le délai à 30 mois n'est pas encore diffusé pour le BUT en raison de la jeunesse du diplôme)."
+      }
+    },
+    "Master": {
+      "libelle": "Master",
+      "champ": "Primo-inscrits en première année de master (M1) à la rentrée universitaire N.\nLes indicateurs de réussite sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en M1.",
+      "indicateurs": [
+        {
+          "libelle": "Taux de réussite en 2 ans",
+          "definition": "Étudiants du champ ayant obtenu un master à la session N+2, quels que soit l'établissement ou la mention d'obtention."
+        },
+        {
+          "libelle": "Taux de réussite en 2 ou 3 ans",
+          "definition": "Étudiants du champ ayant obtenu un master aux sessions N+2 ou N+3, quels que soit l'établissement ou la mention d'obtention."
+        }
+      ],
+      "champ_insertion": "Diplômés de master de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
+      "insertion": {
+        "libelle": "Insertion professionnelle",
+        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
+      }
+    }
   }
  }
 
