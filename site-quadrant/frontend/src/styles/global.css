@@ -848,6 +848,42 @@
   align-self: flex-start;
 }
 
+/* Sections « Indicateurs » et « Millésime » de la modale méthodologie
+   (Phase 10) : chaque bloc-indicateur regroupe libellé + métadonnées
+   + définition + formule + spécificités. La ligne « meta » porte la
+   famille et la population de référence en italique, plus discret que
+   la définition. */
+.modale-methodologie-contenu .meta-indicateur {
+  color: #555;
+  font-size: 0.78rem;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+.modale-methodologie-contenu .formule-indicateur {
+  background: #f6f6f6;
+  border-left: 3px solid #e1000f;
+  padding: 0.5rem 0.75rem;
+  font-family: monospace;
+  font-size: 0.78rem;
+  margin: 0.5rem 0;
+  color: #333;
+}
+.modale-methodologie-contenu .specificites-indicateur {
+  margin-top: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid #ddd;
+}
+.modale-methodologie-contenu .specificite-bloc {
+  margin-bottom: 0.5rem;
+}
+.modale-methodologie-contenu .specificite-bloc:last-child {
+  margin-bottom: 0;
+}
+.modale-methodologie-contenu .specificite-titre {
+  margin-bottom: 0.25rem !important;
+  color: #000091;
+}
+
 /* ----------------------------------------------------------------------
  * IndicateurTooltip — définition méthodologique au survol/clic
  * ----------------------------------------------------------------------
@@ -860,6 +896,17 @@
   align-items: center;
   gap: 0.25rem;
   vertical-align: middle;
+}
+
+/* Suffixe « · Population : entrants AAAA-AA » dans les libellés
+   d'axe (VariableSelect, Phase 10). Discret pour ne pas concurrencer
+   visuellement le titre principal — gris, italique léger, taille
+   légèrement réduite. */
+.fr-label .population-suffixe {
+  color: #666;
+  font-style: italic;
+  font-weight: normal;
+  font-size: 0.85em;
 }
 .indicateur-avec-tooltip .bouton-info {
   background: transparent;

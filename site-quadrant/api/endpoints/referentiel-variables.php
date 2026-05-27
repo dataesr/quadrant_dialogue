@@ -152,14 +152,31 @@ if ($rowDefauts) {
     ];
 }
 
-// Disponibilités par (indicateur, date_inser) pour le millésime demandé.
-// Calculé à la demande : si aucun millésime n'est passé, on n'expose pas
-// ce champ. Évite une requête supplémentaire pour le cas d'appel initial
-// du frontend (qui charge les variables avant de connaître le millésime).
+// Disponibilités + populations par (indicateur, date_inser) pour le
+// millésime demandé. Calculé à la demande : si aucun millésime n'est
+// passé, on n'expose pas ces champs. Évite une requête supplémentaire
+// pour le cas d'appel initial du frontend (qui charge les variables
+// avant de connaître le millésime).
+//
+// `populations` (Phase 10) : pour chaque (indicateur, date_inser),
+// libellé de population — « entrants AAAA-AA » pour les indicateurs
+// de réussite/poursuite, « sortants AAAA » pour insertion/poursuivants.
+// Permet au frontend d'afficher la population de référence à côté du
+// libellé d'axe (« Axe horizontal · Population : entrants 2021-22 »)
+// sans dépendre des bulles renvoyées par /quadrant — utile aussi quand
+// les filtres ne renvoient aucune bulle.
+//
+// Format imbriqué identique à `disponibilites` :
+//   populations[indicateur][date_inser] = libellé.
+// Si plusieurs populations distinctes coexistent pour une même clé
+// (cas théorique d'incohérence des données), on garde la première
+// (chronologie SQL non déterministe mais l'incohérence elle-même est
+// l'anomalie principale à signaler côté /health).
 $disponibilites = null;
+$populations    = null;
 if ($millesime !== '') {
     $stmt = Database::get()->prepare("
-        SELECT DISTINCT indicateur, date_inser
+        SELECT DISTINCT indicateur, date_inser, population
         FROM stats_quadrant
         WHERE formation = :formation
           AND millesime = :millesime
@@ -174,14 +191,24 @@ if ($millesime !== '') {
     // chaîne vide côté API — cohérent avec /quadrant qui binde la même
     // chaîne vide quand declinable_delai=false.
     $disponibilites = [];
+    $populations    = [];
     foreach ($stmt->fetchAll() as $r) {
         $ind  = (string)$r['indicateur'];
         $date = (string)($r['date_inser'] ?? '');
+        $pop  = (string)($r['population']  ?? '');
+
         if (!isset($disponibilites[$ind])) {
             $disponibilites[$ind] = [];
         }
         if (!in_array($date, $disponibilites[$ind], true)) {
             $disponibilites[$ind][] = $date;
+        }
+        if (!isset($populations[$ind])) {
+            $populations[$ind] = [];
+        }
+        // Premier gagnant en cas de doublon (anomalie de données).
+        if (!isset($populations[$ind][$date]) && $pop !== '') {
+            $populations[$ind][$date] = $pop;
         }
     }
     // Garde-fou : pour chaque indicateur autorisé sur ce cursus mais
@@ -192,6 +219,9 @@ if ($millesime !== '') {
         $lib = $v['libelle'];
         if (!isset($disponibilites[$lib])) {
             $disponibilites[$lib] = [];
+        }
+        if (!isset($populations[$lib])) {
+            $populations[$lib] = [];
         }
     }
 }
@@ -206,6 +236,7 @@ $reponse = [
 if ($disponibilites !== null) {
     $reponse['millesime']      = $millesime;
     $reponse['disponibilites'] = $disponibilites;
+    $reponse['populations']    = $populations;
 }
 
 Response::json($reponse);

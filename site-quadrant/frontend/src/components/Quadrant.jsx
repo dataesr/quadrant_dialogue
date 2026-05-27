@@ -103,7 +103,21 @@ export default function Quadrant({ forExport = false } = {}) {
     affichage,
     setAffichage,
     setDetailsCible,
+    referentiels,
   } = useApp();
+
+  // Populations de référence à incruster dans les titres d'axes du SVG
+  // (Phase 10). Lecture du référentiel `populations` chargé via
+  // /referentiel/variables?millesime=... — déjà fetché pour le grisage
+  // des indicateurs. Si pas encore chargé OU indicateur sans population
+  // définie : fallback gracieux, on omet le suffixe.
+  const populationsMap = referentiels?.populations?.data;
+  const populationX = (populationsMap && variableX)
+    ? populationsMap[variableX]?.[dateInserX ?? ''] || null
+    : null;
+  const populationY = (populationsMap && variableY)
+    ? populationsMap[variableY]?.[dateInserY ?? ''] || null
+    : null;
 
   // Clic sur une bulle accessible → ouvre le panneau de détails.
   // En vue=etablissements avec filtre mention, on transmet la mention
@@ -404,9 +418,14 @@ export default function Quadrant({ forExport = false } = {}) {
   if (!data) return null;
 
   // Libellés d'axes — variable seule, sans préciser « Axe horizontal :»
-  // (la position du libellé indique déjà l'axe).
-  const libelleX = formatLibelle(variableX, dateInserX);
-  const libelleY = formatLibelle(variableY, dateInserY);
+  // (la position du libellé indique déjà l'axe). On y incruste la
+  // population de référence en suffixe entre parenthèses (Phase 10) :
+  //   « Taux de réussite en 2 ou 3 ans (entrants 2021-22) »
+  //   « Taux sortants en emploi salarié en France à 18 mois (sortants 2023) »
+  // — la forme « à N mois » remplace ici le suffixe « (N mois) » pour
+  // éviter de doubler les parenthèses avec celles du libellé population.
+  const libelleX = formatLibelleAxe(variableX, dateInserX, populationX);
+  const libelleY = formatLibelleAxe(variableY, dateInserY, populationY);
 
   // Masquage du SVG quand aucune bulle n'est représentée — un quadrant
   // vide avec ses axes pointillés n'apporte rien. On garde l'instance
@@ -609,6 +628,17 @@ function formatLibelle(variable, dateInser) {
   if (!variable) return '';
   if (!dateInser) return variable;
   return `${variable} (${dateInser} mois)`;
+}
+
+// Variante pour titre d'axe SVG : « variable à N mois (population) ».
+// Bascule sur la forme « à N mois » plutôt que « (N mois) » pour ne pas
+// doubler les parenthèses quand on accole la population entre parens.
+// Si population manquante → fallback sur la forme classique « (N mois) ».
+function formatLibelleAxe(variable, dateInser, population) {
+  if (!variable) return '';
+  if (!population) return formatLibelle(variable, dateInser);
+  if (!dateInser)  return `${variable} (${population})`;
+  return `${variable} à ${dateInser} mois (${population})`;
 }
 
 // Tooltip de survol des bulles, extrait en sous-composant pour ancrer

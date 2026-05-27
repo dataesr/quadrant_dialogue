@@ -45,6 +45,21 @@ export default function FilterBar() {
   const variablesData = referentiels.variables.data;
   const variablesLoading = referentiels.variables.loading;
   const disponibilites = referentiels.disponibilites.data;
+  const populations    = referentiels.populations.data;
+
+  // Population de référence pour l'axe courant — affichée en suffixe
+  // discret après le libellé d'axe (« Axe horizontal · Population :
+  // entrants 2021-22 »). Lit le mapping `populations` du référentiel
+  // (cf. /referentiel/variables Phase 10). Retourne null si pas encore
+  // chargé ou si l'indicateur n'a pas de population définie côté API.
+  function populationDe(variable, dateInser) {
+    if (!populations || !variable) return null;
+    const byDate = populations[variable];
+    if (!byDate) return null;
+    return byDate[dateInser ?? ''] || null;
+  }
+  const populationX = populationDe(variableX, dateInserX);
+  const populationY = populationDe(variableY, dateInserY);
 
   const allVars = variablesData?.variables || [];
   const couples = variablesData?.couples_autorises || [];
@@ -190,6 +205,7 @@ export default function FilterBar() {
         disabled={disabled}
         loading={variablesLoading}
         cursus={cursus}
+        population={populationX}
       />
       {declinableX && (
         <DateInserSelect
@@ -210,6 +226,7 @@ export default function FilterBar() {
         disabled={disabled}
         loading={variablesLoading}
         cursus={cursus}
+        population={populationY}
       />
       {declinableY && (
         <DateInserSelect

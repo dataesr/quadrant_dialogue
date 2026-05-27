@@ -14,6 +14,11 @@
 //  - loading   : true tant que le référentiel charge
 //  - cursus    : cursus courant (pour la définition de l'indicateur
 //                affichée dans le tooltip à droite du label)
+//  - population: libellé de population de référence (« entrants
+//                AAAA-AA », « sortants AAAA » — Phase 10). Affiché en
+//                suffixe discret après le libellé d'axe. null = pas
+//                de suffixe (population non disponible ou indicateur
+//                agnostique).
 
 import IndicateurTooltip from '../IndicateurTooltip.jsx';
 
@@ -27,6 +32,7 @@ export default function VariableSelect({
   disabled = false,
   loading = false,
   cursus,
+  population = null,
 }) {
   const groupDisabled = disabled || loading || options.length === 0;
   const id = `quadrant-variable-${axis.toLowerCase()}`;
@@ -35,6 +41,11 @@ export default function VariableSelect({
     <div className={`fr-select-group${groupDisabled ? ' fr-select-group--disabled' : ''}`}>
       <label className="fr-label" htmlFor={id}>
         {LABEL_AXE[axis]}
+        {population && (
+          <span className="population-suffixe">
+            {' · Population : '}{population}
+          </span>
+        )}
         {loading && <span className="fr-hint-text">Chargement…</span>}
         {value && cursus && (
           <IndicateurTooltip libelle={value} cursus={cursus} mode="iconOnly" />

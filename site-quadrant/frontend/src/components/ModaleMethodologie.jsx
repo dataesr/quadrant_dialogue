@@ -101,6 +101,14 @@ export default function ModaleMethodologie({ open, onClose }) {
                 </section>
               )}
 
+              {meth.millesime && (
+                <SectionMillesime millesime={meth.millesime} />
+              )}
+
+              {meth.indicateurs && Object.keys(meth.indicateurs).length > 0 && (
+                <SectionIndicateurs indicateurs={meth.indicateurs} />
+              )}
+
               {Object.entries(meth.cursus || {}).map(([code, bloc]) => (
                 <section key={code}>
                   <h3>{bloc.libelle}</h3>
@@ -132,5 +140,78 @@ export default function ModaleMethodologie({ open, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Libellés pour les familles d'indicateurs (clé `famille` du JSON).
+const LIBELLES_FAMILLE = {
+  reussite:  'Réussite',
+  insertion: 'Insertion',
+};
+
+// Section « Millésime » : définition longue + un sous-bloc par cursus
+// avec son exemple. Itère sur les clés de `par_cursus` pour ne pas
+// hardcoder les 4 cursus — un ajout futur (BUT4, etc.) y apparaîtra
+// automatiquement.
+function SectionMillesime({ millesime }) {
+  const parCursus = millesime.par_cursus || {};
+  return (
+    <section>
+      <h3>{millesime.libelle || 'Millésime'}</h3>
+      {millesime.definition_longue && <p>{millesime.definition_longue}</p>}
+      {Object.entries(parCursus).map(([code, bloc]) => (
+        <div key={code}>
+          <h4>{code}</h4>
+          <p>{bloc.exemple}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// Section « Indicateurs » : un bloc par indicateur défini au top-level
+// (Phase 10 — taux de réussite, taux de poursuite, taux de
+// poursuivants). Affiche libellé, famille, population de référence,
+// définition longue, formule. Si l'indicateur expose des
+// `specificites`, on itère sur les clés pour afficher chaque
+// spécificité par cursus (BUT et autres).
+function SectionIndicateurs({ indicateurs }) {
+  return (
+    <section>
+      <h3>Indicateurs</h3>
+      {Object.entries(indicateurs).map(([code, ind]) => (
+        <div key={code} className="bloc-indicateur-methodo">
+          <h4>{ind.libelle || code}</h4>
+          <p className="meta-indicateur">
+            <strong>Famille :</strong>{' '}
+            {LIBELLES_FAMILLE[ind.famille] || ind.famille || '—'}
+            {ind.population_reference && (
+              <>
+                {' · '}<strong>Population de référence :</strong>{' '}
+                {ind.population_reference}
+              </>
+            )}
+          </p>
+          {ind.definition_longue && <p>{ind.definition_longue}</p>}
+          {ind.formule && (
+            <p className="formule-indicateur">
+              <strong>Formule :</strong> {ind.formule}
+            </p>
+          )}
+          {ind.specificites && Object.keys(ind.specificites).length > 0 && (
+            <div className="specificites-indicateur">
+              {Object.entries(ind.specificites).map(([cursus, texte]) => (
+                <div key={cursus} className="specificite-bloc">
+                  <p className="specificite-titre">
+                    <strong>Spécificité — {cursus}</strong>
+                  </p>
+                  <p>{texte}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
   );
 }

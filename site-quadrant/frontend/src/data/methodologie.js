@@ -74,12 +74,37 @@ export function getMethodologie() {
 // Les indicateurs d'insertion à délai sont rabattus sur la
 // définition générale d'insertion du cursus — la méthodologie ne
 // distingue pas par délai.
+//
+// Priorité de résolution (Phase 10) :
+//  1. Top-level `indicateurs.*.libelles_api` → renvoie
+//     `definition_courte` (définition unifiée tous cursus pour les
+//     indicateurs structurels : taux de réussite, taux de poursuite,
+//     taux de poursuivants).
+//  2. `cursus[X].indicateurs[]` → définition par cursus (legacy,
+//     conserve la richesse historique pour les indicateurs hors-
+//     famille).
+//  3. `cursus[X].insertion` → définition générale d'insertion pour
+//     les indicateurs d'insertion à délai (emploi salarié, non
+//     salarié, stable).
 export function getDefinitionIndicateur(libelleIndicateur, cursus) {
   if (!cache || !libelleIndicateur || !cursus) return null;
 
   const norm = (s) => s.trim().toLowerCase();
   const ciblage = norm(libelleIndicateur);
 
+  // 1. Recherche dans la nouvelle structure top-level `indicateurs`
+  //    (Phase 10). Mapping API libellé → code via `libelles_api`.
+  //    Le tooltip retourne `definition_courte` (texte court bien adapté
+  //    au format infobulle).
+  const indicateurs = cache.indicateurs || {};
+  for (const ind of Object.values(indicateurs)) {
+    const libelles = ind.libelles_api || [];
+    if (libelles.some((lib) => norm(lib) === ciblage)) {
+      return ind.definition_courte || ind.definition_longue || null;
+    }
+  }
+
+  // 2. Fallback sur la définition par cursus (legacy).
   const blocCursus = cache.cursus?.[cursus];
   if (!blocCursus) return null;
 
@@ -92,7 +117,7 @@ export function getDefinitionIndicateur(libelleIndicateur, cursus) {
     return blocCursus.insertion.definition;
   }
 
-  // Indicateurs d'insertion à délai (cf. dim_indicateur_cursus :
+  // 3. Indicateurs d'insertion à délai (cf. dim_indicateur_cursus :
   // declinable_delai=1). Pas de définition spécifique au délai —
   // on rabat sur la définition générale d'insertion du cursus.
   if (

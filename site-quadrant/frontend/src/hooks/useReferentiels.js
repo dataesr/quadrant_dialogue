@@ -13,6 +13,11 @@ import { messageErreur } from '../utils/errors.js';
 //     indicateur, la liste des `date_inser` effectivement présents dans
 //     stats_quadrant ce millésime. Sert au grisage des options indispos
 //     dans VariableSelect / DateInserSelect.
+//   - populations : dépend du couple (cursus, millesime) — pour chaque
+//     (indicateur, date_inser), libellé de population de référence
+//     ("entrants AAAA-AA" pour réussite/poursuite,
+//      "sortants AAAA" pour insertion/poursuivants). Sert à afficher
+//     la population à côté du libellé d'axe (Phase 10).
 //   - disciplinaire (domaines / disciplines / secteurs / mentions) : dépend
 //     du couple (cursus, millesime)
 //
@@ -27,13 +32,17 @@ export function useReferentiels({ formation, millesime }) {
   const [millesimes,      setMillesimes]      = useState(emptyState());
   const [variables,       setVariables]       = useState(emptyState());
   const [disponibilites,  setDisponibilites]  = useState(emptyState());
+  const [populations,     setPopulations]     = useState(emptyState());
   const [disciplinaire,   setDisciplinaire]   = useState(emptyState());
 
   // Caches : Map<formation, payload> pour millesimes & variables ;
-  // Map<`${formation}|${millesime}`, payload> pour disponibilites & disciplinaire.
+  // Map<`${formation}|${millesime}`, payload> pour disponibilites/populations
+  // & disciplinaire. disponibilites + populations partagent le même fetch
+  // (/referentiel/variables?millesime=...) — on lit la réponse une fois et
+  // on alimente les deux caches en parallèle pour ne pas dédoubler la requête.
   const cacheMillesimes     = useRef(new Map());
   const cacheVariables      = useRef(new Map());
-  const cacheDisponibilites = useRef(new Map());
+  const cacheRefMillesime   = useRef(new Map()); // disponibilites + populations
   const cacheDisciplinaire  = useRef(new Map());
 
   // Millésimes & variables : changent avec le cursus.
@@ -67,26 +76,44 @@ export function useReferentiels({ formation, millesime }) {
     };
   }, [formation]);
 
-  // Disponibilités : besoin de formation ET millesime. Réutilise
-  // /referentiel/variables avec le paramètre `millesime` — l'endpoint
-  // expose alors un champ `disponibilites` qu'on isole ici. On ne casse
-  // pas le cache `variables` (formation seule) : c'est un fetch parallèle
-  // dédié à la disponibilité par millésime, mis en cache à part.
+  // Disponibilités + populations : besoin de formation ET millesime.
+  // Réutilise /referentiel/variables avec le paramètre `millesime` —
+  // l'endpoint expose `disponibilites` et `populations` en une seule
+  // requête. On les extrait et alimente les deux états séparément
+  // (consommés différemment côté UI), mais via UN SEUL fetch via le
+  // cache partagé pour éviter le double aller-retour.
   useEffect(() => {
     if (!formation || !millesime) {
       setDisponibilites(emptyState());
+      setPopulations(emptyState());
       return;
     }
 
     let cancelled = false;
     const key = `${formation}|${millesime}`;
 
+    // Le payload mis en cache est l'objet { disponibilites, populations }.
+    // Chacun des deux setters consomme ensuite son sous-champ.
     loadCached(
-      cacheDisponibilites.current,
+      cacheRefMillesime.current,
       key,
       () => getReferentielVariables({ formation, millesime })
-        .then((res) => res?.disponibilites || {}),
-      setDisponibilites,
+        .then((res) => ({
+          disponibilites: res?.disponibilites || {},
+          populations:    res?.populations    || {},
+        })),
+      (state) => {
+        setDisponibilites({
+          loading: state.loading,
+          data:    state.data ? state.data.disponibilites : null,
+          error:   state.error,
+        });
+        setPopulations({
+          loading: state.loading,
+          data:    state.data ? state.data.populations : null,
+          error:   state.error,
+        });
+      },
       () => cancelled,
     );
 
@@ -118,7 +145,7 @@ export function useReferentiels({ formation, millesime }) {
     };
   }, [formation, millesime]);
 
-  return { millesimes, variables, disponibilites, disciplinaire };
+  return { millesimes, variables, disponibilites, populations, disciplinaire };
 }
 
 /**
