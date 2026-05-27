@@ -26,45 +26,99 @@
   "indicateurs": {
     "Taux de réussite": {
       "libelle": "Taux de réussite",
+      "cursus": ["licence_pro"],
       "famille": "reussite",
       "population_reference": "Entrants",
-      "definition_courte": "Part des entrants ayant obtenu le diplôme à durée normale ou durée normale + 1 an.",
-      "definition_longue": "Indicateur calculé sur la population des entrants dans la formation. Le numérateur compte les étudiants qui ont obtenu le diplôme à durée normale de cursus, complété par ceux qui l'ont obtenu en durée normale + 1 an. Le dénominateur est l'ensemble des entrants dans la formation.",
-      "formule": "Entrants diplômés (durée normale ou +1 an) / Entrants",
-      "libelles_api": [
-        "Taux de réussite",
-        "Taux de réussite en 2 ans",
-        "Taux de réussite en 2 ou 3 ans",
-        "Taux de réussite en 3 ans",
-        "Taux de réussite en 3 ou 4 ans"
-      ],
+      "definition_courte": "Part des entrants en licence professionnelle ayant obtenu leur diplôme en 1 an.",
+      "definition_longue": "Indicateur calculé sur la population des entrants en licence professionnelle (seules les LP en 1 an sont prises en compte). Le numérateur compte les étudiants ayant obtenu leur licence professionnelle en 1 an. Le dénominateur est l'ensemble des entrants en licence professionnelle.",
+      "formule": "Entrants en LP diplômés / Entrants en LP"
+    },
+    "Taux de réussite en 2 ans": {
+      "libelle": "Taux de réussite en 2 ans",
+      "cursus": ["master"],
+      "famille": "reussite",
+      "population_reference": "Entrants",
+      "definition_courte": "Part des entrants en master ayant obtenu leur diplôme en 2 ans (parcours linéaire).",
+      "definition_longue": "Indicateur calculé sur la population des entrants en master. Le numérateur compte les étudiants ayant obtenu leur diplôme en 2 ans, c'est-à-dire ayant suivi un parcours linéaire. Le dénominateur est l'ensemble des entrants en master.",
+      "formule": "Entrants en master diplômés en 2 ans / Entrants en master"
+    },
+    "Taux de réussite en 2 ou 3 ans": {
+      "libelle": "Taux de réussite en 2 ou 3 ans",
+      "cursus": ["master"],
+      "famille": "reussite",
+      "population_reference": "Entrants",
+      "definition_courte": "Part des entrants en master ayant obtenu leur diplôme en 2 ans (parcours linéaire) ou en 3 ans (avec 1 an supplémentaire).",
+      "definition_longue": "Indicateur calculé sur la population des entrants en master. Le numérateur compte les étudiants ayant obtenu leur diplôme en 2 ans (parcours linéaire) ou en 3 ans (avec un an supplémentaire). Le dénominateur est l'ensemble des entrants en master. Cet indicateur est plus inclusif que le taux à 2 ans seul, en intégrant les parcours non linéaires.",
+      "formule": "Entrants en master diplômés en 2 ou 3 ans / Entrants en master"
+    },
+    "Taux de réussite en 3 ans": {
+      "libelle": "Taux de réussite en 3 ans",
+      "cursus": ["licence_generale", "but"],
+      "famille": "reussite",
+      "population_reference": "Entrants",
+      "definition_courte": "Part des entrants ayant obtenu leur diplôme en 3 ans (parcours linéaire).",
+      "definition_longue": "Indicateur calculé sur la population des entrants en première année. Le numérateur compte les étudiants ayant obtenu leur diplôme en 3 ans (parcours linéaire). Le dénominateur est l'ensemble des entrants en première année.",
+      "formule": "Entrants diplômés en 3 ans / Entrants",
       "specificites": {
-        "Bachelor universitaire de technologie": "Pour le BUT, cet indicateur mesure uniquement l'obtention du BUT (bac+3). Les étudiants ayant obtenu le diplôme intermédiaire DUT (bac+2) après les deux premières années sans poursuivre jusqu'au BUT3 ne sont pas comptés comme diplômés du BUT, même s'ils ont validé un diplôme intermédiaire."
+        "but": "Pour le BUT, cet indicateur mesure uniquement l'obtention du BUT (bac+3). Les étudiants ayant obtenu le diplôme intermédiaire DUT (bac+2) après les deux premières années sans poursuivre jusqu'au BUT3 ne sont pas comptés comme diplômés du BUT, même s'ils ont validé un diplôme intermédiaire."
       }
+    },
+    "Taux de réussite en 3 ou 4 ans": {
+      "libelle": "Taux de réussite en 3 ou 4 ans",
+      "cursus": ["licence_generale"],
+      "famille": "reussite",
+      "population_reference": "Entrants",
+      "definition_courte": "Part des entrants en licence générale ayant obtenu leur diplôme en 3 ans (parcours linéaire) ou en 4 ans (avec 1 an supplémentaire).",
+      "definition_longue": "Indicateur calculé sur la population des entrants en première année de licence générale. Le numérateur compte les étudiants ayant obtenu leur diplôme en 3 ans (parcours linéaire) ou en 4 ans (avec un an supplémentaire). Le dénominateur est l'ensemble des entrants. Cet indicateur est plus inclusif que le taux à 3 ans seul, en intégrant les parcours non linéaires.",
+      "formule": "Entrants diplômés en 3 ou 4 ans / Entrants"
     },
     "Taux de poursuite": {
       "libelle": "Taux de poursuite",
+      "cursus": ["licence_generale", "but"],
       "famille": "reussite",
       "population_reference": "Entrants",
-      "definition_courte": "Part des entrants qui ont obtenu le diplôme et qui poursuivent des études dans l'enseignement supérieur.",
+      "definition_courte": "Part des entrants ayant obtenu le diplôme et qui poursuivent des études dans l'enseignement supérieur.",
       "definition_longue": "Indicateur calculé sur la population des entrants dans la formation. Le numérateur compte les étudiants qui ont obtenu le diplôme à durée normale (ou +1 an) ET qui se sont inscrits dans une autre formation de l'enseignement supérieur ensuite. Le dénominateur est l'ensemble des entrants. Cet indicateur croise donc deux conditions : la réussite au diplôme et la poursuite d'études.",
       "formule": "Entrants diplômés qui poursuivent / Entrants",
-      "libelles_api": [
-        "Taux de poursuite",
-        "Taux de poursuite d'études des diplômés en 3 ans"
-      ],
       "specificites": {
-        "Bachelor universitaire de technologie": "Pour le BUT, cet indicateur ne compte que les étudiants ayant obtenu le BUT (bac+3) et poursuivant ensuite. Les étudiants ayant obtenu le diplôme intermédiaire DUT (bac+2) et poursuivant leurs études ailleurs (autre licence, école d'ingénieur via admissions parallèles, etc.) ne sont pas comptés comme « poursuivant » au sens de cet indicateur, alors qu'ils continuent bien des études supérieures."
+        "but": "Pour le BUT, cet indicateur ne compte que les étudiants ayant obtenu le BUT (bac+3) et poursuivant ensuite. Les étudiants ayant obtenu le diplôme intermédiaire DUT (bac+2) et poursuivant leurs études ailleurs (autre licence, école d'ingénieur via admissions parallèles, etc.) ne sont pas comptés comme « poursuivant » au sens de cet indicateur, alors qu'ils continuent bien des études supérieures."
       }
     },
     "Taux de poursuivants": {
       "libelle": "Taux de poursuivants",
+      "cursus": ["licence_generale", "but", "master", "licence_pro"],
       "famille": "insertion",
       "population_reference": "Diplômés sortants",
       "definition_courte": "Part des diplômés sortants qui poursuivent des études dans l'enseignement supérieur.",
       "definition_longue": "Indicateur calculé sur la population des diplômés sortants d'une année donnée. Le numérateur compte les diplômés qui se sont inscrits dans une autre formation de l'enseignement supérieur après leur diplôme. Le dénominateur est l'ensemble des diplômés sortants.",
-      "formule": "Diplômés sortants qui poursuivent / Diplômés sortants",
-      "libelles_api": ["Taux de poursuivants"]
+      "formule": "Diplômés sortants qui poursuivent / Diplômés sortants"
+    },
+    "Taux sortants en emploi salarié en France": {
+      "libelle": "Taux sortants en emploi salarié en France",
+      "cursus": ["licence_generale", "but", "master", "licence_pro"],
+      "famille": "insertion",
+      "population_reference": "Diplômés sortants",
+      "definition_courte": "Part des diplômés sortants en emploi salarié en France au moment de l'observation.",
+      "definition_longue": "Indicateur calculé sur la population des diplômés sortants. Le numérateur compte les diplômés en situation d'emploi salarié sur le territoire français au moment de l'observation. Le dénominateur est l'ensemble des diplômés sortants. Le moment de l'observation est sélectionné par l'utilisateur via le filtre « Situation à » (6, 12, 18, 24 ou 30 mois après la sortie de la formation).",
+      "formule": "Diplômés sortants en emploi salarié en France / Diplômés sortants"
+    },
+    "Taux sortants en emploi non salarié": {
+      "libelle": "Taux sortants en emploi non salarié",
+      "cursus": ["licence_generale", "but", "master", "licence_pro"],
+      "famille": "insertion",
+      "population_reference": "Diplômés sortants",
+      "definition_courte": "Part des diplômés sortants en emploi non salarié au moment de l'observation.",
+      "definition_longue": "Indicateur calculé sur la population des diplômés sortants. Le numérateur compte les diplômés en situation d'emploi non salarié (indépendant, profession libérale, auto-entrepreneur, etc.) au moment de l'observation. Le dénominateur est l'ensemble des diplômés sortants. Le moment de l'observation est sélectionné par l'utilisateur via le filtre « Situation à ».",
+      "formule": "Diplômés sortants en emploi non salarié / Diplômés sortants"
+    },
+    "Taux sortants en emploi stable": {
+      "libelle": "Taux sortants en emploi stable",
+      "cursus": ["licence_generale", "but", "master", "licence_pro"],
+      "famille": "insertion",
+      "population_reference": "Diplômés sortants",
+      "definition_courte": "Part des diplômés sortants en emploi stable au moment de l'observation.",
+      "definition_longue": "Indicateur calculé sur la population des diplômés sortants. Le numérateur compte les diplômés en emploi considéré comme stable (CDI, fonctionnaire, indépendant) au moment de l'observation. Le dénominateur est l'ensemble des diplômés sortants. Le moment de l'observation est sélectionné par l'utilisateur via le filtre « Situation à ».",
+      "formule": "Diplômés sortants en emploi stable / Diplômés sortants"
     }
   },
   "cursus": {

@@ -852,7 +852,27 @@
    (Phase 10) : chaque bloc-indicateur regroupe libellé + métadonnées
    + définition + formule + spécificités. La ligne « meta » porte la
    famille et la population de référence en italique, plus discret que
-   la définition. */
+   la définition. La hiérarchie est h3 (section) → h4 (groupe famille)
+   → h5 (indicateur) ; on définit ici h5 que la règle h4 ci-dessus
+   ne couvre pas. */
+.modale-methodologie-contenu h5 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #000091;
+  margin: 1rem 0 0.25rem;
+}
+.modale-methodologie-contenu .titre-famille-indicateurs {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.modale-methodologie-contenu .groupe-famille-indicateurs {
+  margin-bottom: 1rem;
+}
 .modale-methodologie-contenu .meta-indicateur {
   color: #555;
   font-size: 0.78rem;

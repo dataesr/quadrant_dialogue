@@ -149,6 +149,18 @@ const LIBELLES_FAMILLE = {
   insertion: 'Insertion',
 };
 
+// Mapping code court → libellé humain pour les cursus, utilisé dans
+// les listes « Cursus concernés » et les titres de spécificités.
+// Codes alignés avec les valeurs `cursus` et `specificites` du JSON
+// (snake_case). Si une clé inconnue arrive, on retombe sur la clé
+// brute par fallback.
+const LIBELLES_CURSUS = {
+  licence_generale: 'Licence générale',
+  licence_pro:      'Licence professionnelle',
+  but:              'BUT',
+  master:           'Master',
+};
+
 // Section « Millésime » : définition longue + un sous-bloc par cursus
 // avec son exemple. Itère sur les clés de `par_cursus` pour ne pas
 // hardcoder les 4 cursus — un ajout futur (BUT4, etc.) y apparaîtra
@@ -170,48 +182,83 @@ function SectionMillesime({ millesime }) {
 }
 
 // Section « Indicateurs » : un bloc par indicateur défini au top-level
-// (Phase 10 — taux de réussite, taux de poursuite, taux de
-// poursuivants). Affiche libellé, famille, population de référence,
-// définition longue, formule. Si l'indicateur expose des
-// `specificites`, on itère sur les clés pour afficher chaque
-// spécificité par cursus (BUT et autres).
+// (Phase 10 — 10 entrées, une par libellé API distinct). Affichage
+// groupé par famille (Réussite / Insertion) pour limiter le scroll.
+// Au sein d'une famille, on conserve l'ordre du JSON (≈ ordre canonique
+// — variantes de réussite par durée croissante, puis poursuite/
+// poursuivants, puis indicateurs d'insertion).
 function SectionIndicateurs({ indicateurs }) {
+  const entries = Object.entries(indicateurs);
+  const familles = ['reussite', 'insertion'];
+  const groupes = familles.map((fam) => ({
+    code: fam,
+    libelle: LIBELLES_FAMILLE[fam],
+    items: entries.filter(([, ind]) => ind.famille === fam),
+  }));
+  const orphelins = entries.filter(([, ind]) => !familles.includes(ind.famille));
+
   return (
     <section>
       <h3>Indicateurs</h3>
-      {Object.entries(indicateurs).map(([code, ind]) => (
-        <div key={code} className="bloc-indicateur-methodo">
-          <h4>{ind.libelle || code}</h4>
-          <p className="meta-indicateur">
-            <strong>Famille :</strong>{' '}
-            {LIBELLES_FAMILLE[ind.famille] || ind.famille || '—'}
-            {ind.population_reference && (
-              <>
-                {' · '}<strong>Population de référence :</strong>{' '}
-                {ind.population_reference}
-              </>
-            )}
-          </p>
-          {ind.definition_longue && <p>{ind.definition_longue}</p>}
-          {ind.formule && (
-            <p className="formule-indicateur">
-              <strong>Formule :</strong> {ind.formule}
-            </p>
-          )}
-          {ind.specificites && Object.keys(ind.specificites).length > 0 && (
-            <div className="specificites-indicateur">
-              {Object.entries(ind.specificites).map(([cursus, texte]) => (
-                <div key={cursus} className="specificite-bloc">
-                  <p className="specificite-titre">
-                    <strong>Spécificité — {cursus}</strong>
-                  </p>
-                  <p>{texte}</p>
-                </div>
-              ))}
-            </div>
-          )}
+      {groupes.map((g) => g.items.length === 0 ? null : (
+        <div key={g.code} className="groupe-famille-indicateurs">
+          <h4 className="titre-famille-indicateurs">
+            Indicateurs de {g.libelle.toLowerCase()}
+          </h4>
+          {g.items.map(([code, ind]) => (
+            <BlocIndicateur key={code} code={code} ind={ind} />
+          ))}
         </div>
       ))}
+      {orphelins.map(([code, ind]) => (
+        <BlocIndicateur key={code} code={code} ind={ind} />
+      ))}
     </section>
+  );
+}
+
+function BlocIndicateur({ code, ind }) {
+  const cursusListe = Array.isArray(ind.cursus)
+    ? ind.cursus.map((c) => LIBELLES_CURSUS[c] || c).join(', ')
+    : null;
+
+  return (
+    <div className="bloc-indicateur-methodo">
+      <h5>{ind.libelle || code}</h5>
+      <p className="meta-indicateur">
+        {cursusListe && (
+          <>
+            <strong>Cursus :</strong> {cursusListe}
+            {ind.population_reference && ' · '}
+          </>
+        )}
+        {ind.population_reference && (
+          <>
+            <strong>Population de référence :</strong>{' '}
+            {ind.population_reference}
+          </>
+        )}
+      </p>
+      {ind.definition_longue && <p>{ind.definition_longue}</p>}
+      {ind.formule && (
+        <p className="formule-indicateur">
+          <strong>Formule :</strong> {ind.formule}
+        </p>
+      )}
+      {ind.specificites && Object.keys(ind.specificites).length > 0 && (
+        <div className="specificites-indicateur">
+          {Object.entries(ind.specificites).map(([cursusCode, texte]) => (
+            <div key={cursusCode} className="specificite-bloc">
+              <p className="specificite-titre">
+                <strong>
+                  Spécificité — {LIBELLES_CURSUS[cursusCode] || cursusCode}
+                </strong>
+              </p>
+              <p>{texte}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

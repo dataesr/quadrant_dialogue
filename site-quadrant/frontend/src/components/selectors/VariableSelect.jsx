@@ -43,7 +43,7 @@ export default function VariableSelect({
         {LABEL_AXE[axis]}
         {population && (
           <span className="population-suffixe">
-            {' · Population : '}{population}
+            {' · '}{population}
           </span>
         )}
         {loading && <span className="fr-hint-text">Chargement…</span>}
