@@ -848,6 +848,153 @@
   align-self: flex-start;
 }
 
+/* Bouton « Voir l'évolution » dans le panneau de filtres latéral
+   (Phase 11b). Posé juste après le sélecteur Millésime. Style DSFR
+   secondary + icône play à gauche. */
+.bouton-voir-evolution {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+/* ----------------------------------------------------------------------
+ * Modale d'animation temporelle (Phase 11b MVP)
+ * ----------------------------------------------------------------------
+ * Modale plein écran ~90% du viewport, avec quadrant animé au centre
+ * et contrôles de lecture en dessous. Bulles + lignes de référence
+ * en CSS transitions pour glissement fluide entre millésimes.
+ * -------------------------------------------------------------------- */
+.modale-animation-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 30, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+.modale-animation {
+  background: white;
+  width: 100%;
+  max-width: 960px;
+  max-height: 92vh;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modale-animation header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f6f6f6;
+}
+.modale-animation header h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.1rem;
+  color: #161616;
+}
+.modale-animation header .bouton-fermer {
+  background: transparent;
+  border: none;
+  color: #161616;
+  cursor: pointer;
+  font-size: 1.5rem;
+  padding: 0.25rem;
+}
+.modale-animation-contexte {
+  padding: 0.5rem 1.25rem;
+  background: #f6f6f6;
+  font-size: 0.85rem;
+  color: #555;
+  border-bottom: 1px solid #e5e5e5;
+}
+.modale-animation-loading {
+  padding: 1.5rem;
+  flex: 1;
+}
+.modale-animation-quadrant {
+  padding: 1rem 1.25rem 0.5rem;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.modale-animation-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid #e5e5e5;
+}
+.modale-animation-slider {
+  flex: 1;
+  min-width: 200px;
+}
+.modale-animation-millesimes-ticks {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: #666;
+  flex: 1;
+  justify-content: space-between;
+  padding: 0 0.5rem;
+}
+.modale-animation-millesimes-ticks .tick.actif {
+  color: #000091;
+  font-weight: 600;
+}
+.modale-animation-ref-axes {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  border-top: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+}
+.modale-animation-ref-axes .label {
+  color: #555;
+  font-weight: 500;
+}
+.modale-animation-ref-axes .fr-radio-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+.modale-animation-ref-axes .fr-radio-group span {
+  font-size: 0.85rem;
+}
+.modale-animation-mention-seuil {
+  padding: 0.5rem 1.25rem 1rem;
+  font-size: 0.78rem;
+  color: #666;
+  font-style: italic;
+  margin: 0;
+}
+
+/* SVG du quadrant animé : transitions CSS sur les positions des
+   bulles et des lignes de référence. Durée 800 ms ease-in-out —
+   tient dans l'intervalle de 1000 ms entre millésimes en lecture
+   auto, donc animation continue. */
+.quadrant-anime-svg .quadrant-anime-bulle {
+  transition: cx 800ms ease-in-out, cy 800ms ease-in-out, opacity 400ms ease-in-out;
+}
+.quadrant-anime-svg .quadrant-anime-ref-line {
+  transition: x1 800ms ease-in-out, x2 800ms ease-in-out,
+              y1 800ms ease-in-out, y2 800ms ease-in-out;
+}
+.quadrant-anime-svg .quadrant-anime-millesime {
+  transition: none;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* Sections « Indicateurs » et « Millésime » de la modale méthodologie
    (Phase 10) : chaque bloc-indicateur regroupe libellé + métadonnées
    + définition + formule + spécificités. La ligne « meta » porte la

@@ -189,6 +189,10 @@ export function getQuadrantDetails(params) {
   return request('/quadrant/details', params);
 }
 
+export function getQuadrantSerieTemporelle(params) {
+  return request('/quadrant/serie-temporelle', params);
+}
+
 export function getReferentielDisciplinaire(params) {
   return request('/referentiel/disciplinaire', params);
 }

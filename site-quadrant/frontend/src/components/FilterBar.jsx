@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import MillesimeSelect from './selectors/MillesimeSelect.jsx';
 import VariableSelect from './selectors/VariableSelect.jsx';
 import DateInserSelect from './selectors/DateInserSelect.jsx';
+import ModaleAnimation from './ModaleAnimation.jsx';
 
 // Filtres essentiels (Millésime + Variables X/Y + Délais conditionnels).
 // Empilés verticalement dans le panneau latéral : chaque <select> prend
@@ -193,9 +194,30 @@ export default function FilterBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disponibilites]);
 
+  // Modale d'animation temporelle (Phase 11b MVP). Visible quand
+  // l'utilisateur clique sur « Voir l'évolution ». Bouton désactivé
+  // tant qu'aucun étab n'est sélectionné (l'API requiert un
+  // contexte_id valide pour répondre). On laisse le bouton actif
+  // même si le millésime n'a pas plusieurs millésimes communs : la
+  // modale elle-même affiche un message « animation indisponible »
+  // dans ce cas (préfère un retour explicite à un bouton
+  // mystérieusement grisé).
+  const [animationOuverte, setAnimationOuverte] = useState(false);
+
   return (
     <>
       <MillesimeSelect disabled={disabled} />
+      <button
+        type="button"
+        className="fr-btn fr-btn--sm fr-btn--secondary fr-icon-play-fill fr-btn--icon-left bouton-voir-evolution"
+        onClick={() => setAnimationOuverte(true)}
+        disabled={disabled}
+      >
+        Voir l&apos;évolution
+      </button>
+      {animationOuverte && (
+        <ModaleAnimation open onClose={() => setAnimationOuverte(false)} />
+      )}
 
       <VariableSelect
         axis="X"
