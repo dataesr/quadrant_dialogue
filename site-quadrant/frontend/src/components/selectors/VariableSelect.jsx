@@ -48,7 +48,10 @@ export default function VariableSelect({
         )}
         {loading && <span className="fr-hint-text">Chargement…</span>}
         {value && cursus && (
-          <IndicateurTooltip libelle={value} cursus={cursus} mode="iconOnly" />
+          <>
+            {' '}
+            <IndicateurTooltip libelle={value} cursus={cursus} mode="iconOnly" />
+          </>
         )}
       </label>
       <select
