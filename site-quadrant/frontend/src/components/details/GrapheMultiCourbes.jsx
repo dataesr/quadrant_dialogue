@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   segmenter,
   calculerEchelleY,
@@ -154,7 +155,7 @@ export default function GrapheMultiCourbes({
           })}
         </svg>
 
-        {hovered && (
+        {hovered && createPortal(
           <div
             ref={tooltipRef}
             className="graphe-tooltip"
@@ -163,7 +164,8 @@ export default function GrapheMultiCourbes({
             {hovered.millesime} — {hovered.libelle}
             <br />
             {hovered.contenu}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
@@ -209,8 +211,9 @@ function Courbe({
                 cx={cx} cy={cy} r={3.5}
                 fill={couleur}
                 style={{ cursor: 'pointer' }}
-                onMouseEnter={() => onHoverPoint({
-                  x: cx + 8, y: cy - 4,
+                onMouseEnter={(e) => onHoverPoint({
+                  // Coordonnées viewport pour le tooltip portalisé.
+                  x: e.clientX + 8, y: e.clientY - 4,
                   millesime: p.millesime,
                   libelle: variante.libelle,
                   contenu: `${formatPourcent(p.taux)}${p.denominateur ? ` sur ${p.denominateur}` : ''}`,

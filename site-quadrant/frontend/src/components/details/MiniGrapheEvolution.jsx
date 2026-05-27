@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   decouperDomaineSerie,
   nbPointsValides,
@@ -137,8 +138,11 @@ export default function MiniGrapheEvolution({
                     cx={cx} cy={cy} r={3.5}
                     fill={COULEUR_PRINCIPALE}
                     style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => setHovered({
-                      x: cx + 8, y: cy - 4,
+                    onMouseEnter={(e) => setHovered({
+                      // Coordonnées VIEWPORT (event.clientX/Y) — utilisées
+                      // tel quel par le tooltip portalisé en position: fixed
+                      // pour éviter le clipping du panneau scrollable.
+                      x: e.clientX + 8, y: e.clientY - 4,
                       millesime: p.millesime,
                       contenu: `${formatPourcent(p.taux)}${p.denominateur ? ` sur ${p.denominateur}` : ''}`,
                     })}
@@ -151,7 +155,7 @@ export default function MiniGrapheEvolution({
           })}
         </svg>
 
-        {hovered && (
+        {hovered && createPortal(
           <div
             ref={tooltipRef}
             className="graphe-tooltip"
@@ -160,7 +164,8 @@ export default function MiniGrapheEvolution({
             {hovered.millesime}
             <br />
             {hovered.contenu}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>

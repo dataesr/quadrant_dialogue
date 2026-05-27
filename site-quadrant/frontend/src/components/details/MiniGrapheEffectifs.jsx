@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   decouperDomaineSerie,
   calculerEchelleYEffectifs,
@@ -143,8 +144,9 @@ export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
                   cx={cx} cy={cy} r={3}
                   fill={COULEUR_DENOM}
                   style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => setHovered({
-                    x: cx + 8, y: cy - 4,
+                  onMouseEnter={(e) => setHovered({
+                    // Coordonnées viewport pour le tooltip portalisé.
+                    x: e.clientX + 8, y: e.clientY - 4,
                     millesime: p.millesime,
                     contenu: tooltipEffectifs(p),
                   })}
@@ -164,8 +166,9 @@ export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
                     cx={cx} cy={cy} r={3.5}
                     fill={COULEUR_NUM}
                     style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => setHovered({
-                      x: cx + 8, y: cy - 4,
+                    onMouseEnter={(e) => setHovered({
+                      // Coordonnées viewport pour le tooltip portalisé.
+                      x: e.clientX + 8, y: e.clientY - 4,
                       millesime: p.millesime,
                       contenu: tooltipEffectifs(p),
                     })}
@@ -178,7 +181,7 @@ export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
           })}
         </svg>
 
-        {hovered && (
+        {hovered && createPortal(
           <div
             ref={tooltipRef}
             className="graphe-tooltip"
@@ -187,7 +190,8 @@ export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
             {hovered.millesime}
             <br />
             {hovered.contenu}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
