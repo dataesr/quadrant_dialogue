@@ -16,6 +16,27 @@
     <title>Quadrant</title>
     <script>try { localStorage.setItem('scheme', 'light'); } catch (_) {}</script>
 
+    <!-- Iframe cross-origin (hébergement quadsies.dgesip.fr embarqué
+         depuis dialogue.dgesip.fr) : `window.frameElement` lève
+         SecurityError dans ce contexte. La DSFR y accède sans try/catch
+         dans plusieurs classes (RadioButtonGroup.push pour les
+         fr-segmented, FocusTrap, Modal.adjust) → erreurs console
+         à chaque interaction. On neutralise en amont en redéfinissant
+         le getter pour renvoyer null comme s'il s'agissait d'un top
+         frame, ce qui est l'équivalent fonctionnel d'un iframe
+         cross-origin du point de vue du JS embarqué (pas d'accès au
+         parent).
+         Inline + avant le module ES principal : ce script tire AVANT
+         que main.jsx (et donc DSFR) n'ait commencé à s'exécuter. -->
+    <script>
+      try {
+        Object.defineProperty(window, 'frameElement', {
+          get: function () { return null; },
+          configurable: true,
+        });
+      } catch (_) { /* anciens navigateurs : on laisse */ }
+    </script>
+
     <!-- Favicons DSFR (copiés depuis @gouvfr/dsfr/dist/favicon/ dans
          public/favicon/ — recommandations du Système de Design de l'État).
          Le manifest exige crossorigin=use-credentials cf. doc DSFR. -->

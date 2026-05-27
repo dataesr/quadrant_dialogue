@@ -95,6 +95,22 @@ export function initMatomo() {
   window._paq.push(['setExcludedQueryParams', [...EXCLUDED_QUERY_PARAMS]]);
   window._paq.push(['disableCookies']);
 
+  // Iframe cross-origin (hébergement quadsies.dgesip.fr embarqué
+  // depuis dialogue.dgesip.fr). Matomo essaie par défaut d'auto-détecter
+  // URL et referrer en lisant `window.top.location` / `window.parent` —
+  // ce qui lève SecurityError en cross-origin et pollue la console.
+  // On force des valeurs explicites :
+  //   - setCustomUrl : URL de l'iframe (sans tokens, déjà absents du
+  //     window.location.href côté API quadrant).
+  //   - setReferrerUrl : chaîne vide, on n'expose pas le referrer
+  //     (cohérent avec la posture RGPD globale).
+  // À pousser AVANT setTrackerUrl/setSiteId pour que la 1ʳᵉ pageview
+  // utilise déjà ces valeurs.
+  try {
+    window._paq.push(['setCustomUrl', window.location.href]);
+  } catch (_) { /* défensif */ }
+  window._paq.push(['setReferrerUrl', '']);
+
   // Endpoint et identifiant du site dans l'instance Matomo MESRE.
   window._paq.push(['setTrackerUrl', MATOMO_URL + 'matomo.php']);
   window._paq.push(['setSiteId', MATOMO_SITE_ID]);
