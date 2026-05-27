@@ -82,7 +82,11 @@ export default function ModaleAnimation({ open, onClose }) {
       date_inser_var1: dateInserX, date_inser_var2: dateInserY,
       etab_contexte: etabContexte,
       dom: domaine, discipli: discipline, secteur, mention,
-      master: typeMaster, representativite,
+      master: typeMaster,
+      // representativite côté AppContext est un booléen ; l'API
+      // attend 'toutes' / 'representatif' (cohérent /quadrant). Même
+      // conversion que useQuadrant.js.
+      representativite: representativite ? 'representatif' : 'toutes',
     };
 
     getQuadrantSerieTemporelle(params)
