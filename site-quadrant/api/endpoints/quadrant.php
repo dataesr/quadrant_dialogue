@@ -575,20 +575,23 @@ if ($vue === 'mentions') {
         $sumDenomYEtab += (int)$p['denom_y'];
     }
 
-    // Moyenne pondérée nationale (sur $lignes, toutes les mentions
-    // France entière avec filtres disciplinaires appliqués mais sans
-    // filtre étab). Réutilise la requête SQL principale — pas de
-    // requête supplémentaire.
+    // Moyenne pondérée nationale (= SUM(num)/SUM(denom) sur toutes
+    // les mentions France entière, filtres disciplinaires appliqués,
+    // SANS filtre de périmètre contextuel). Bug Phase 9 : la première
+    // version réutilisait $lignes pour économiser une requête, mais
+    // $lignes est déjà filtré par `m1.filtre_perimetre LIKE :motif`
+    // — donc la « moyenne nationale » était en réalité contextuelle
+    // (académique pour un rectorat, étab pour un établissement…). On
+    // tire désormais une requête dédiée qui omet ce LIKE.
     $sumNumXNat   = 0;
     $sumDenomXNat = 0;
     $sumNumYNat   = 0;
     $sumDenomYNat = 0;
-    foreach ($lignes as $l) {
-        $sumNumXNat   += (int)$l['num_x'];
-        $sumDenomXNat += (int)$l['denom_x'];
-        $sumNumYNat   += (int)$l['num_y'];
-        $sumDenomYNat += (int)$l['denom_y'];
-    }
+    [$sumNumXNat, $sumDenomXNat, $sumNumYNat, $sumDenomYNat] = calculerSommesNationales(
+        $formation, $millesime, $var1, $var2,
+        $dateInserVar1, $dateInserVar2,
+        $dom, $discipli, $secteur, $master
+    );
 
     $axes = [
         'mediane_etab_x'      => $medEtabX,
@@ -781,6 +784,80 @@ function chargerIndicateursCursus(string $formation): array
         ];
     }
     return $map;
+}
+
+/**
+ * Calcule les sommes (num, denom) pour X et Y au niveau national,
+ * c'est-à-dire SANS filtre de périmètre contextuel (filtre_perimetre).
+ *
+ * Conserve tous les autres filtres :
+ *  - formation, millésime
+ *  - var1/var2 + date_inser_var1/var2
+ *  - filtres disciplinaires (dom, discipli, secteur)
+ *  - master (uniquement formation=Master)
+ *
+ * Le filtre `mention` n'est volontairement PAS appliqué : il n'est utile
+ * qu'à vue=etablissements, et la moyenne nationale n'est consommée que par
+ * vue=mentions. Si un jour vue=etablissements exposait une moyenne
+ * nationale, le filtre devrait être réintroduit côté appelant.
+ *
+ * Retourne [sumNumX, sumDenomX, sumNumY, sumDenomY] — entiers.
+ */
+function calculerSommesNationales(
+    string $formation, string $millesime, string $var1, string $var2,
+    string $dateInserVar1, string $dateInserVar2,
+    string $dom, string $discipli, string $secteur, string $master
+): array {
+    $conditions = [
+        'm1.formation = :formation',
+        'm1.millesime = :millesime',
+        'm1.indicateur = :var1',
+        'm1.date_inser = :date1',
+        'm2.indicateur = :var2',
+        'm2.date_inser = :date2',
+    ];
+    $params = [
+        ':formation' => $formation,
+        ':millesime' => $millesime,
+        ':var1'      => $var1,
+        ':date1'     => $dateInserVar1,
+        ':var2'      => $var2,
+        ':date2'     => $dateInserVar2,
+    ];
+    if ($dom !== '')      { $conditions[] = 'm1.dom = :dom';                                  $params[':dom']      = $dom; }
+    if ($discipli !== '') { $conditions[] = 'm1.discipli = :discipli';                        $params[':discipli'] = $discipli; }
+    if ($secteur !== '')  { $conditions[] = 'm1.secteur_disciplinaire_quadrant = :secteur';   $params[':secteur']  = $secteur; }
+    if ($formation === 'Master' && $master !== '') {
+        $conditions[] = 'm1.master = :master';
+        $params[':master'] = $master;
+    }
+
+    $whereClause = implode(' AND ', $conditions);
+
+    $sql = "
+        SELECT
+            COALESCE(SUM(m1.numerateur),   0) AS sum_num_x,
+            COALESCE(SUM(m1.denominateur), 0) AS sum_denom_x,
+            COALESCE(SUM(m2.numerateur),   0) AS sum_num_y,
+            COALESCE(SUM(m2.denominateur), 0) AS sum_denom_y
+        FROM stats_quadrant m1
+        INNER JOIN stats_quadrant m2
+            ON m1.diplom    = m2.diplom
+           AND m1.id_paysage = m2.id_paysage
+           AND m1.millesime = m2.millesime
+        WHERE $whereClause
+    ";
+
+    $stmt = Database::get()->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch();
+
+    return [
+        (int)($row['sum_num_x']   ?? 0),
+        (int)($row['sum_denom_x'] ?? 0),
+        (int)($row['sum_num_y']   ?? 0),
+        (int)($row['sum_denom_y'] ?? 0),
+    ];
 }
 
 /**

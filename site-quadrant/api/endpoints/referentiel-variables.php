@@ -9,6 +9,15 @@
  *
  * Paramètres (query string) :
  *  - formation : 'Licence générale' | 'Licence professionnelle' | 'Bachelor universitaire de technologie' | 'Master'
+ *  - millesime : optionnel, '\d{4}'. Si présent, la réponse inclut un champ
+ *                `disponibilites` : pour chaque indicateur autorisé sur ce cursus,
+ *                la liste des `date_inser` effectivement présents dans
+ *                `stats_quadrant` pour ce millésime. Permet au frontend de griser
+ *                dans les sélecteurs les indicateurs / délais non encore disponibles
+ *                (typiquement le millésime le plus récent qui n'a pas tous les
+ *                délais d'insertion). La structure des variables et des couples
+ *                est indépendante du millésime, donc la liste complète reste
+ *                renvoyée.
  *
  * Headers requis : X-Connexion-Token, X-User-Token, X-Campagne-Token
  *
@@ -70,6 +79,7 @@ $session = new Session();
 $session->getContexteId();
 
 $formation = $_GET['formation'] ?? '';
+$millesime = $_GET['millesime'] ?? '';
 
 $formationsAutorisees = [
     'Licence générale',
@@ -79,6 +89,9 @@ $formationsAutorisees = [
 ];
 if (!in_array($formation, $formationsAutorisees, true)) {
     Response::error('invalid_formation', 'Paramètre formation invalide.');
+}
+if ($millesime !== '' && !preg_match('/^\d{4}$/', $millesime)) {
+    Response::error('invalid_millesime', 'Paramètre millesime invalide.');
 }
 
 $stmt = Database::get()->prepare("
@@ -139,10 +152,60 @@ if ($rowDefauts) {
     ];
 }
 
-Response::json([
+// Disponibilités par (indicateur, date_inser) pour le millésime demandé.
+// Calculé à la demande : si aucun millésime n'est passé, on n'expose pas
+// ce champ. Évite une requête supplémentaire pour le cas d'appel initial
+// du frontend (qui charge les variables avant de connaître le millésime).
+$disponibilites = null;
+if ($millesime !== '') {
+    $stmt = Database::get()->prepare("
+        SELECT DISTINCT indicateur, date_inser
+        FROM stats_quadrant
+        WHERE formation = :formation
+          AND millesime = :millesime
+    ");
+    $stmt->execute([
+        ':formation' => $formation,
+        ':millesime' => $millesime,
+    ]);
+
+    // Carte indicateur => liste des date_inser présents.
+    // Convention : date_inser '' (non déclinable) est représenté par
+    // chaîne vide côté API — cohérent avec /quadrant qui binde la même
+    // chaîne vide quand declinable_delai=false.
+    $disponibilites = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $ind  = (string)$r['indicateur'];
+        $date = (string)($r['date_inser'] ?? '');
+        if (!isset($disponibilites[$ind])) {
+            $disponibilites[$ind] = [];
+        }
+        if (!in_array($date, $disponibilites[$ind], true)) {
+            $disponibilites[$ind][] = $date;
+        }
+    }
+    // Garde-fou : pour chaque indicateur autorisé sur ce cursus mais
+    // totalement absent du millésime, on émet une entrée vide ['dates' => []].
+    // Le frontend distingue alors « indisponible » (clé présente avec
+    // tableau vide) d'« information manquante » (clé absente).
+    foreach ($variables as $v) {
+        $lib = $v['libelle'];
+        if (!isset($disponibilites[$lib])) {
+            $disponibilites[$lib] = [];
+        }
+    }
+}
+
+$reponse = [
     'formation'         => $formation,
     'variables'         => $variables,
     'couples_autorises' => $couplesAutorises,
     'dates_insertion'   => ['6', '12', '18', '24', '30'],
     'defauts'           => $defauts,
-]);
+];
+if ($disponibilites !== null) {
+    $reponse['millesime']      = $millesime;
+    $reponse['disponibilites'] = $disponibilites;
+}
+
+Response::json($reponse);

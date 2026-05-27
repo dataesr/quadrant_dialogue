@@ -3,6 +3,7 @@ import {
   chargerMethodologie,
   getDefinitionIndicateur,
 } from '../data/methodologie.js';
+import { useAutoPlacement } from '../utils/useAutoPlacement.js';
 
 // Tooltip contextuel affichant la définition méthodologique d'un
 // indicateur. Deux modes :
@@ -34,6 +35,12 @@ export default function IndicateurTooltip({
   const [, setTick] = useState(0);
   const wrapperRef = useRef(null);
   const tooltipId = useId();
+
+  // Ajustement post-mesure pour ne pas déborder de l'iframe à droite
+  // (ni à gauche, ni en bas). Le tooltip est ancré `top: 100%; left: 0`
+  // sur son wrapper — pour les wrappers proches du bord droit de
+  // l'iframe (icônes "?" du panneau de détails), il sortait du viewport.
+  const tooltipRef = useAutoPlacement([open]);
 
   // S'assurer que le fetch est lancé et tagger un re-render à
   // résolution. `chargerMethodologie` est idempotent — pas de coût
@@ -90,7 +97,12 @@ export default function IndicateurTooltip({
       {mode === 'inline' && <span>{libelle}</span>}
       {Bouton}
       {open && (
-        <span id={tooltipId} className="tooltip-definition" role="tooltip">
+        <span
+          ref={tooltipRef}
+          id={tooltipId}
+          className="tooltip-definition"
+          role="tooltip"
+        >
           {definition}
         </span>
       )}

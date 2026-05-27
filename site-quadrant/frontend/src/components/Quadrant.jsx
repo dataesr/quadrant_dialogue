@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAutoPlacement } from '../utils/useAutoPlacement.js';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { select } from 'd3-selection';
 
@@ -407,6 +408,24 @@ export default function Quadrant({ forExport = false } = {}) {
   const libelleX = formatLibelle(variableX, dateInserX);
   const libelleY = formatLibelle(variableY, dateInserY);
 
+  // Masquage du SVG quand aucune bulle n'est représentée — un quadrant
+  // vide avec ses axes pointillés n'apporte rien. On garde l'instance
+  // off-screen (forExport=true) rendue inconditionnellement pour que
+  // html-to-image trouve un DOM à capturer même quand l'utilisateur
+  // déclenche un export sur un état temporairement vide ; les boutons
+  // d'export sont par ailleurs désactivés via `aDesDonnees` côté
+  // BoutonExport.
+  const aucuneBulle = bulles.length === 0;
+  if (aucuneBulle && !forExport) {
+    return (
+      <div className="quadrant-wrapper quadrant-wrapper--vide">
+        <div className="fr-alert fr-alert--info">
+          <p>{data.info || 'Aucune donnée pour cette combinaison de filtres.'}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Référence à tracer : en vue Positionnement on garde data.reference
   // historique. En vue Mentions on lit data.axes[<mode>] selon le
   // sélecteur « Référence des axes » d'AdvancedFilters. Fallback
@@ -509,21 +528,7 @@ export default function Quadrant({ forExport = false } = {}) {
             vide), seule la catégorie subsiste — c'est ce qui rend
             le tooltip informatif sans révéler l'identité. */}
       {hovered && (
-        <div
-          className="quadrant-tooltip"
-          style={{ left: `${hovered.x}px`, top: `${hovered.y}px` }}
-        >
-          {hovered.bulle.libelle && (
-            <div className="libelle">{hovered.bulle.libelle}</div>
-          )}
-          {vue === 'etablissements' && LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key] && (
-            <div className="categorie">
-              {LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key]}
-            </div>
-          )}
-          <div>Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %</div>
-          <div>Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %</div>
-        </div>
+        <QuadrantTooltip hovered={hovered} vue={vue} />
       )}
 
       {/* Message API « pas de données » (filtres valides mais résultat vide) */}
@@ -604,6 +609,37 @@ function formatLibelle(variable, dateInser) {
   if (!variable) return '';
   if (!dateInser) return variable;
   return `${variable} (${dateInser} mois)`;
+}
+
+// Tooltip de survol des bulles, extrait en sous-composant pour ancrer
+// proprement un useLayoutEffect d'ajustement post-mesure (cf. ci-dessous).
+// Mesurer après rendu via getBoundingClientRect, puis translater
+// horizontalement pour rester dans la fenêtre — sans ça, un survol près
+// du bord droit de l'iframe coupe le tooltip (cas signalé Phase 9).
+// Le décalage est appliqué en transform plutôt qu'en ajustant `left`
+// pour ne pas se mettre en boucle de mesure (transform sort du flux,
+// le layout du parent reste stable).
+function QuadrantTooltip({ hovered, vue }) {
+  const ref = useAutoPlacement([hovered]);
+
+  return (
+    <div
+      ref={ref}
+      className="quadrant-tooltip"
+      style={{ left: `${hovered.x}px`, top: `${hovered.y}px` }}
+    >
+      {hovered.bulle.libelle && (
+        <div className="libelle">{hovered.bulle.libelle}</div>
+      )}
+      {vue === 'etablissements' && LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key] && (
+        <div className="categorie">
+          {LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key]}
+        </div>
+      )}
+      <div>Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %</div>
+      <div>Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %</div>
+    </div>
+  );
 }
 
 // Icône SVG inline reproduisant la forme d'une bulle (rond, triangle

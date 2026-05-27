@@ -120,11 +120,13 @@ export async function exportFicheDocx({ ficheData, contexte, panneauEl }) {
   const titre   = titreFiche(ficheData);
   const cursusValue   = contexte?.cursus    || '';
   const millesimeStr  = String(contexte?.millesime ?? '');
-  // Sous-titre : « <cursus> · <identité secondaire> ». Préfixer
-  // par le cursus rend la fiche autoporteuse — un lecteur qui ne
-  // voit que l'en-tête sait à quel type de diplôme se rapporte
-  // l'indicateur affiché.
-  const sousT   = sousTitreFiche(ficheData, cursusValue);
+  // Sous-titre : « <cursus> [<mention?>] · <identité secondaire> ».
+  // Préfixer par le cursus rend la fiche autoporteuse — un lecteur
+  // qui ne voit que l'en-tête sait à quel type de diplôme se
+  // rapporte l'indicateur affiché. Quand un filtre mention est actif
+  // en vue Positionnement, on l'accole au cursus (séparateur espace,
+  // pas ·) — ex. « Master DROIT · Île-de-France · ... ».
+  const sousT   = sousTitreFiche(ficheData, cursusValue, contexte?.mentionFiltreLibelle);
   const dateFR  = formatDateHumaine(new Date());
 
   // -------------------- Capture des graphiques --------------------
@@ -730,10 +732,17 @@ function titreFiche(ficheData) {
   return id.uo_lib || id.id_paysage || '';
 }
 
-function sousTitreFiche(ficheData, cursus) {
+function sousTitreFiche(ficheData, cursus, mentionFiltreLibelle) {
   const id = ficheData?.identite || {};
   const parts = [];
-  if (cursus) parts.push(cursus);
+  if (cursus) {
+    const cursusLabel = mentionFiltreLibelle
+      ? `${cursus} ${mentionFiltreLibelle}`
+      : cursus;
+    parts.push(cursusLabel);
+  } else if (mentionFiltreLibelle) {
+    parts.push(mentionFiltreLibelle);
+  }
   if (ficheData?.type === 'mention') {
     if (id.secteur) parts.push(id.secteur);
   } else {

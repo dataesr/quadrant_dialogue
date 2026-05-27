@@ -6,9 +6,13 @@ import {
 } from '../services/api.js';
 import { messageErreur } from '../utils/errors.js';
 
-// Hook qui regroupe les trois référentiels nécessaires aux filtres :
+// Hook qui regroupe les référentiels nécessaires aux filtres :
 //   - millesimes : dépend du cursus
-//   - variables  : dépend du cursus
+//   - variables  : dépend du cursus (structure stable cursus × indicateur)
+//   - disponibilites : dépend du couple (cursus, millesime) — pour chaque
+//     indicateur, la liste des `date_inser` effectivement présents dans
+//     stats_quadrant ce millésime. Sert au grisage des options indispos
+//     dans VariableSelect / DateInserSelect.
 //   - disciplinaire (domaines / disciplines / secteurs / mentions) : dépend
 //     du couple (cursus, millesime)
 //
@@ -20,15 +24,17 @@ import { messageErreur } from '../utils/errors.js';
 const emptyState = () => ({ loading: false, data: null, error: null });
 
 export function useReferentiels({ formation, millesime }) {
-  const [millesimes,    setMillesimes]    = useState(emptyState());
-  const [variables,     setVariables]     = useState(emptyState());
-  const [disciplinaire, setDisciplinaire] = useState(emptyState());
+  const [millesimes,      setMillesimes]      = useState(emptyState());
+  const [variables,       setVariables]       = useState(emptyState());
+  const [disponibilites,  setDisponibilites]  = useState(emptyState());
+  const [disciplinaire,   setDisciplinaire]   = useState(emptyState());
 
   // Caches : Map<formation, payload> pour millesimes & variables ;
-  // Map<`${formation}|${millesime}`, payload> pour disciplinaire.
-  const cacheMillesimes    = useRef(new Map());
-  const cacheVariables     = useRef(new Map());
-  const cacheDisciplinaire = useRef(new Map());
+  // Map<`${formation}|${millesime}`, payload> pour disponibilites & disciplinaire.
+  const cacheMillesimes     = useRef(new Map());
+  const cacheVariables      = useRef(new Map());
+  const cacheDisponibilites = useRef(new Map());
+  const cacheDisciplinaire  = useRef(new Map());
 
   // Millésimes & variables : changent avec le cursus.
   useEffect(() => {
@@ -61,6 +67,34 @@ export function useReferentiels({ formation, millesime }) {
     };
   }, [formation]);
 
+  // Disponibilités : besoin de formation ET millesime. Réutilise
+  // /referentiel/variables avec le paramètre `millesime` — l'endpoint
+  // expose alors un champ `disponibilites` qu'on isole ici. On ne casse
+  // pas le cache `variables` (formation seule) : c'est un fetch parallèle
+  // dédié à la disponibilité par millésime, mis en cache à part.
+  useEffect(() => {
+    if (!formation || !millesime) {
+      setDisponibilites(emptyState());
+      return;
+    }
+
+    let cancelled = false;
+    const key = `${formation}|${millesime}`;
+
+    loadCached(
+      cacheDisponibilites.current,
+      key,
+      () => getReferentielVariables({ formation, millesime })
+        .then((res) => res?.disponibilites || {}),
+      setDisponibilites,
+      () => cancelled,
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formation, millesime]);
+
   // Disciplinaire : besoin de formation ET millesime.
   useEffect(() => {
     if (!formation || !millesime) {
@@ -84,7 +118,7 @@ export function useReferentiels({ formation, millesime }) {
     };
   }, [formation, millesime]);
 
-  return { millesimes, variables, disciplinaire };
+  return { millesimes, variables, disponibilites, disciplinaire };
 }
 
 /**

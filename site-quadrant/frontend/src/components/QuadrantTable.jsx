@@ -188,6 +188,27 @@ export default function QuadrantTable() {
   const cadransNonVides = ORDRE_CADRANS.filter((k) => (groupes[k] || []).length > 0);
   const totalBulles = cadransNonVides.reduce((s, k) => s + groupes[k].length, 0);
 
+  // État entièrement vide : aucun cadran peuplé ET (vue Positionnement
+  // OU aucune mention non représentée). Évite d'afficher la section
+  // « Mentions non représentées » avec son sous-message « Aucune
+  // mention… » au-dessus d'un quadrant déjà vide — laisse uniquement
+  // le message d'information général, pour cohérence avec la vue
+  // graphique qui masque entièrement son SVG dans le même cas.
+  const aucuneDonneeAffichable = (
+    totalBulles === 0 &&
+    (vue !== 'mentions' || mentionsNonRepresentees.length === 0)
+  );
+
+  if (aucuneDonneeAffichable) {
+    return (
+      <div className="quadrant-tableaux">
+        <div className="fr-alert fr-alert--info">
+          <p>{data.info || 'Aucune donnée à afficher dans le tableau.'}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="quadrant-tableaux">
       {totalBulles === 0 && (

@@ -5,7 +5,10 @@
 // Props :
 //  - axis      : 'X' | 'Y' (utilisé pour l'id et le libellé)
 //  - value     : libellé courant (string | null)
-//  - options   : tableau d'objets { libelle, declinable_delai? }
+//  - options   : tableau d'objets { libelle, declinable_delai?, disponible? }
+//                disponible=false → option grisée (visible mais non sélectionnable)
+//                Sert au cas où le millésime courant ne couvre pas
+//                l'indicateur (cf. /referentiel/variables?millesime=Y).
 //  - onChange  : (newLibelle) => void
 //  - disabled  : booléen
 //  - loading   : true tant que le référentiel charge
@@ -49,11 +52,19 @@ export default function VariableSelect({
             —
           </option>
         )}
-        {options.map((opt) => (
-          <option key={opt.libelle} value={opt.libelle}>
-            {opt.libelle}
-          </option>
-        ))}
+        {options.map((opt) => {
+          const indispo = opt.disponible === false;
+          return (
+            <option
+              key={opt.libelle}
+              value={opt.libelle}
+              disabled={indispo}
+              title={indispo ? 'Non disponible pour ce millésime' : undefined}
+            >
+              {opt.libelle}{indispo ? ' (non disponible)' : ''}
+            </option>
+          );
+        })}
       </select>
     </div>
   );

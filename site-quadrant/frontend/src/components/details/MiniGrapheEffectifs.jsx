@@ -3,6 +3,7 @@ import {
   decouperDomaineSerie,
   calculerEchelleYEffectifs,
 } from './historique.js';
+import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 
 // Variante « effectifs » de MiniGrapheEvolution. Affiche les deux
 // composantes brutes d'un indicateur — numérateur (la sous-population
@@ -40,6 +41,7 @@ const COULEUR_GRILLE = '#e0e0e0';
 
 export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
   const [hovered, setHovered] = useState(null);
+  const tooltipRef = useAutoPlacement([hovered]);
 
   const domaine = useMemo(() => decouperDomaineSerie(serie), [serie]);
 
@@ -178,6 +180,7 @@ export default function MiniGrapheEffectifs({ serie, millesimeCourant }) {
 
         {hovered && (
           <div
+            ref={tooltipRef}
             className="graphe-tooltip"
             style={{ left: hovered.x, top: hovered.y }}
           >

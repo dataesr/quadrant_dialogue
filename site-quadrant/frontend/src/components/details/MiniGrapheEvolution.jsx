@@ -5,6 +5,7 @@ import {
   segmenter,
   calculerEchelleY,
 } from './historique.js';
+import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 
 // Mini-graphique d'évolution mono-courbe (utilisé pour les cards X/Y
 // du panneau de détails ; aussi disponible si on veut une trace simple
@@ -40,6 +41,7 @@ export default function MiniGrapheEvolution({
   showTitle = true,
 }) {
   const [hovered, setHovered] = useState(null);
+  const tooltipRef = useAutoPlacement([hovered]);
 
   // Tous les hooks d'abord (rules of hooks : pas de return conditionnel
   // avant la fin des useMemo). Le gating est tranché ensuite.
@@ -151,6 +153,7 @@ export default function MiniGrapheEvolution({
 
         {hovered && (
           <div
+            ref={tooltipRef}
             className="graphe-tooltip"
             style={{ left: hovered.x, top: hovered.y }}
           >

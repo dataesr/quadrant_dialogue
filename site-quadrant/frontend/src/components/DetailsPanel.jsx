@@ -61,6 +61,7 @@ export default function DetailsPanel() {
     domaine, discipline, secteur, typeMaster,
     representativite,
     frontendConfig,
+    referentiels,
   } = useApp();
 
   // Bouton « Télécharger la fiche Word » activable par config API.
@@ -219,6 +220,13 @@ export default function DetailsPanel() {
           variableX, variableY, dateInserX, dateInserY,
           populationX: bulleAssociee?.population_x,
           populationY: bulleAssociee?.population_y,
+          // Filtre mention courant (libellé humain) — utilisé par
+          // sousTitreFiche pour rappeler la mention dans l'en-tête
+          // de la fiche Word, en cohérence avec l'écran.
+          mentionFiltreLibelle:
+            vue === 'etablissements' && mention
+              ? resoudreMentionLibelle(mention, referentiels.disciplinaire.data?.mentions)
+              : null,
           // Traçabilité silencieuse côté Custom Properties du .docx
           // (cf. exportDocx.js). Aligné sur ce que produit
           // BoutonExport.jsx : seul `contexteId` est connu en mode
@@ -256,7 +264,20 @@ export default function DetailsPanel() {
         <div className="titre-zone">
           <h2>{titreBulle(identite, data?.type)}</h2>
           {identite && (
-            <p className="identite-secondaire">{sousTitreBulle(identite, data?.type, cursus)}</p>
+            <p className="identite-secondaire">
+              {sousTitreBulle(
+                identite,
+                data?.type,
+                cursus,
+                // Rappel du filtre mention en vue Positionnement : on
+                // l'expose juste après le cursus pour que le lecteur
+                // sache que les indicateurs portent sur cette mention
+                // précise (pas l'agrégat tous diplômes confondus).
+                vue === 'etablissements' && mention
+                  ? resoudreMentionLibelle(mention, referentiels.disciplinaire.data?.mentions)
+                  : null,
+              )}
+            </p>
           )}
         </div>
         <div className="actions">
@@ -588,9 +609,21 @@ function titreBulle(identite, type) {
 // l'écran quand l'utilisateur consulte plusieurs panneaux à la
 // suite). Aligné avec le sous-titre de l'export Word
 // (cf. exportDocx.js > sousTitreFiche).
-function sousTitreBulle(identite, type, cursus) {
+//
+// Quand `mentionFiltreLibelle` est fourni (vue Positionnement avec
+// filtre mention actif), on l'accole au cursus séparé par un SIMPLE
+// ESPACE (pas le séparateur ·) — ex. « Master DROIT ». Les autres
+// éléments (région, typologie) restent séparés par · classique.
+function sousTitreBulle(identite, type, cursus, mentionFiltreLibelle) {
   const parts = [];
-  if (cursus) parts.push(cursus);
+  if (cursus) {
+    const cursusLabel = mentionFiltreLibelle
+      ? `${cursus} ${mentionFiltreLibelle}`
+      : cursus;
+    parts.push(cursusLabel);
+  } else if (mentionFiltreLibelle) {
+    parts.push(mentionFiltreLibelle);
+  }
   if (type === 'mention') {
     if (identite.secteur) parts.push(identite.secteur);
   } else {
@@ -599,6 +632,16 @@ function sousTitreBulle(identite, type, cursus) {
     if (identite.typologie) parts.push(identite.typologie);
   }
   return parts.join(' · ');
+}
+
+// Résout un diplom code en libellé humain via le référentiel
+// disciplinaire. Identique en sémantique à celui de BoutonExport — un
+// fallback sur le code si le référentiel n'est pas chargé garantit
+// qu'aucune fiche ne reste sans rappel.
+function resoudreMentionLibelle(diplom, mentions) {
+  if (!diplom) return null;
+  const trouve = (mentions || []).find((m) => m.code === diplom);
+  return trouve?.libelle || diplom;
 }
 
 function formatLibelleIndicateur(variable, dateInser) {

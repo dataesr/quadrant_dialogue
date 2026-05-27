@@ -5,6 +5,7 @@ import {
   couleurVariante,
 } from './historique.js';
 import LegendeVariantes from './LegendeVariantes.jsx';
+import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 
 // Graphique multi-courbes : axe X = millésime, axe Y = taux,
 // une courbe par variante (un délai pour Insertion, une durée pour
@@ -49,6 +50,7 @@ export default function GrapheMultiCourbes({
   millesimeCourant,
 }) {
   const [hovered, setHovered] = useState(null);
+  const tooltipRef = useAutoPlacement([hovered]);
 
   // Tous les hooks DOIVENT être appelés inconditionnellement, donc on
   // calcule l'ensemble des derived state AVANT le gating ≥ 2 points
@@ -154,6 +156,7 @@ export default function GrapheMultiCourbes({
 
         {hovered && (
           <div
+            ref={tooltipRef}
             className="graphe-tooltip"
             style={{ left: hovered.x, top: hovered.y }}
           >
