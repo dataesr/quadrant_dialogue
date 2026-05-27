@@ -62,6 +62,7 @@ if (strpos($path, $prefix) === 0) {
 $routes = [
     '/quadrant'                            => 'quadrant.php',
     '/quadrant/details'                    => 'quadrant-details.php',
+    '/quadrant/serie-temporelle'           => 'quadrant-serie-temporelle.php',
     '/quadrant/mentions-non-representees'  => 'quadrant-mentions-non-representees.php',
     '/etablissements-visibles'             => 'etablissements-visibles.php',
     '/referentiel/disciplinaire'           => 'referentiel-disciplinaire.php',
