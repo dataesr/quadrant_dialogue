@@ -1,25 +1,25 @@
 {
-  "generale": "Cet outil propose un ensemble de nuages de points qui croisent les valeurs de deux indicateurs liés à la réussite, l'orientation et l'insertion professionnelle des étudiants inscrits en université de 4 types de diplôme : licence générale, licence professionnelle, BUT et master.\n\nParmi les 6 onglets proposés, les 3 premiers permettent de croiser les informations au niveau de chaque mention de diplôme d'une université. Les 3 derniers s'intéressent au niveau de chaque université pour l'ensemble des disciplines ou pour un ensemble disciplinaire distinct. Un point du nuage représente donc respectivement une mention de diplôme d'une université ou l'ensemble des mentions d'une université.\n\nDans les quadrants, chaque axe d'un nuage de points est coupé en deux plans selon la médiane de chacun des deux indicateurs calculés à partir des points présents sur le graphique. De chaque côté se trouvent la moitié des points. Les points sont ainsi présents dans l'un des quatre quadrants du graphique. La taille de chaque point est proportionnelle à l'effectif de référence du premier indicateur (dénominateur de l'indicateur 1). Chaque quadrant du graphique ne contient que très rarement un quart des points du nuage.\n\nCertaines mentions et certains établissements peuvent ne pas apparaître sur ces nuages de points en fonction du type de diplôme, de la discipline ou des indicateurs sélectionnés. C'est le cas lorsque l'établissement ne propose pas un type diplôme ou cette discipline, lorsque certaines mentions proposées par un établissement ne correspondent pas dans le temps (différence entre l'offre de formation au moment de l'inscription en début de cursus et celle au moment de la diplomation) ou lorsque les effectifs de référence des taux (dénominateurs des indicateurs) sont inférieurs à 5, ce qui est le cas de beaucoup d'indicateurs d'insertion des mentions de licence générale qui ont moins de 5 sortants parmi les diplômés.\n\nLes indicateurs proposés sont calculés à partir des données des dispositifs SISE et InserSup. Les valeurs des indicateurs calculés sur de faibles effectifs, généralement inférieurs à 20, sont à prendre avec précaution. Les données relatives aux étudiants inscrits dans les établissements composantes ne sont pas prises en compte dans ces nuages de points.",
+  "generale": "Cet outil propose un ensemble de nuages de points qui croisent les valeurs de deux indicateurs liés à la réussite, l'orientation et l'insertion professionnelle des étudiants inscrits en université ou assimilé de 4 types de diplôme : licence générale, licence professionnelle, BUT et master.\n\nCet outil propose deux vues : la première permet de croiser les informations au niveau de chaque mention de diplôme d'un établissement, la seconde s'intéresse au positionnement d’un établissement au niveau de chaque établissement. Un point du nuage représente donc respectivement une mention de diplôme d'un établissement parmi l'ensemble des établissements selon les mêmes indicateurs.\n\nDans les quadrants, chaque axe d'un nuage de points est coupé en deux plans selon la médiane ou la moyenne de l’établissement ou la moyenne nationale de chacun des deux indicateurs. Avec la médiane comme référence, dans chaque côté se trouvent la moitié des points représentant une mention ou un établissement. Les mentions ou établissements sont ainsi présents dans l'un des quatre quadrants du graphique. La taille de chaque point est proportionnelle à la moyenne des effectifs de référence des deux indicateurs calculés (dénominateurs des deux indicateurs). Chaque quadrant du graphique ne contient que très rarement un quart des points du nuage.\n\nCertaines mentions et certains établissements peuvent ne pas apparaître sur ces nuages de points en fonction du type de diplôme, de la discipline ou des indicateurs sélectionnés. C'est le cas lorsque l'établissement ne propose pas un type diplôme ou cette discipline, lorsque certaines mentions proposées par un établissement ne correspondent pas dans le temps (différence entre l'offre de formation au moment de l'inscription en début de cursus et celle au moment de la diplomation) ou lorsque les effectifs de référence des taux (dénominateurs des indicateurs) sont inférieurs à 5, ce qui est le cas de beaucoup d'indicateurs d'insertion des mentions de licence générale qui ont moins de 5 sortants parmi les diplômés.\n\nLes indicateurs proposés sont calculés à partir des données des dispositifs SISE et InserSup. Les valeurs des indicateurs calculés sur de faibles effectifs, généralement inférieurs à 20, sont à prendre avec précaution. Les données relatives aux étudiants inscrits dans les établissements composantes ne sont pas prises en compte dans ces nuages de points.",
   "millesime": {
     "libelle": "Millésime",
     "definition_courte": "Année qui sert de point d'ancrage pour les indicateurs.",
-    "definition_longue": "Le millésime M correspond à l'année universitaire de sortie des diplômés. Pour les indicateurs d'insertion, c'est l'année où ces diplômés ont quitté la formation et où démarre le suivi de leur situation professionnelle (à 6, 12, 18, 24 ou 30 mois). Pour les indicateurs de réussite, c'est l'année où ces diplômés ont obtenu leur diplôme à durée normale de cursus ; les indicateurs intègrent aussi les diplômés en durée normale + 1 an. L'année d'entrée dans la formation se déduit du cursus.",
+    "definition_longue": "Le millésime M correspond à la session universitaire de sortie des diplômés. Pour les indicateurs de réussite, c'est l'année où ces diplômés ont obtenu leur diplôme à durée normale de cursus ; les indicateurs intègrent aussi les diplômés en durée normale + 1 an. L'année d'entrée dans la formation se déduit du cursus. Pour les indicateurs d'insertion, c'est l'année où ces diplômés ont quitté la formation et où démarre le suivi de leur situation professionnelle.",
     "par_cursus": {
       "Licence générale": {
         "duree_normale_annees": 3,
-        "exemple": "Millésime 2023 — Insertion : diplômés de licence générale sortis à l'issue de l'année 2022-23, suivis ensuite. Réussite : entrants en L1 en 2020-21 (parcours en 3 ans) ou 2019-20 (parcours en 4 ans) ayant obtenu leur licence en 2022-23."
+        "exemple": "Millésime 2023 — Réussite : entrants en L1 en 2020-21 ayant obtenu leur licence en 2022-23 (parcours en 3 ans) ou en 2023-24 (parcours en 4 ans). Insertion : diplômés de licence générale sortis à l'issue de la session 2023."
       },
       "Licence professionnelle": {
         "duree_normale_annees": 1,
-        "exemple": "Millésime 2023 — Insertion : diplômés de licence professionnelle sortis à l'issue de l'année 2022-23. Réussite : entrants en L3 pro en 2022-23 (parcours en 1 an) ou 2021-22 (parcours en 2 ans)."
+        "exemple": "Millésime 2023 — Réussite : entrants en Licence professionnelle (1 an) en 2022-23 ayant obtenu leur diplôme en 2022-23. Insertion : diplômés de licence professionnelle sortis à l'issue de la session 2023."
       },
       "Bachelor universitaire de technologie": {
         "duree_normale_annees": 3,
-        "exemple": "Millésime 2023 — Insertion : diplômés de BUT sortis à l'issue de l'année 2022-23. Réussite : entrants en BUT1 en 2020-21 (parcours en 3 ans) ou 2019-20 (parcours en 4 ans)."
+        "exemple": "Millésime 2024 — Réussite : entrants en BUT1 en 2021-22 ayant obtenu leur diplôme en 2023-24 (parcours en 3 ans). Insertion : diplômés de BUT sortis à l'issue de la session 2024."
       },
       "Master": {
         "duree_normale_annees": 2,
-        "exemple": "Millésime 2023 — Insertion : diplômés de master sortis à l'issue de l'année 2022-23. Réussite : entrants en M1 en 2021-22 (parcours en 2 ans) ou 2020-21 (parcours en 3 ans)."
+        "exemple": "Millésime 2023 — Réussite : entrants en M1 en 2021-22 ayant obtenu leur diplôme en 2022-23 (parcours en 2 ans) ou en 2023-24 (parcours en 3 ans). Insertion : diplômés de master sortis à l'issue de la session 2023."
       }
     }
   },
@@ -38,8 +38,8 @@
       "cursus": ["master"],
       "famille": "reussite",
       "population_reference": "Entrants",
-      "definition_courte": "Part des entrants en master ayant obtenu leur diplôme en 2 ans (parcours linéaire).",
-      "definition_longue": "Indicateur calculé sur la population des entrants en master. Le numérateur compte les étudiants ayant obtenu leur diplôme en 2 ans, c'est-à-dire ayant suivi un parcours linéaire. Le dénominateur est l'ensemble des entrants en master.",
+      "definition_courte": "Part des entrants en master ayant obtenu leur diplôme en 2 ans.",
+      "definition_longue": "Indicateur calculé sur la population des entrants en master. Le numérateur compte les étudiants ayant obtenu leur diplôme en 2 ans. Le dénominateur est l'ensemble des entrants en master.",
       "formule": "Entrants en master diplômés en 2 ans / Entrants en master"
     },
     "Taux de réussite en 2 ou 3 ans": {
@@ -47,8 +47,8 @@
       "cursus": ["master"],
       "famille": "reussite",
       "population_reference": "Entrants",
-      "definition_courte": "Part des entrants en master ayant obtenu leur diplôme en 2 ans (parcours linéaire) ou en 3 ans (avec 1 an supplémentaire).",
-      "definition_longue": "Indicateur calculé sur la population des entrants en master. Le numérateur compte les étudiants ayant obtenu leur diplôme en 2 ans (parcours linéaire) ou en 3 ans (avec un an supplémentaire). Le dénominateur est l'ensemble des entrants en master. Cet indicateur est plus inclusif que le taux à 2 ans seul, en intégrant les parcours non linéaires.",
+      "definition_courte": "Part des entrants en master ayant obtenu leur diplôme en 2 ans ou en 3 ans.",
+      "definition_longue": "Indicateur calculé sur la population des entrants en master. Le numérateur compte les étudiants ayant obtenu leur diplôme en 2 ans ou en 3 ans. Le dénominateur est l'ensemble des entrants en master.",
       "formule": "Entrants en master diplômés en 2 ou 3 ans / Entrants en master"
     },
     "Taux de réussite en 3 ans": {
@@ -56,8 +56,8 @@
       "cursus": ["licence_generale", "but"],
       "famille": "reussite",
       "population_reference": "Entrants",
-      "definition_courte": "Part des entrants ayant obtenu leur diplôme en 3 ans (parcours linéaire).",
-      "definition_longue": "Indicateur calculé sur la population des entrants en première année. Le numérateur compte les étudiants ayant obtenu leur diplôme en 3 ans (parcours linéaire). Le dénominateur est l'ensemble des entrants en première année.",
+      "definition_courte": "Part des entrants ayant obtenu leur diplôme en 3 ans.",
+      "definition_longue": "Indicateur calculé sur la population des entrants en première année. Le numérateur compte les étudiants ayant obtenu leur diplôme en 3 ans. Le dénominateur est l'ensemble des entrants en première année.",
       "formule": "Entrants diplômés en 3 ans / Entrants",
       "specificites": {
         "but": "Pour le BUT, cet indicateur mesure uniquement l'obtention du BUT (bac+3). Les étudiants ayant obtenu le diplôme intermédiaire DUT (bac+2) après les deux premières années sans poursuivre jusqu'au BUT3 ne sont pas comptés comme diplômés du BUT, même s'ils ont validé un diplôme intermédiaire."
@@ -68,8 +68,8 @@
       "cursus": ["licence_generale"],
       "famille": "reussite",
       "population_reference": "Entrants",
-      "definition_courte": "Part des entrants en licence générale ayant obtenu leur diplôme en 3 ans (parcours linéaire) ou en 4 ans (avec 1 an supplémentaire).",
-      "definition_longue": "Indicateur calculé sur la population des entrants en première année de licence générale. Le numérateur compte les étudiants ayant obtenu leur diplôme en 3 ans (parcours linéaire) ou en 4 ans (avec un an supplémentaire). Le dénominateur est l'ensemble des entrants. Cet indicateur est plus inclusif que le taux à 3 ans seul, en intégrant les parcours non linéaires.",
+      "definition_courte": "Part des entrants en licence générale ayant obtenu leur diplôme en 3 ans ou en 4 ans.",
+      "definition_longue": "Indicateur calculé sur la population des entrants en première année de licence générale. Le numérateur compte les étudiants ayant obtenu leur diplôme en 3 ans ou en 4 ans. Le dénominateur est l'ensemble des entrants.",
       "formule": "Entrants diplômés en 3 ou 4 ans / Entrants"
     },
     "Taux de poursuite": {
@@ -120,83 +120,6 @@
       "definition_longue": "Indicateur calculé sur la population des diplômés sortants. Le numérateur compte les diplômés en emploi considéré comme stable (CDI, fonctionnaire, indépendant) au moment de l'observation. Le dénominateur est l'ensemble des diplômés sortants. Le moment de l'observation est sélectionné par l'utilisateur via le filtre « Situation à ».",
       "formule": "Diplômés sortants en emploi stable / Diplômés sortants"
     }
-  },
-  "cursus": {
-    "Licence générale": {
-      "libelle": "Licence générale",
-      "champ": "Le champ des inscrits est constitué des néo-bacheliers inscrits en première année de licence (L1) à la rentrée universitaire N. En sont exclus les étudiants ayant pris une inscription parallèle en STS, DUT ou CPGE ou ayant obtenu le diplôme de Licence à l'issue de la première année.\nLes indicateurs sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en L1.",
-      "indicateurs": [
-        {
-          "libelle": "Taux de réussite en 3 ans",
-          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+2 ou N+3, quels que soit l'établissement ou la mention d'obtention."
-        },
-        {
-          "libelle": "Taux de réussite en 3 ou 4 ans",
-          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+2, N+3 ou N+4, quels que soit l'établissement ou la mention d'obtention."
-        },
-        {
-          "libelle": "Taux de poursuite d’étude",
-          "definition": "Étudiants du champ ayant obtenu une licence générale ou professionnelle aux sessions N+3 ou N+4, quels que soit l'établissement ou la mention d'obtention, et poursuivant des études supérieure à la rentrée suivant l'obtention du diplôme de licence générale ou professionnelle."
-        }
-      ],
-      "champ_insertion": "Diplômés de licence générale de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
-      "insertion": {
-        "libelle": "Insertion professionnelle",
-        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
-      }
-    },
-    "Licence professionnelle": {
-      "libelle": "Licence professionnelle",
-      "champ": "Primo-inscrits en licence professionnelle (LP) à la rentrée universitaire N.\nLes indicateurs de réussite sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en licence professionnelle.",
-      "indicateurs": [
-        {
-          "libelle": "Taux de réussite en 1 an",
-          "definition": "Étudiants du champ ayant obtenu une licence professionnelle à la session N+1, quels que soit l'établissement ou la mention d'obtention."
-        }
-      ],
-      "champ_insertion": "Diplômés de licence professionnelle de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
-      "insertion": {
-        "libelle": "Insertion professionnelle",
-        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
-      }
-    },
-    "Bachelor universitaire de technologie": {
-      "libelle": "BUT (Bachelor universitaire de technologie)",
-      "champ": "Le champ des inscrits est constitué des néo-bacheliers inscrits pour la première fois en première année de BUT à la rentrée universitaire N (France entière).\nLes indicateurs sont des ratios rapportant des effectifs d'étudiants. La réussite est attribuée à l'établissement d'inscription en première année et non à l'établissement où le diplôme a été obtenu, même si l'étudiant a changé d'établissement entre la première et la deuxième (ou la troisième) année.",
-      "indicateurs": [
-        {
-          "libelle": "Taux de réussite en 3 ans",
-          "definition": "Étudiants du champ ayant obtenu un diplôme de BUT à la session N+3, quelle que soit l'université où le diplôme a été obtenu. Base (dénominateur) : étudiants du champ inscrits pour la première fois en première année de BUT dans l'établissement l'année N. Cette année, seule la réussite en trois ans au BUT est disponible ; à partir de l'an prochain sera diffusé un taux de réussite en trois ou quatre ans, comme pour la licence."
-        },
-        {
-          "libelle": "Taux de poursuite d'études des diplômés en 3 ans",
-          "definition": "Néo-bacheliers inscrits en première année de BUT à la rentrée universitaire N et ayant obtenu leur BUT en trois ans, qui poursuivent leurs études. La poursuite d'études comprend toute inscription dans l'enseignement supérieur français à la rentrée N+3."
-        }
-      ],
-      "champ_insertion": "Diplômés de BUT de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
-      "insertion": {
-        "libelle": "Insertion professionnelle",
-        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
-      }
-    },
-    "Master": {
-      "libelle": "Master",
-      "champ": "Primo-inscrits en première année de master (M1) à la rentrée universitaire N.\nLes indicateurs de réussite sont des ratios rapportant des effectifs d'étudiants selon leur établissement et leur mention d'inscription en M1.",
-      "indicateurs": [
-        {
-          "libelle": "Taux de réussite en 2 ans",
-          "definition": "Étudiants du champ ayant obtenu un master à la session N+2, quels que soit l'établissement ou la mention d'obtention."
-        },
-        {
-          "libelle": "Taux de réussite en 2 ou 3 ans",
-          "definition": "Étudiants du champ ayant obtenu un master aux sessions N+2 ou N+3, quels que soit l'établissement ou la mention d'obtention."
-        }
-      ],
-      "champ_insertion": "Diplômés de master de nationalité française et âgés de moins de 30 ans ne poursuivant pas d'études au cours des deux années universitaires suivant leur diplomation.",
-      "insertion": {
-        "libelle": "Insertion professionnelle",
-        "definition": "Proportion de diplômés du champ occupant un emploi salarié en France à 6, 12, 18, 24, et 30 mois."
-      }
-    }
   }
-}
+ }
+
