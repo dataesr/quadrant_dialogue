@@ -72,6 +72,7 @@ require_once __DIR__ . '/../lib/Database.php';
 require_once __DIR__ . '/../lib/Response.php';
 require_once __DIR__ . '/../lib/Session.php';
 require_once __DIR__ . '/../lib/Diffusion.php';
+require_once __DIR__ . '/../lib/Anonymizer.php';
 
 Response::cors();
 
@@ -157,11 +158,25 @@ foreach ([['var1', $var1, $dateInserVar1], ['var2', $var2, $dateInserVar2]] as $
 }
 
 // =============================================================================
-// 3. Seuil diffusable + connexion BDD
+// 3. Config (seuil diffusable + secret d'anonymisation) + connexion BDD
 // =============================================================================
 
 $config = require __DIR__ . '/../config/config.php';
 $seuil  = (int)($config['exports']['seuil_diffusable'] ?? 20);
+
+// Initialisation du hash anonymisant. La classe Anonymizer LÈVE une
+// exception si le secret n'est pas configuré ou est resté à sa
+// valeur sentinelle — l'endpoint refuse alors de répondre, plutôt
+// que de servir des IDs faussement anonymes (réversibles).
+try {
+    Anonymizer::init($config['anonymization']['secret'] ?? '');
+} catch (RuntimeException $e) {
+    Response::error(
+        'anonymization_misconfigured',
+        'Anonymisation non configurée — contacter l\'administrateur de l\'application.',
+        500
+    );
+}
 
 $pdo = Database::get();
 
@@ -499,10 +514,18 @@ function construireBulles(
 
         $detailsAccessibles = peutAccederDetail($p, $contexteId);
 
-        // Anonymisation stable cross-millésime (hash crc32 hexa).
+        // Anonymisation stable cross-millésime via HMAC-SHA256 salé.
+        // crc32 (Phase 11a) était RÉVERSIBLE — id_paysage est public et
+        // stable, un attaquant pouvait pré-calculer toute la table.
+        // Anonymizer::hash() utilise un secret cryptographique (cf.
+        // config.anonymization.secret), non précalculable.
+        // Le brouillage ±15% du denom reste sur crc32 — non sensible
+        // car la valeur denom elle-même est ce qu'on cherche à protéger ;
+        // récupérer le ratio nécessiterait déjà de connaître le vrai
+        // denom (raisonnement circulaire, pas un vecteur d'attaque).
         if ($vue === 'etablissements' && !$detailsAccessibles) {
+            $idAnonyme  = Anonymizer::hash($p['id_paysage']);
             $hash       = crc32($p['id_paysage']);
-            $idAnonyme  = 'anon_' . sprintf('%08x', $hash);
             $ratio      = (($hash % 31) - 15) / 100.0;
             $denomBrouille = max($seuil, (int)round($denomX * (1 + $ratio)));
 

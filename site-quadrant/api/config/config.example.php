@@ -90,4 +90,32 @@ return [
         'docx_fiche_enabled' => true,
         'seuil_diffusable'   => 20,
     ],
+
+    // Anonymisation cryptographique des bulles hors-périmètre dans
+    // /api/quadrant/serie-temporelle (Phase 11).
+    //
+    // `id_paysage` est un identifiant PUBLIC et stable (utilisé par
+    // plusieurs applications du MESRE, présent dans des publications
+    // ouvertes). Un hash sans sel (CRC32, SHA256 brut, etc.) est
+    // trivialement réversible : un attaquant peut pré-calculer la
+    // table de correspondance pour les ~700 établissements
+    // universitaires français.
+    //
+    // On utilise donc un HMAC-SHA256 salé avec un secret stocké ici
+    // (jamais versionné). Sans le secret, la fonction n'est pas
+    // pré-calculable.
+    //
+    // Génération recommandée :
+    //   openssl rand -hex 32
+    // (= 64 caractères hex). La classe lib/Anonymizer.php REFUSE de
+    // démarrer si `secret` reste à la valeur sentinelle ci-dessous
+    // (anti-déploiement par oubli).
+    //
+    // Changer le secret après prod invalide tous les IDs anonymes
+    // précédents (un même id_paysage produit un hash différent).
+    // Acceptable car l'endpoint /serie-temporelle est exploratoire,
+    // pas de stockage persistant côté client.
+    'anonymization' => [
+        'secret' => 'CHANGE_ME_BEFORE_DEPLOY',
+    ],
 ];
