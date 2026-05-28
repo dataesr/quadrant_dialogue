@@ -132,23 +132,32 @@ export default function QuadrantAnime({
   // L'opacité a sa propre durée fixe (400 ms) pour les fade-in/out
   // qui sont visuellement OK indépendamment de la vitesse.
   //
+  // Animation via `transform: translate()` plutôt que cx/cy — le
+  // transform est composité par le GPU et n'invalide pas le layout
+  // SVG, alors qu'animer cx/cy déclenche un forced reflow visible
+  // dès qu'on dépasse ~100 bulles. En vue Positionnement (~700
+  // bulles), la version cx/cy provoquait une saccade systématique
+  // entre deux millésimes (mesurée à ~34 ms de reflow, > budget
+  // 60 fps). Les bulles sont rendues à (0, 0) et translatées : la
+  // position visuelle est strictement équivalente.
+  //
   // phaseAnim (smooth loop) :
-  //   - 'normal'   : transitions cx/cy + opacité actives
+  //   - 'normal'   : transitions transform + opacité actives
   //   - 'fade-out' : transitions actives, mais la prop opacité ci-dessous
   //                  force 0 → fade-out animé par la transition opacity
-  //   - 'snap'     : transitions cx/cy DÉSACTIVÉES (pour ne pas voir
-  //                  les bulles voler du dernier point au premier).
+  //   - 'snap'     : transitions transform DÉSACTIVÉES (pour ne pas
+  //                  voir les bulles voler du dernier point au premier).
   //                  L'opacité reste à 0 jusqu'au retour à 'normal'.
   const enSnap = phaseAnim === 'snap';
   const transitionStyleBulle = {
     transition: enSnap
-      ? 'opacity 400ms ease-in-out' // pas de transition cx/cy pendant le snap
-      : `cx ${dureeTransitionMs}ms ease-in-out, cy ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`,
+      ? 'opacity 400ms ease-in-out' // pas de transition transform pendant le snap
+      : `transform ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`,
   };
   const transitionStyleLigne = {
     transition: enSnap
       ? 'none'
-      : `x1 ${dureeTransitionMs}ms ease-in-out, x2 ${dureeTransitionMs}ms ease-in-out, y1 ${dureeTransitionMs}ms ease-in-out, y2 ${dureeTransitionMs}ms ease-in-out`,
+      : `transform ${dureeTransitionMs}ms ease-in-out`,
   };
 
   // Opacité à appliquer aux bulles : 0 pendant fade-out et snap,
@@ -190,34 +199,37 @@ export default function QuadrantAnime({
 
       {/* Lignes de référence + libellés (cohérent LignesReference.jsx).
           Libellé verticale en bas-gauche du plot (zone peu dense),
-          libellé horizontale à gauche juste au-dessus de la ligne. */}
+          libellé horizontale à gauche juste au-dessus de la ligne.
+          Animation via transform translate (cf. transitionStyleBulle
+          ci-dessus) plutôt que x1/x2/y1/y2 / x/y — même bénéfice de
+          composition GPU. */}
       {refXY && (() => {
         const xPx = xScaleBase(toPercent(refXY.x));
         const yPx = yScaleBase(toPercent(refXY.y));
         const plotTop    = MARGIN.top;
         const plotBottom = MARGIN.top + PLOT_HEIGHT;
         const plotLeft   = MARGIN.left;
-        const plotRight  = MARGIN.left + PLOT_WIDTH;
         const label      = LABEL_REF[referenceAxesMode] || '';
-        // Transition CSS aussi sur la position du texte (suit la
-        // ligne qui se déplace).
-        const transitionStyleTexte = {
-          transition: `x ${dureeTransitionMs}ms ease-in-out, y ${dureeTransitionMs}ms ease-in-out`,
-        };
         return (
           <g>
+            {/* Ligne verticale : base à x=0 (de plotTop à plotBottom),
+                translatée horizontalement par xPx. */}
             <line
               className="quadrant-anime-ref-line"
-              x1={xPx} x2={xPx}
+              x1={0} x2={0}
               y1={plotTop} y2={plotBottom}
+              transform={`translate(${xPx} 0)`}
               stroke="#555"
               strokeDasharray="4 3"
               style={transitionStyleLigne}
             />
+            {/* Ligne horizontale : base à y=0 (de plotLeft à plotRight),
+                translatée verticalement par yPx. */}
             <line
               className="quadrant-anime-ref-line"
-              x1={plotLeft} x2={plotRight}
-              y1={yPx} y2={yPx}
+              x1={plotLeft} x2={plotLeft + PLOT_WIDTH}
+              y1={0} y2={0}
+              transform={`translate(0 ${yPx})`}
               stroke="#555"
               strokeDasharray="4 3"
               style={transitionStyleLigne}
@@ -225,22 +237,24 @@ export default function QuadrantAnime({
             {label && (
               <>
                 <text
-                  x={xPx - 5}
+                  x={-5}
                   y={plotBottom - 8}
+                  transform={`translate(${xPx} 0)`}
                   fontSize={11}
                   fill="#666"
                   textAnchor="end"
-                  style={transitionStyleTexte}
+                  style={transitionStyleLigne}
                 >
                   {label}
                 </text>
                 <text
                   x={plotLeft + 5}
-                  y={yPx - 5}
+                  y={-5}
+                  transform={`translate(0 ${yPx})`}
                   fontSize={11}
                   fill="#666"
                   textAnchor="start"
-                  style={transitionStyleTexte}
+                  style={transitionStyleLigne}
                 >
                   {label}
                 </text>
@@ -328,9 +342,10 @@ export default function QuadrantAnime({
             <circle
               key={id}
               className="quadrant-anime-bulle"
-              cx={cx}
-              cy={cy}
+              cx={0}
+              cy={0}
               r={r}
+              transform={`translate(${cx} ${cy})`}
               fill={couleur}
               fillOpacity={0.61}
               stroke={couleur}

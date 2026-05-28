@@ -1040,12 +1040,16 @@
    bulles et des lignes de référence. Durée 800 ms ease-in-out —
    tient dans l'intervalle de 1000 ms entre millésimes en lecture
    auto, donc animation continue. */
+/* Fallback CSS — l'inline style de QuadrantAnime.jsx pose la durée
+   variable selon la vitesse choisie et l'override prioritaire. On
+   conserve ces règles statiques pour le cas où l'inline serait
+   absent. Animation via transform (composité GPU) au lieu de cx/cy /
+   x1-y2 (qui forçaient des reflows visibles dès ~100 bulles). */
 .quadrant-anime-svg .quadrant-anime-bulle {
-  transition: cx 800ms ease-in-out, cy 800ms ease-in-out, opacity 400ms ease-in-out;
+  transition: transform 800ms ease-in-out, opacity 400ms ease-in-out;
 }
 .quadrant-anime-svg .quadrant-anime-ref-line {
-  transition: x1 800ms ease-in-out, x2 800ms ease-in-out,
-              y1 800ms ease-in-out, y2 800ms ease-in-out;
+  transition: transform 800ms ease-in-out;
 }
 .quadrant-anime-svg .quadrant-anime-millesime {
   transition: none;
