@@ -5,7 +5,8 @@ import { messageErreur } from '../utils/errors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { formatLibelleAxe } from '../utils/libelleAxe.js';
 import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
-import Skeleton from './Skeleton.jsx';
+import LoaderBarre from './LoaderBarre.jsx';
+import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 
 // Modale d'animation temporelle (Phase 11b — MVP + v2).
 //
@@ -440,6 +441,10 @@ export default function ModaleAnimation({ open, onClose }) {
   }
 
   // -------------------- Rendu --------------------
+  // Hook conditionnel interdit : appel inconditionnel, on traitera
+  // `open=false` plus bas. Anti-flash 350 ms — pour un fetch très
+  // rapide on n'affiche jamais la barre de progression.
+  const showLoader = useDelayedLoading(loading);
   if (!open) return null;
   const ms = data?.millesimes_disponibles || [];
   const animationDispo = ms.length >= 2;
@@ -475,10 +480,13 @@ export default function ModaleAnimation({ open, onClose }) {
           {' · '}Vue {vue === 'mentions' ? 'Mentions' : 'Positionnement'}
         </div>
 
-        {loading && (
+        {loading && showLoader && (
           <div className="modale-animation-loading">
-            <Skeleton height="400px" width="100%" radius="4px" />
+            <LoaderBarre />
           </div>
+        )}
+        {loading && !showLoader && (
+          <div className="modale-animation-loading" aria-busy="true" />
         )}
 
         {error && (

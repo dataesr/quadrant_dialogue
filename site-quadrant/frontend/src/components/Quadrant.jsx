@@ -23,6 +23,8 @@ import { formatLibelle, formatLibelleAxe } from '../utils/libelleAxe.js';
 import { trackEvent } from '../utils/matomo.js';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
+import LoaderQuadrant from './LoaderQuadrant.jsx';
+import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 
 // Composant principal du quadrant. Orchestrateur :
 //   1. fetch des bulles via useQuadrant
@@ -392,22 +394,42 @@ export default function Quadrant({ forExport = false } = {}) {
   }, [vue, nbBullesAccessibles, affichage, setAffichage, forExport]);
 
   // ---------------- États d'affichage non-data ----------------
+  // Anti-flash : pendant les 350 premiers ms d'un fetch, on garde
+  // l'ancien rendu (ou rien si premier render). Au-delà, on bascule
+  // sur LoaderQuadrant. Évite le clignotement loader → données sur
+  // les requêtes rapides (changement de filtre <350 ms).
+  // L'instance off-screen forExport ne sert qu'à la capture html-to-image
+  // → on lui sert le Skeleton (forme stable) sans délai, sinon le PNG
+  // capturé pendant un fetch contiendrait le loader.
+  const showLoader = useDelayedLoading(loading);
   if (loading) {
-    // Skeleton « cadre vide » à la place du quadrant. Ratio
-    // approximatif du SVG final, plus deux pastilles pour la légende
-    // — évite le saut de mise en page quand les données arrivent.
+    if (forExport) {
+      return (
+        <div
+          className="quadrant-wrapper quadrant-wrapper--skeleton"
+          aria-busy="true"
+          aria-label="Chargement du quadrant"
+        >
+          <Skeleton height="480px" radius="4px" />
+        </div>
+      );
+    }
+    if (!showLoader) {
+      return (
+        <div
+          className="quadrant-wrapper quadrant-wrapper--skeleton"
+          aria-busy="true"
+          aria-label="Chargement du quadrant"
+        />
+      );
+    }
     return (
       <div
         className="quadrant-wrapper quadrant-wrapper--skeleton"
         aria-busy="true"
         aria-label="Chargement du quadrant"
       >
-        <Skeleton height="480px" radius="4px" />
-        <div className="legende-bloc" style={{ marginTop: '0.75rem' }}>
-          <Skeleton width="180px" height="14px" />
-          <Skeleton width="220px" height="14px" />
-          <Skeleton width="160px" height="14px" />
-        </div>
+        <LoaderQuadrant />
       </div>
     );
   }

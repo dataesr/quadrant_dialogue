@@ -1314,3 +1314,91 @@ body.exporting .source-attribution {
     background: white;
   }
 }
+
+/* -------------------------------------------------------------------
+   Loaders — anti-flash via useDelayedLoading (seuil 350 ms).
+   - LoaderQuadrant : 4 cellules en rotation, couleurs des grands
+     domaines (DEG/LLA/SHS/STS), affiché pendant le fetch de
+     /quadrant (Quadrant.jsx).
+   - LoaderBarre    : barre indéterminée, affichée pendant le fetch
+     de /serie-temporelle (ModaleAnimation.jsx).
+   Tous deux respectent prefers-reduced-motion. */
+.loader-quadrant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 300px;
+}
+.loader-quadrant svg {
+  display: block;
+}
+.lq-cell {
+  animation: lqFill 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+.lq-cell-1 { animation-delay: 0s;    }
+.lq-cell-2 { animation-delay: 0.4s;  }
+.lq-cell-3 { animation-delay: 0.8s;  }
+.lq-cell-4 { animation-delay: 1.2s;  }
+@keyframes lqFill {
+  0%, 100% { opacity: 0.2; }
+  25%      { opacity: 1;   }
+}
+.loader-quadrant-message {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
+.loader-barre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 300px;
+  width: 100%;
+}
+.loader-barre-track {
+  width: 60%;
+  max-width: 320px;
+  height: 6px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.loader-barre-fill {
+  position: absolute;
+  top: 0;
+  left: -35%;
+  height: 100%;
+  width: 35%;
+  background: #000091; /* bleu Marianne, raccord avec le filigrane millésime */
+  border-radius: 3px;
+  animation: loaderBarreSweep 1.3s ease-in-out infinite;
+}
+@keyframes loaderBarreSweep {
+  0%   { left: -35%; }
+  100% { left: 100%; }
+}
+.loader-barre-message {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lq-cell {
+    animation: none;
+    opacity: 0.6;
+  }
+  .loader-barre-fill {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
