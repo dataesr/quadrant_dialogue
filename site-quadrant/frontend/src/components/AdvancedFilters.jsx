@@ -4,6 +4,7 @@ import { trackEvent } from '../utils/matomo.js';
 import ReferentielSelect from './selectors/ReferentielSelect.jsx';
 import TypeMasterSelect from './selectors/TypeMasterSelect.jsx';
 import ModaleMethodologie from './ModaleMethodologie.jsx';
+import ModaleAnimation from './ModaleAnimation.jsx';
 
 // Panneau de filtres avancés, replié par défaut. S'ouvre automatiquement
 // dès qu'au moins un filtre est positionné différemment de son défaut.
@@ -53,6 +54,7 @@ export default function AdvancedFilters() {
 
   const [open, setOpen] = useState(false);
   const [modaleMethodOpen, setModaleMethodOpen] = useState(false);
+  const [modaleAnimOpen,   setModaleAnimOpen]   = useState(false);
   const disabled = !etabContexte;
 
   // Nombre de filtres avancés en écart par rapport à leur défaut.
@@ -257,9 +259,21 @@ export default function AdvancedFilters() {
         </div>
       </div>
 
-      {/* Lien vers la méthodologie complète. Posé en pied du panneau
-          d'options pour rester visible quel que soit l'état (replié /
-          déplié) du panneau avancé. */}
+      {/* Bouton « Voir l'évolution » + Méthodologie en pied du
+          panneau d'options. Posés en pied pour rester visibles quel
+          que soit l'état (replié / déplié) du panneau avancé.
+          Animation au-dessus de Méthodologie (Phase 11b). */}
+      <button
+        type="button"
+        className="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
+        onClick={() => setModaleAnimOpen(true)}
+        disabled={!etabContexte}
+      >
+        Voir l&apos;évolution
+      </button>
+      {modaleAnimOpen && (
+        <ModaleAnimation open onClose={() => setModaleAnimOpen(false)} />
+      )}
       <button
         type="button"
         className="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-btn--icon-left fr-icon-question-line bouton-methodologie"

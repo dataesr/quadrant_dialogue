@@ -876,7 +876,7 @@
 .modale-animation {
   background: white;
   width: 100%;
-  max-width: 960px;
+  max-width: 720px;
   max-height: 92vh;
   border-radius: 4px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
@@ -918,10 +918,22 @@
   flex: 1;
 }
 .modale-animation-quadrant {
-  padding: 1rem 1.25rem 0.5rem;
+  padding: 0.5rem 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+}
+/* SVG carré contraint en hauteur pour tenir sur un écran portable
+   (50vh laisse de la place pour l'en-tête + contexte + contrôles +
+   référence axes + mention + source). La largeur suit l'aspect ratio
+   1:1 du viewBox. */
+.modale-animation-quadrant .quadrant-anime-svg {
+  max-width: 100%;
+  max-height: 50vh;
+  height: auto;
+  width: auto;
 }
 .modale-animation-controls {
   display: flex;
@@ -971,11 +983,22 @@
   font-size: 0.85rem;
 }
 .modale-animation-mention-seuil {
-  padding: 0.5rem 1.25rem 1rem;
+  padding: 0.5rem 1.25rem 0.25rem;
   font-size: 0.78rem;
   color: #666;
   font-style: italic;
   margin: 0;
+}
+/* Source en pied de modale (Phase 11b post-MVP) : reproduit le pied
+   de visualisation principale (LIBELLE_SOURCE + MENTION_DIFFUSION).
+   Sépare visuellement la mention seuil (note pédagogique) de la
+   source/diffusion (mention légale). */
+.modale-animation-source {
+  padding: 0.25rem 1.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: #777;
+  margin: 0;
+  border-top: 1px solid #f0f0f0;
 }
 
 /* SVG du quadrant animé : transitions CSS sur les positions des

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { getQuadrantSerieTemporelle } from '../services/api.js';
 import { messageErreur } from '../utils/errors.js';
+import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import QuadrantAnime from './QuadrantAnime.jsx';
 import Skeleton from './Skeleton.jsx';
 
@@ -351,8 +352,14 @@ export default function ModaleAnimation({ open, onClose }) {
             </div>
 
             <p className="modale-animation-mention-seuil">
-              ⓘ Bulles avec moins de {data.seuil_applique} effectifs masquées
-              (seuil de diffusion appliqué pour l&apos;exploration).
+              ⓘ Pour l&apos;exploration historique, seules les bulles avec
+              au moins {data.seuil_applique} effectifs sur les deux
+              indicateurs sont affichées (les bulles fragiles présentes
+              à l&apos;écran principal sont donc masquées ici).
+            </p>
+
+            <p className="modale-animation-source">
+              {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
             </p>
           </>
         )}
