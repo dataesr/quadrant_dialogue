@@ -44,12 +44,28 @@ const LABEL = {
   moyenne: 'Moyenne',
 };
 
+// Format d'une valeur de taux (0..1) en pourcentage français : une
+// décimale, virgule, espace insécable avant le %. Cohérent avec
+// QuadrantAnime (formaterPourcentage). « 0,755 » → « 75,5 % ».
+function formaterPourcentage(taux) {
+  const v = (taux ?? 0) * 100;
+  return v.toLocaleString('fr-FR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }) + ' %';
+}
+
 export default function LignesReference({ reference, xScale, yScale }) {
   if (!reference) return null;
 
   const x = xScale(toPercent(reference.x));
   const y = yScale(toPercent(reference.y));
   const label = LABEL[reference.type] || '';
+  // La valeur de référence est différente sur chaque axe : sur la
+  // verticale on lit reference.x (position horizontale de la ligne),
+  // sur l'horizontale reference.y. Format « Libellé : 75,5 % ».
+  const labelX = label ? `${label} : ${formaterPourcentage(reference.x)}` : '';
+  const labelY = label ? `${label} : ${formaterPourcentage(reference.y)}` : '';
 
   // Bornes du plot (utiles pour le positionnement des labels).
   const plotTop    = MARGIN.top;
@@ -88,7 +104,7 @@ export default function LignesReference({ reference, xScale, yScale }) {
           fill="#666"
           textAnchor="end"
         >
-          {label}
+          {labelX}
         </text>
       )}
 
@@ -106,7 +122,7 @@ export default function LignesReference({ reference, xScale, yScale }) {
           fill="#666"
           textAnchor="start"
         >
-          {label}
+          {labelY}
         </text>
       )}
     </g>

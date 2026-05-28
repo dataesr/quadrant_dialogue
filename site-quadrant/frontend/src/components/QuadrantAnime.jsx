@@ -128,18 +128,17 @@ export default function QuadrantAnime({
       : (COULEUR_ETAB_PAR_KEY[b.couleur_key] || '#888');
   }
 
-  // Style de transition appliqué inline (durée variable selon vitesse).
-  // L'opacité a sa propre durée fixe (400 ms) pour les fade-in/out
-  // qui sont visuellement OK indépendamment de la vitesse.
+  // Animation via la PROPRIÉTÉ CSS `transform` (style inline) plutôt
+  // que l'ATTRIBUT SVG `transform=`. L'attribut SVG était transitionnable
+  // sur le papier en CSS (`transition: transform …`), mais Firefox
+  // notamment n'animait pas de façon fiable — les bulles sautaient
+  // d'une position à l'autre. La propriété CSS est composite par le
+  // GPU côté navigateur et reste fluide quel que soit le moteur.
   //
-  // Animation via `transform: translate()` plutôt que cx/cy — le
-  // transform est composité par le GPU et n'invalide pas le layout
-  // SVG, alors qu'animer cx/cy déclenche un forced reflow visible
-  // dès qu'on dépasse ~100 bulles. En vue Positionnement (~700
-  // bulles), la version cx/cy provoquait une saccade systématique
-  // entre deux millésimes (mesurée à ~34 ms de reflow, > budget
-  // 60 fps). Les bulles sont rendues à (0, 0) et translatées : la
-  // position visuelle est strictement équivalente.
+  // Bulles rendues à `(0, 0)` et translatées : la position visuelle
+  // est strictement équivalente à un cx/cy classique. Les traces
+  // résiduelles et la trace de comparaison continuent à lire les
+  // coordonnées depuis les données (bulleCxCy), pas depuis le DOM.
   //
   // phaseAnim (smooth loop) :
   //   - 'normal'   : transitions transform + opacité actives
@@ -149,16 +148,12 @@ export default function QuadrantAnime({
   //                  voir les bulles voler du dernier point au premier).
   //                  L'opacité reste à 0 jusqu'au retour à 'normal'.
   const enSnap = phaseAnim === 'snap';
-  const transitionStyleBulle = {
-    transition: enSnap
-      ? 'opacity 400ms ease-in-out' // pas de transition transform pendant le snap
-      : `transform ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`,
-  };
-  const transitionStyleLigne = {
-    transition: enSnap
-      ? 'none'
-      : `transform ${dureeTransitionMs}ms ease-in-out`,
-  };
+  const transitionBulle = enSnap
+    ? 'opacity 400ms ease-in-out'
+    : `transform ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`;
+  const transitionLigne = enSnap
+    ? 'none'
+    : `transform ${dureeTransitionMs}ms ease-in-out`;
 
   // Opacité à appliquer aux bulles : 0 pendant fade-out et snap,
   // sinon état présent/absent normal.
@@ -200,9 +195,8 @@ export default function QuadrantAnime({
       {/* Lignes de référence + libellés (cohérent LignesReference.jsx).
           Libellé verticale en bas-gauche du plot (zone peu dense),
           libellé horizontale à gauche juste au-dessus de la ligne.
-          Animation via transform translate (cf. transitionStyleBulle
-          ci-dessus) plutôt que x1/x2/y1/y2 / x/y — même bénéfice de
-          composition GPU. */}
+          Animation via la propriété CSS transform (style inline) —
+          fluide cross-navigateur, contrairement à l'attribut SVG. */}
       {refXY && (() => {
         const xPx = xScaleBase(toPercent(refXY.x));
         const yPx = yScaleBase(toPercent(refXY.y));
@@ -210,53 +204,50 @@ export default function QuadrantAnime({
         const plotBottom = MARGIN.top + PLOT_HEIGHT;
         const plotLeft   = MARGIN.left;
         const label      = LABEL_REF[referenceAxesMode] || '';
+        const labelX = label ? `${label} : ${formaterPourcentage(refXY.x)}` : '';
+        const labelY = label ? `${label} : ${formaterPourcentage(refXY.y)}` : '';
         return (
           <g>
             {/* Ligne verticale : base à x=0 (de plotTop à plotBottom),
-                translatée horizontalement par xPx. */}
+                translatée horizontalement par xPx via CSS transform. */}
             <line
               className="quadrant-anime-ref-line"
               x1={0} x2={0}
               y1={plotTop} y2={plotBottom}
-              transform={`translate(${xPx} 0)`}
               stroke="#555"
               strokeDasharray="4 3"
-              style={transitionStyleLigne}
+              style={{ transform: `translate(${xPx}px, 0px)`, transition: transitionLigne }}
             />
-            {/* Ligne horizontale : base à y=0 (de plotLeft à plotRight),
-                translatée verticalement par yPx. */}
+            {/* Ligne horizontale : base à y=0, translatée verticalement par yPx. */}
             <line
               className="quadrant-anime-ref-line"
               x1={plotLeft} x2={plotLeft + PLOT_WIDTH}
               y1={0} y2={0}
-              transform={`translate(0 ${yPx})`}
               stroke="#555"
               strokeDasharray="4 3"
-              style={transitionStyleLigne}
+              style={{ transform: `translate(0px, ${yPx}px)`, transition: transitionLigne }}
             />
             {label && (
               <>
                 <text
                   x={-5}
                   y={plotBottom - 8}
-                  transform={`translate(${xPx} 0)`}
                   fontSize={11}
                   fill="#666"
                   textAnchor="end"
-                  style={transitionStyleLigne}
+                  style={{ transform: `translate(${xPx}px, 0px)`, transition: transitionLigne }}
                 >
-                  {label}
+                  {labelX}
                 </text>
                 <text
                   x={plotLeft + 5}
                   y={-5}
-                  transform={`translate(0 ${yPx})`}
                   fontSize={11}
                   fill="#666"
                   textAnchor="start"
-                  style={transitionStyleLigne}
+                  style={{ transform: `translate(0px, ${yPx}px)`, transition: transitionLigne }}
                 >
-                  {label}
+                  {labelY}
                 </text>
               </>
             )}
@@ -345,13 +336,13 @@ export default function QuadrantAnime({
               cx={0}
               cy={0}
               r={r}
-              transform={`translate(${cx} ${cy})`}
               fill={couleur}
               fillOpacity={0.61}
               stroke={couleur}
               strokeWidth={1}
               style={{
-                ...transitionStyleBulle,
+                transform: `translate(${cx}px, ${cy}px)`,
+                transition: transitionBulle,
                 opacity: opaciteBulle(present),
               }}
             />
@@ -371,4 +362,15 @@ export function bulleCxCy(b) {
     cx: xScaleBase(toPercent(b.x)),
     cy: yScaleBase(toPercent(b.y)),
   };
+}
+
+// Formatage de la valeur de référence pour le libellé des axes
+// (« Médiane établissement : 72,0 % »). Une décimale, virgule
+// française, espace insécable avant le %.
+function formaterPourcentage(taux) {
+  const v = (taux ?? 0) * 100;
+  return v.toLocaleString('fr-FR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }) + ' %';
 }
