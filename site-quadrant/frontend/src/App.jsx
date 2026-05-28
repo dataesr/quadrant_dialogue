@@ -12,6 +12,7 @@ import MentionSearch from './components/MentionSearch.jsx';
 import AffichageSelector from './components/AffichageSelector.jsx';
 import DetailsPanel from './components/DetailsPanel.jsx';
 import BoutonExport from './components/BoutonExport.jsx';
+import FiltresActifs from './components/FiltresActifs.jsx';
 
 // Coquille minimale : layout 1000px max (contrainte iframe), composants
 // DSFR pour tout le reste. Trois états d'affichage gérés par AppShell :
@@ -83,6 +84,13 @@ function AppShell() {
             >
               {etabContexte ? (
                 <>
+                  {/* Bandeau des filtres actifs (pills cliquables avec ×
+                      pour retirer un filtre individuellement). Visible
+                      uniquement si au moins un filtre est actif —
+                      sinon le composant ne rend rien et ne réserve pas
+                      d'espace. Placé au-dessus du quadrant pour
+                      résumer le périmètre courant en un coup d'œil. */}
+                  <FiltresActifs />
                   {/* Un seul <Quadrant /> monté en permanence : en
                       mode tableau on l'envoie offscreen via CSS
                       plutôt que de monter une seconde instance.

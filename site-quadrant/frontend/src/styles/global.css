@@ -58,6 +58,32 @@
   width: 100%;
 }
 
+/* Bandeau « Filtres actifs » au-dessus du quadrant. Rendu uniquement si
+   au moins un filtre est actif (cf. FiltresActifs.jsx), donc pas de
+   placeholder à vide. Pills DSFR (fr-tag--dismiss) — la croix de
+   suppression vient nativement avec la classe utility, on garde le
+   markup minimal. */
+.filtres-actifs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.filtres-actifs-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #555;
+}
+.filtres-actifs .fr-tags-group {
+  /* Reset des marges DSFR pour rester compact dans la barre. La
+     liste tags-group est sémantique (ul), mais visuellement elle
+     se fond dans le flex parent. */
+  margin: 0;
+  padding: 0;
+  display: contents;
+}
+
 /* Quadrant rendu hors écran en mode tableau : sert exclusivement à
    alimenter la capture d'image insérée dans la feuille « Graphique »
    du XLSX (cf. exportXlsx.js). Position absolue pour ne pas
