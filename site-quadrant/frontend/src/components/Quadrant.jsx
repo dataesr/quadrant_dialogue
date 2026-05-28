@@ -21,6 +21,7 @@ import {
 } from '../utils/colors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { formatLibelle, formatLibelleAxe } from '../utils/libelleAxe.js';
+import { formatDelta } from '../utils/formatDelta.js';
 import { trackEvent } from '../utils/matomo.js';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
@@ -723,8 +724,18 @@ function QuadrantTooltip({ hovered, vue }) {
           {LIBELLES_CATEGORIES_ETAB[hovered.bulle.couleur_key]}
         </div>
       )}
-      <div>Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %</div>
-      <div>Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %</div>
+      <div>
+        Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %
+        {hovered.bulle.x_prev != null && (
+          <span className="delta">{' '}{formatDelta(hovered.bulle.x, hovered.bulle.x_prev)}</span>
+        )}
+      </div>
+      <div>
+        Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %
+        {hovered.bulle.y_prev != null && (
+          <span className="delta">{' '}{formatDelta(hovered.bulle.y, hovered.bulle.y_prev)}</span>
+        )}
+      </div>
     </div>
   );
 }

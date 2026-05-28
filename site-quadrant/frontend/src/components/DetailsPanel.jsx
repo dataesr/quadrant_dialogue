@@ -13,6 +13,7 @@ import {
 } from './details/historique.js';
 import { getContexteIdDev, getQuadrantDetails } from '../services/api.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import { formatDelta } from '../utils/formatDelta.js';
 import { exportFicheDocx } from '../utils/exportDocx.js';
 import { messageErreur } from '../utils/errors.js';
 import { trackEvent } from '../utils/matomo.js';
@@ -381,6 +382,14 @@ function CardIndicateur({
   cursus,
 }) {
   const ligneCourante = trouverLigneCourante(donneesCourantes, indicateurName, dateInser);
+  // Ligne du millésime précédent — sert au calcul du delta affiché à
+  // côté de la valeur courante (« 96,2 % (+0,3 pt) »). null si pas
+  // d'historique pour ce millésime-1 (bulle créée récemment, cohorte
+  // non observable l'année d'avant, etc.).
+  const lignePrecedente = useMemo(
+    () => trouverLignePrecedente(historique, indicateurName, dateInser, millesimeCourant),
+    [historique, indicateurName, dateInser, millesimeCourant]
+  );
   const libelle = formatLibelleIndicateur(indicateurName, dateInser);
   const serie = useMemo(
     () => extraireSerie(historique, indicateurName, dateInser),
@@ -397,7 +406,11 @@ function CardIndicateur({
       <p className="libelle-indicateur">
         <IndicateurTooltip libelle={libelle} cursus={cursus} mode="inline" />
       </p>
-      <ValeurCourante ligne={ligneCourante} population={population} />
+      <ValeurCourante
+        ligne={ligneCourante}
+        lignePrec={lignePrecedente}
+        population={population}
+      />
 
       <fieldset className="fr-segmented fr-segmented--sm card-vue-toggle">
         <legend className="fr-segmented__legend fr-sr-only">
@@ -463,16 +476,27 @@ function CardIndicateur({
   );
 }
 
-function ValeurCourante({ ligne, population }) {
+function ValeurCourante({ ligne, lignePrec, population }) {
   const taux = ligne?.taux;
   const num   = ligne?.numerateur;
   const denom = ligne?.denominateur;
   const nonDiff = ligne?.non_diffusable === true;
+  // Delta vs millésime précédent. tauxPrec en %, on normalise en
+  // ratio (0..1) avant formatDelta — le helper s'attend à des taux
+  // bornés cohérents avec l'usage dans Quadrant.jsx.
+  const tauxPrec = lignePrec?.taux;
 
   if (taux !== null && taux !== undefined) {
     return (
       <>
-        <p className="valeur-principale">{formatPourcent(taux)}</p>
+        <p className="valeur-principale">
+          {formatPourcent(taux)}
+          {typeof tauxPrec === 'number' && (
+            <span className="valeur-principale-delta">
+              {' '}{formatDelta(taux / 100, tauxPrec / 100)}
+            </span>
+          )}
+        </p>
         <p className="detail-numerateur">
           {num} sur {denom}{population ? ` ${population}` : ''}
         </p>
@@ -653,6 +677,22 @@ function formatLibelleIndicateur(variable, dateInser) {
 function trouverLigneCourante(donneesCourantes, indicateur, dateInser) {
   if (!donneesCourantes) return null;
   return donneesCourantes.find(
+    (r) => r.indicateur === indicateur && (r.date_inser || '') === (dateInser || '')
+  ) || null;
+}
+
+// Cherche dans l'historique la ligne du millésime PRÉCÉDENT pour
+// l'indicateur/date_inser donné. Sert au calcul du delta affiché sur
+// les cards X/Y des deux axes du quadrant. Renvoie null si le
+// millésime-1 n'existe pas dans l'historique, ou si l'indicateur n'a
+// pas de row pour ce millésime (cohorte non observable normalisée à
+// num/denom/taux null par l'API).
+function trouverLignePrecedente(historique, indicateur, dateInser, millesimeCourant) {
+  if (!historique || millesimeCourant == null) return null;
+  const cible = Number(millesimeCourant) - 1;
+  const entry = historique.find((h) => Number(h.millesime) === cible);
+  if (!entry) return null;
+  return (entry.donnees || []).find(
     (r) => r.indicateur === indicateur && (r.date_inser || '') === (dateInser || '')
   ) || null;
 }

@@ -206,21 +206,31 @@ foreach ([['var1', $var1, $dateInserVar1], ['var2', $var2, $dateInserVar2]] as $
 // Le motif LIKE est calculé en PHP pour empêcher toute injection via le contexte
 $motifContexte = '%;' . $contexteId . ';%';
 
+// Millésime précédent pour le calcul de delta côté bulles (x_prev /
+// y_prev). On charge les rows pour les DEUX millésimes en une seule
+// requête (millesime IN (...)), puis on split côté PHP. Le format
+// d'entrée est validé à 4 chiffres juste plus haut donc le calcul
+// arithmétique est sûr. Sur le premier millésime de la BDD, la
+// requête sur (millesime - 1) renvoie 0 row et les bulles auront
+// x_prev/y_prev = null — fallback gracieux côté frontend (tiret).
+$millesimePrec = (string)((int)$millesime - 1);
+
 $conditions = [
     'm1.formation = :formation',
-    'm1.millesime = :millesime',
+    'm1.millesime IN (:millesime, :millesimePrec)',
     'm1.indicateur = :var1',
     'm1.date_inser = :date1',
     'm2.indicateur = :var2',
     'm2.date_inser = :date2',
 ];
 $params = [
-    ':formation' => $formation,
-    ':millesime' => $millesime,
-    ':var1'      => $var1,
-    ':date1'     => $dateInserVar1,
-    ':var2'      => $var2,
-    ':date2'     => $dateInserVar2,
+    ':formation'     => $formation,
+    ':millesime'     => $millesime,
+    ':millesimePrec' => $millesimePrec,
+    ':var1'          => $var1,
+    ':date1'         => $dateInserVar1,
+    ':var2'          => $var2,
+    ':date2'         => $dateInserVar2,
 ];
 
 // Filtrage par contexte (cf. cadrage §3 et §4) :
@@ -275,6 +285,7 @@ $whereClause = implode(' AND ', $conditions);
 
 $sql = "
     SELECT
+        m1.millesime,
         m1.diplom,
         m1.libelle_intitule,
         m1.id_paysage,
@@ -306,60 +317,46 @@ $lignes = $stmt->fetchAll();
 // =============================================================================
 // 5. Agrégation selon la vue
 // =============================================================================
+//
+// Les rows brutes contiennent les DEUX millésimes (current + précédent,
+// cf. SQL `millesime IN`). On split d'abord par millésime puis on
+// applique la même logique d'agrégation à chaque seau. Le résultat
+// pour le millésime courant alimente le rendu des bulles ; celui
+// pour le millésime précédent sert UNIQUEMENT à calculer x_prev /
+// y_prev par jointure sur clé stable plus bas.
 
-if ($vue === 'mentions') {
-    // Une bulle = une mention. Mais une mention peut avoir plusieurs lignes
-    // si plusieurs étabs ont la même mention. Pour la vue mentions, on filtre
-    // sur l'établissement de contexte : seules ses mentions à lui sont affichées.
-    $pointsBruts = [];
-    foreach ($lignes as $l) {
-        if ($etabContexte !== '' && $l['id_paysage'] !== $etabContexte) {
-            continue;
-        }
-        $pointsBruts[] = $l;
+$lignesCourant = [];
+$lignesPrec    = [];
+foreach ($lignes as $l) {
+    if ((string)$l['millesime'] === $millesime) {
+        $lignesCourant[] = $l;
+    } else {
+        $lignesPrec[] = $l;
     }
-} elseif ($mention !== '') {
-    // vue = etablissements AVEC filtre mention.
-    // La contrainte SQL `m1.diplom = :mention` garantit déjà qu'on a au plus
-    // une ligne par établissement pour la mention demandée — pas d'agrégation
-    // à faire. Les coordonnées x/y reflètent les indicateurs de cette mention
-    // précise pour chaque établissement, ce qui est exactement le but du filtre.
-    // Les lignes SQL contiennent déjà toutes les clés attendues plus bas
-    // (id_paysage, uo_lib, reg_id, typologie, filtre_perimetre, num_x/y, denom_x/y).
-    $pointsBruts = $lignes;
-} else {
-    // vue = etablissements sans filtre mention. On agrège par établissement.
-    // Toutes les lignes d'un même id_paysage portent le même filtre_perimetre
-    // (forme `;<id_nat>;<id_reg>;<id_paysage>;`) : on le mémorise une fois.
-    $parEtab = [];
-    foreach ($lignes as $l) {
-        $uai = $l['id_paysage'];
-        if (!isset($parEtab[$uai])) {
-            // population_x / population_y sont des libellés métier
-            // (« inscrits 2021 », « sortants 2020 »…) dépendant de
-            // l'indicateur, pas de l'étab/mention. Sur toutes les
-            // lignes d'un même indicateur ils sont identiques — on
-            // les recopie une fois, au premier insert.
-            $parEtab[$uai] = [
-                'id_paysage'       => $uai,
-                'uo_lib'           => $l['uo_lib'],
-                'reg_id'           => $l['reg_id'],
-                'typologie'        => $l['typologie'],
-                'filtre_perimetre' => $l['filtre_perimetre'],
-                'population_x'     => $l['population_x'],
-                'population_y'     => $l['population_y'],
-                'num_x'            => 0,
-                'denom_x'          => 0,
-                'num_y'            => 0,
-                'denom_y'          => 0,
-            ];
-        }
-        $parEtab[$uai]['num_x']   += (int)$l['num_x'];
-        $parEtab[$uai]['denom_x'] += (int)$l['denom_x'];
-        $parEtab[$uai]['num_y']   += (int)$l['num_y'];
-        $parEtab[$uai]['denom_y'] += (int)$l['denom_y'];
+}
+
+$pointsBruts     = agregerLignesParVue($lignesCourant, $vue, $etabContexte, $mention);
+$pointsBrutsPrec = agregerLignesParVue($lignesPrec,    $vue, $etabContexte, $mention);
+
+// Index des coordonnées du millésime précédent par clé stable :
+//   - vue=mentions       → diplom
+//   - vue=etablissements → id_paysage (même clé que pour
+//     l'anonymisation côté SQL, donc cohérent que la bulle soit
+//     accessible ou anonyme)
+// On filtre les points dont les dénominateurs sont à zéro — taux
+// non calculable, donc pas de x/y à exposer comme « valeur précédente ».
+$coordsPrecParCle = [];
+foreach ($pointsBrutsPrec as $p) {
+    $denomXPrec = (int)$p['denom_x'];
+    $denomYPrec = (int)$p['denom_y'];
+    if ($denomXPrec === 0 || $denomYPrec === 0) {
+        continue;
     }
-    $pointsBruts = array_values($parEtab);
+    $cle = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
+    $coordsPrecParCle[$cle] = [
+        'x' => round((int)$p['num_x'] / $denomXPrec, 4),
+        'y' => round((int)$p['num_y'] / $denomYPrec, 4),
+    ];
 }
 
 // =============================================================================
@@ -424,6 +421,15 @@ foreach ($pointsBruts as $p) {
     //     avec details_accessibles=true)
     //   - denom   pour les bulles anonymes (vue=etablissements avec
     //     details_accessibles=false). Les champs denom_x / denom_y y sont absents.
+    // Coordonnées au millésime précédent — null si la mention/étab
+    // n'existait pas l'année d'avant, ou si denom_x/y était à zéro
+    // (cohorte non observable). Le delta est affiché côté frontend
+    // sous forme « (+0,3 pt) » dans le tooltip et les cards X/Y.
+    $clePrec = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
+    $prec    = $coordsPrecParCle[$clePrec] ?? null;
+    $xPrec   = $prec['x'] ?? null;
+    $yPrec   = $prec['y'] ?? null;
+
     if ($vue === 'etablissements' && !$detailsAccessibles) {
         $compteurAnonyme++;
 
@@ -438,6 +444,8 @@ foreach ($pointsBruts as $p) {
             'libelle'             => '',
             'x'                   => round($x, 4),
             'y'                   => round($y, 4),
+            'x_prev'              => $xPrec,
+            'y_prev'              => $yPrec,
             'denom'               => $denomBrouille,
             'forme'               => $forme,
             'couleur_key'         => $couleurKey,
@@ -461,6 +469,8 @@ foreach ($pointsBruts as $p) {
             'libelle'             => $libelle,
             'x'                   => round($x, 4),
             'y'                   => round($y, 4),
+            'x_prev'              => $xPrec,
+            'y_prev'              => $yPrec,
             'denom_x'             => $denomX,
             'denom_y'             => $denomY,
             'population_x'        => $popX,
@@ -784,6 +794,67 @@ function chargerIndicateursCursus(string $formation): array
         ];
     }
     return $map;
+}
+
+/**
+ * Agrège les lignes brutes (sortie du self-join SQL m1 × m2) en
+ * « points » prêts pour le calcul des coordonnées et la construction
+ * des bulles. Logique dépendant de la vue :
+ *
+ *  - vue=mentions       : filtre les lignes à l'étab de contexte
+ *                         (etabContexte). Une bulle = une mention.
+ *  - vue=etablissements + mention : pas d'agrégation, une bulle =
+ *                         (étab, mention) déjà unique côté SQL.
+ *  - vue=etablissements sans mention : agrégat par établissement
+ *                         (SUM num/denom sur toutes les mentions de
+ *                         l'étab).
+ *
+ * Cette fonction est appelée deux fois : une pour le millésime
+ * courant (alimente $pointsBruts) et une pour le millésime précédent
+ * (alimente le map x_prev/y_prev par clé stable). La même logique
+ * doit donc s'appliquer aux deux seaux pour garantir une jointure
+ * cohérente.
+ */
+function agregerLignesParVue(
+    array $lignes, string $vue, string $etabContexte, string $mention
+): array {
+    if ($vue === 'mentions') {
+        $points = [];
+        foreach ($lignes as $l) {
+            if ($etabContexte !== '' && $l['id_paysage'] !== $etabContexte) {
+                continue;
+            }
+            $points[] = $l;
+        }
+        return $points;
+    }
+    if ($mention !== '') {
+        return $lignes;
+    }
+    $parEtab = [];
+    foreach ($lignes as $l) {
+        $uai = $l['id_paysage'];
+        if (!isset($parEtab[$uai])) {
+            $parEtab[$uai] = [
+                'id_paysage'       => $uai,
+                'uo_lib'           => $l['uo_lib'],
+                'reg_id'           => $l['reg_id'],
+                'typologie'        => $l['typologie'],
+                'filtre_perimetre' => $l['filtre_perimetre'],
+                'population_x'     => $l['population_x'],
+                'population_y'     => $l['population_y'],
+                'num_x'            => 0,
+                'denom_x'          => 0,
+                'num_y'            => 0,
+                'denom_y'          => 0,
+            ];
+        }
+        $parEtab[$uai]['num_x']   += (int)$l['num_x'];
+        $parEtab[$uai]['denom_x'] += (int)$l['denom_x'];
+        $parEtab[$uai]['num_y']   += (int)$l['num_y'];
+        $parEtab[$uai]['denom_y'] += (int)$l['denom_y'];
+    }
+    return array_values($parEtab);
 }
 
 /**

@@ -141,6 +141,15 @@
   white-space: normal;
 }
 
+/* Suffixe de delta vs millésime précédent (« (+0,3 pt) »). Couleur
+   neutre — un vert/rouge porterait un jugement implicite (mieux/moins
+   bien) qui peut tromper pour des axes où plus haut n'est pas
+   forcément mieux. */
+.quadrant-tooltip .delta {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+}
+
 /* Boutons de zoom (+ / − / ⌂) ancrés en surimpression du SVG, coin
    haut-droit. Sobre, compatibles avec le style DSFR. */
 .quadrant-zoom-controls {
@@ -565,6 +574,16 @@
   font-weight: 600;
   margin: 0;
   line-height: 1.1;
+}
+/* Suffixe delta vs millésime précédent (« (+0,3 pt) ») dans la
+   valeur principale des cards X/Y. Plus petit, plus discret, couleur
+   neutre (pas de vert/rouge — un jugement implicite serait trompeur
+   pour les axes où plus haut ≠ forcément mieux). */
+.panneau-details .valeur-principale-delta {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: #666;
+  margin-left: 0.25em;
 }
 .panneau-details .valeur-non-diffusable {
   font-size: 1rem;
