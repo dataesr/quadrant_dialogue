@@ -90,6 +90,26 @@
   vertical-align: middle;
   margin: 0;
 }
+/* Pill avec × manuel (cf. FiltresActifs.jsx : on évite la classe
+   fr-tag--dismiss dont le JS DSFR retire le DOM hors React et
+   provoque NotFoundError sur removeChild). */
+.filtres-actifs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  cursor: pointer;
+}
+.filtres-actifs-pill-close {
+  display: inline-block;
+  font-size: 1.2em;
+  line-height: 1;
+  font-weight: 700;
+  opacity: 0.6;
+}
+.filtres-actifs-pill:hover .filtres-actifs-pill-close,
+.filtres-actifs-pill:focus-visible .filtres-actifs-pill-close {
+  opacity: 1;
+}
 
 /* Quadrant rendu hors écran en mode tableau : sert exclusivement à
    alimenter la capture d'image insérée dans la feuille « Graphique »

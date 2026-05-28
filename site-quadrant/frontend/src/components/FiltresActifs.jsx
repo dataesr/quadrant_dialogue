@@ -109,19 +109,25 @@ export default function FiltresActifs() {
     <div className="filtres-actifs" aria-label={libelleLabel}>
       <span className="filtres-actifs-label">{libelleLabel}&nbsp;:</span>
       {/* Pas de <ul>/<li> ici — DSFR fr-tags-group ajoute des marges
-          qui désalignent les tags par rapport au label. On rend les
-          boutons directement comme flex-items du conteneur, ce qui
-          permet à `align-items: center` du parent de centrer
-          proprement les pills sur la même ligne que le label. */}
+          qui désalignent les tags. On rend les boutons directement
+          comme flex-items du conteneur.
+          NOTE — pas de classe `fr-tag--dismiss` : le JS DSFR
+          intercepte le clic et retire le bouton du DOM côté vanilla,
+          puis React tente removeChild sur un nœud absent → erreur
+          « NotFoundError: The object can not be found here » et page
+          blanche. On reconstitue le rendu × manuellement avec un
+          <span> enfant — visuel équivalent, pas de manipulation DOM
+          hors React. */}
       {pills.map((p) => (
         <button
           key={p.key}
           type="button"
-          className="fr-tag fr-tag--sm fr-tag--dismiss"
+          className="fr-tag fr-tag--sm filtres-actifs-pill"
           onClick={p.onRemove}
           aria-label={`Retirer le filtre : ${p.label}`}
         >
           {p.label}
+          <span className="filtres-actifs-pill-close" aria-hidden="true">×</span>
         </button>
       ))}
     </div>
