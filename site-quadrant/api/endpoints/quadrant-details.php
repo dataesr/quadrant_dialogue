@@ -471,11 +471,29 @@ function normaliserDonnees(array $canonique, array $rowsBdd, int $seuil = null):
         $num   = $r['numerateur']   !== null ? (int)$r['numerateur']   : null;
 
         if ($denom === null || $denom <= 0) {
+            // Cas « cohorte non observable » : numerateur ET
+            // denominateur tous deux absents ou nuls. Le source SIES
+            // encode régulièrement ainsi les tuples (mention, indicateur,
+            // millésime) qui ne sont pas encore mesurables — un
+            // « Taux de réussite en 4 ans » sur une cohorte trop récente,
+            // un « emploi à 30 mois » dont l'enquête n'a pas eu lieu,
+            // une mention créée après le millésime — plutôt que d'omettre
+            // la row du fichier source. Côté frontend, conserver
+            // `denominateur = 0` ferait apparaître un faux 0 sur le
+            // graphe d'effectifs là où le graphe % a un trou.
+            // On efface donc TOTALEMENT l'observation : cohérence
+            // visuelle entre les deux graphes (un trou des deux côtés).
+            //
+            // Cas exotique num != null mais denom invalide (donnée
+            // source incohérente) : on conserve la structure historique
+            // (num masqué, denom préservé tel quel) pour ne pas écraser
+            // un signal de qualité de données.
+            $absenceObservation = ($num === null);
             $resultat[] = [
                 'indicateur'   => $tuple['indicateur'],
                 'date_inser'   => $tuple['date_inser'],
                 'numerateur'   => null,
-                'denominateur' => $denom,
+                'denominateur' => $absenceObservation ? null : $denom,
                 'taux'         => null,
             ];
             continue;

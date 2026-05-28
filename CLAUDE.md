@@ -541,6 +541,10 @@ Pour éviter de fouiller dans le cadrage à chaque fois :
 
 Une bulle s'affiche uniquement si les **deux** dénominateurs (var1 et var2) sont ≥ 5.
 
+**Cas particulier `denom ≤ 0` + `numerateur NULL` — absence d'observation** (cf. `normaliserDonnees` dans `quadrant-details.php`). Le source SIES encode régulièrement les tuples (mention, indicateur, millésime) non encore mesurables — « Taux de réussite en 4 ans » sur une cohorte trop récente, enquête d'insertion à 30 mois pas encore réalisée, mention créée après le millésime — par une row présente avec `denominateur=0, numerateur=NULL` (plutôt qu'en omettant la row). L'API détecte ce motif (`num=NULL ET denom ≤ 0`) et l'efface complètement côté détails (`denominateur=null` en sortie), pour que les graphes % et effectifs aient un trou cohérent au même millésime. Sans cette normalisation, le graphe % a un trou (taux=null) mais le graphe d'effectifs trace un faux point à 0 sur la courbe denom — incohérence visuelle qui suggère à tort « cohorte de 0 individus observés ».
+
+Cas distinct `denom 1–4` + `num quelconque` : règle de diffusion classique, exposée comme `non_diffusable=true` côté API et collapsée par `extraireSerie` côté frontend (cf. `historique.js`).
+
 ### Coloration
 
 - **Onglets Mentions** : 17 couleurs par secteur disciplinaire (codes hex dans le cadrage, transparence 61% appliquée au rendu)
