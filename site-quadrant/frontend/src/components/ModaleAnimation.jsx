@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx';
 import { getQuadrantSerieTemporelle } from '../services/api.js';
 import { messageErreur } from '../utils/errors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import { formatLibelleAxe } from '../utils/libelleAxe.js';
 import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
 import Skeleton from './Skeleton.jsx';
 
@@ -201,6 +202,21 @@ export default function ModaleAnimation({ open, onClose }) {
     if (!data?.series || millesimeCourant == null) return null;
     return data.series[String(millesimeCourant)]?.axes || null;
   }, [data, millesimeCourant]);
+
+  // Populations de référence au millésime courant (« entrants
+  // 2021-22 », « sortants 2023 »…). Variables par millésime →
+  // libellés des axes se mettent à jour pendant l'animation, ce qui
+  // est informatif (« cette cohorte → cette autre cohorte »).
+  // Chaque bulle d'un même indicateur/millésime porte la MÊME
+  // population_x/y (constante métier), on lit donc la première.
+  const populationX = bullesCourantes[0]?.population_x || null;
+  const populationY = bullesCourantes[0]?.population_y || null;
+
+  // Libellés d'axes au format harmonisé avec Quadrant.jsx :
+  //   « variable à N mois (population) » si déclinable
+  //   « variable (population) » sinon
+  const libelleAxeX = formatLibelleAxe(variableX, dateInserX, populationX);
+  const libelleAxeY = formatLibelleAxe(variableY, dateInserY, populationY);
 
   // -------------------- Mise à jour de la trace continue --------------------
   // À chaque changement de millesimeCourant :
@@ -410,8 +426,8 @@ export default function ModaleAnimation({ open, onClose }) {
                 axes={axesCourants}
                 referenceAxesMode={refMode}
                 vue={vue}
-                libelleX={variableX}
-                libelleY={variableY}
+                libelleX={libelleAxeX}
+                libelleY={libelleAxeY}
                 millesimeCourant={millesimeCourant}
                 bullesTouteSerie={bullesTouteSerie}
                 dureeTransitionMs={transitionMs}

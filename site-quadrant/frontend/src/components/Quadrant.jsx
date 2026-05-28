@@ -19,6 +19,7 @@ import {
   ORDRE_CATEGORIES_ETAB,
 } from '../utils/colors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import { formatLibelle, formatLibelleAxe } from '../utils/libelleAxe.js';
 import { trackEvent } from '../utils/matomo.js';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
@@ -624,22 +625,8 @@ export default function Quadrant({ forExport = false } = {}) {
   );
 }
 
-function formatLibelle(variable, dateInser) {
-  if (!variable) return '';
-  if (!dateInser) return variable;
-  return `${variable} (${dateInser} mois)`;
-}
-
-// Variante pour titre d'axe SVG : « variable à N mois (population) ».
-// Bascule sur la forme « à N mois » plutôt que « (N mois) » pour ne pas
-// doubler les parenthèses quand on accole la population entre parens.
-// Si population manquante → fallback sur la forme classique « (N mois) ».
-function formatLibelleAxe(variable, dateInser, population) {
-  if (!variable) return '';
-  if (!population) return formatLibelle(variable, dateInser);
-  if (!dateInser)  return `${variable} (${population})`;
-  return `${variable} à ${dateInser} mois (${population})`;
-}
+// formatLibelle / formatLibelleAxe : importés de utils/libelleAxe.js
+// (centralisés pour assurer la cohérence avec QuadrantAnime.jsx).
 
 // Tooltip de survol des bulles, extrait en sous-composant pour ancrer
 // proprement un useLayoutEffect d'ajustement post-mesure (cf. ci-dessous).

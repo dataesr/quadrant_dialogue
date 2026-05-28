@@ -401,10 +401,15 @@ function fetcherLignesPourVariables(
     $whereCommun = implode(' AND ', $conditions);
 
     // Colonnes : on récupère tout ce dont on a besoin pour les
-    // bulles. Pour la requête Y on n'a besoin que des effectifs.
+    // bulles + la `population` (libellé métier qui dépend de
+    // (indicateur, date_inser, millesime) — sert au formatage des
+    // titres d'axes côté frontend, cohérent /quadrant.php).
+    // Pour la requête Y on n'a besoin que des effectifs et de la
+    // population côté Y.
     $sqlX = "
         SELECT millesime, diplom, id_paysage,
                numerateur AS num_x, denominateur AS denom_x,
+               population AS population_x,
                secteur_disciplinaire_quadrant, dom, dom_lib,
                libelle_intitule, uo_lib, reg_id,
                typologie_d_universites_et_assimiles AS typologie,
@@ -415,7 +420,8 @@ function fetcherLignesPourVariables(
     ";
     $sqlY = "
         SELECT millesime, diplom, id_paysage,
-               numerateur AS num_y, denominateur AS denom_y
+               numerateur AS num_y, denominateur AS denom_y,
+               population AS population_y
         FROM stats_quadrant
         WHERE $whereCommun
           AND indicateur = :ind AND date_inser = :date
@@ -443,8 +449,9 @@ function fetcherLignesPourVariables(
         if (!isset($indexY[$key])) continue;
         $ly = $indexY[$key];
         $ligne = $lx;
-        $ligne['num_y']   = $ly['num_y'];
-        $ligne['denom_y'] = $ly['denom_y'];
+        $ligne['num_y']        = $ly['num_y'];
+        $ligne['denom_y']      = $ly['denom_y'];
+        $ligne['population_y'] = $ly['population_y'];
         $m = $lx['millesime'];
         if (!isset($parMillesime[$m])) $parMillesime[$m] = [];
         $parMillesime[$m][] = $ligne;
@@ -462,12 +469,16 @@ function agregerParEtablissement(array $lignes): array
     foreach ($lignes as $l) {
         $uai = $l['id_paysage'];
         if (!isset($parEtab[$uai])) {
+            // population_x/y identiques sur toutes les lignes d'un
+            // même indicateur/millésime → on les recopie une fois.
             $parEtab[$uai] = [
                 'id_paysage'       => $uai,
                 'uo_lib'           => $l['uo_lib'],
                 'reg_id'           => $l['reg_id'],
                 'typologie'        => $l['typologie'],
                 'filtre_perimetre' => $l['filtre_perimetre'],
+                'population_x'     => $l['population_x'] ?? null,
+                'population_y'     => $l['population_y'] ?? null,
                 'num_x' => 0, 'denom_x' => 0,
                 'num_y' => 0, 'denom_y' => 0,
             ];
@@ -545,6 +556,17 @@ function construireBulles(
         $id      = $vue === 'mentions' ? $p['diplom'] : $p['id_paysage'];
         $libelle = $vue === 'mentions' ? $p['libelle_intitule'] : $p['uo_lib'];
 
+        // population_x/y : libellés métier de la cohorte (« entrants
+        // 2021-22 », « sortants 2023 »...). Variables par millésime ;
+        // exposés ici pour que le frontend puisse construire les
+        // titres d'axes au format harmonisé avec Quadrant.jsx
+        // (« variable à N mois (population) »). Convention :
+        // chaîne vide → null pour faciliter le test d'absence côté JS.
+        $popX = $p['population_x'] ?? null;
+        $popY = $p['population_y'] ?? null;
+        if ($popX === '') $popX = null;
+        if ($popY === '') $popY = null;
+
         $bulle = [
             'id'                  => $id,
             'libelle'             => $libelle,
@@ -552,6 +574,8 @@ function construireBulles(
             'y'                   => round($y, 4),
             'denom_x'             => $denomX,
             'denom_y'             => $denomY,
+            'population_x'        => $popX,
+            'population_y'        => $popY,
             'forme'               => 'rond',
             'couleur_key'         => $couleurKey,
             'details_accessibles' => $detailsAccessibles,
