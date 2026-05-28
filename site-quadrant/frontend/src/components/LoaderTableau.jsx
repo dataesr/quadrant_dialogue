@@ -18,6 +18,7 @@
 // chargement), SVG aria-hidden (décoratif), message texte. Respecte
 // prefers-reduced-motion (animation stoppée, opacité fixée).
 import { COLORS_DOMAINE } from '../utils/colors.js';
+import PromoDataEsr from './PromoDataEsr.jsx';
 
 export default function LoaderTableau({ message = 'Chargement du tableau…' }) {
   return (
@@ -29,6 +30,7 @@ export default function LoaderTableau({ message = 'Chargement du tableau…' }) 
         <rect className="lt-row lt-row-4" x="6" y="52" width="42" height="10" rx="2" fill={COLORS_DOMAINE.SHS} />
       </svg>
       <p className="loader-tableau-message">{message}</p>
+      <PromoDataEsr />
     </div>
   );
 }
