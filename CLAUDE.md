@@ -226,6 +226,15 @@ quadrant-projet/
 - Page de test `test-api.html` fonctionnelle
 - Cadrage complet figé dans `docs/cadrage-quadrant.md`
 
+**Phase 12-13 — performances + loaders + distributions** :
+- Animation temporelle : transitions via `transform: translate()` plutôt que `cx`/`cy` (et `x1/y1/x2/y2` pour les lignes de référence). Le transform est composité par le GPU et n'invalide pas le layout SVG — la version cx/cy provoquait un *forced reflow* mesurable (~34 ms) à chaque changement de millésime en vue Positionnement (~700 bulles), au-dessus du budget 60 fps. Voir `QuadrantAnime.jsx` et le fallback CSS `.quadrant-anime-bulle` / `.quadrant-anime-ref-line` dans `global.css`.
+- Loaders avec anti-flash 350 ms (hook `useDelayedLoading`) :
+  - `LoaderQuadrant` : mini-quadrant 4 cellules qui s'allument en rotation, couleurs des grands domaines (DEG/LLA/STS/SHS) — affiché dans `Quadrant.jsx` pendant le fetch de `/quadrant`.
+  - `LoaderBarre` : barre indéterminée — affichée dans `ModaleAnimation.jsx` pendant le fetch de `/quadrant/serie-temporelle`.
+  - Tous deux respectent `prefers-reduced-motion` (animation stoppée, opacité fixée).
+  - L'instance off-screen d'export (`forExport=true`) ne montre pas le loader animé : elle sert exclusivement de source à `html-to-image` et garde un Skeleton statique pour éviter qu'un export déclenché pendant un fetch ne capture le loader.
+- Histogrammes de distribution (toggle « Afficher les distributions » dans `AdvancedFilters`, désactivé par défaut). Quand actif, le quadrant affiche 10 barres en haut (axe X) et 10 barres à droite (axe Y) comptant les bulles par tranche de 10 %. Bandes posées dans les marges existantes (top/right = 50 px) — pas de réduction de l'aire de plot, pas de débordement de l'iframe. S'applique aux deux vues. Pas pris en compte dans le compteur de filtres actifs (option d'affichage purement visuelle). L'instance off-screen lit `afficherDistributions` depuis le même `AppContext` — les histogrammes sont donc inclus dans l'export PNG quand le toggle est actif. Voir `Histogrammes.jsx` + `utils/histogramme.js`.
+
 **À faire (par ordre logique)** :
 1. Composants React un par un (sélecteurs, quadrant SVG, tooltip, mentions non représentées, export XLSX côté navigateur via SheetJS à partir des valeurs brutes renvoyées par `/quadrant` en vue Mentions — pas d'endpoint d'export côté PHP)
 2. Intégration complète et tests bout en bout
@@ -657,7 +666,8 @@ Points d'attention si l'option est activée :
   - Quand un filtre change et que les bulles sont remplacées : transition de position
   - Quand la médiane bouge : transition de la position des lignes
   - Quand une bulle apparaît/disparaît : fondu en opacité
-- **CSS transitions** suffisent pour la majorité des cas (`transition: cx 250ms, cy 250ms, opacity 250ms`)
+- **CSS transitions** suffisent pour la majorité des cas.
+- **Animer `transform: translate()`, pas `cx`/`cy`** : les attributs géométriques SVG (`cx`, `cy`, `x1`, `y1`…) déclenchent un *forced reflow* à chaque pas d'animation. Avec ~700 bulles (vue Positionnement, modale d'animation), le reflow dépasse le budget de frame et provoque une saccade visible. Le `transform` est composité par le GPU et reste fluide. Bulles rendues à `(0, 0)` et translatées, position visuelle équivalente (cf. `QuadrantAnime.jsx` Phase 12-13).
 - Pas d'animation excessive ni de chorégraphie complexe : sobre
 
 ### Légende
