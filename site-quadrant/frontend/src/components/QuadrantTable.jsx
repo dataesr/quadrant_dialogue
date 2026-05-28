@@ -7,6 +7,7 @@ import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
 import { libelleReferenceAxes } from '../utils/libelleReferenceAxes.js';
+import { formatDelta } from '../utils/formatDelta.js';
 
 // Vue alternative au quadrant SVG : présente les mêmes données sous
 // forme de tableaux regroupés par cadran (haut-droite / haut-gauche /
@@ -262,11 +263,13 @@ export default function QuadrantTable() {
                     <th scope="row">{b.libelle || '—'}</th>
                     <CellulePourcentage
                       taux={b.x}
+                      tauxPrec={b.x_prev}
                       denom={b.denom_x}
                       population={b.population_x}
                     />
                     <CellulePourcentage
                       taux={b.y}
+                      tauxPrec={b.y_prev}
                       denom={b.denom_y}
                       population={b.population_y}
                     />
@@ -336,16 +339,26 @@ export default function QuadrantTable() {
 // La présentation à 2 lignes met le taux en évidence (gros + gras) et
 // renvoie l'effectif en discret (gris, plus petit), pour faciliter le
 // scan colonne par colonne sans pour autant masquer la base de calcul.
-function CellulePourcentage({ taux, denom, population }) {
+function CellulePourcentage({ taux, tauxPrec, denom, population }) {
   if (typeof denom !== 'number' || denom < 5) {
     return <td className="cellule-non-diffusable">Non diffusable</td>;
   }
   const fragile = denom >= 5 && denom <= 19;
   const className = 'cellule-valeur' + (fragile ? ' cellule-fragile' : '');
   const pourcent = (taux * 100).toFixed(1).replace('.', ',');
+  // Delta vs millésime précédent — affiché en discret à côté du taux,
+  // même format que dans le tooltip de bulle et les cards X/Y du
+  // panneau de détail (« (+0,3 pt) »). Pas de delta si la bulle
+  // n'existait pas l'année d'avant (x_prev / y_prev null).
+  const delta = typeof tauxPrec === 'number'
+    ? formatDelta(taux, tauxPrec)
+    : '';
   return (
     <td className={className}>
-      <div className="valeur-percent">{pourcent} %</div>
+      <div className="valeur-percent">
+        {pourcent} %
+        {delta && <span className="valeur-delta">{' '}{delta}</span>}
+      </div>
       <div className="valeur-population">
         sur {denom}{population ? ` ${population}` : ''}
       </div>

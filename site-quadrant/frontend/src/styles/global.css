@@ -476,6 +476,15 @@
   font-weight: 500;
   font-size: 14px;
 }
+/* Delta vs millésime précédent (« (+0,3 pt) ») à côté du taux dans
+   les cellules du tableau. Discret — couleur neutre, poids normal, un
+   chouïa plus petit que le taux. Cohérent avec le tooltip de bulle
+   et les cards X/Y du panneau de détail. */
+.tableau-cadran .valeur-delta {
+  font-weight: 400;
+  font-size: 12px;
+  color: #555;
+}
 .tableau-cadran .valeur-population {
   font-size: 12px;
   color: #555;
@@ -925,7 +934,11 @@
    secondary + icône play à gauche. */
 .bouton-voir-evolution {
   align-self: flex-start;
+  /* Bouton désormais placé AU-DESSUS du toggle « Plus d'options »
+     (cf. AdvancedFilters.jsx) ; un peu d'air en dessous pour le
+     détacher visuellement du toggle. */
   margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
 /* ----------------------------------------------------------------------

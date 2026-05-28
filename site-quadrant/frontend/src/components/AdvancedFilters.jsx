@@ -101,6 +101,24 @@ export default function AdvancedFilters() {
 
   return (
     <section>
+      {/* « Voir l'évolution » placé AU-DESSUS du toggle « Plus
+          d'options » plutôt qu'en pied de section : c'est une action
+          de premier plan (ouverture de la modale d'animation
+          temporelle), elle gagne en visibilité ici. Disabled tant
+          qu'aucun étab n'est sélectionné — cohérent avec les autres
+          contrôles du panneau. */}
+      <button
+        type="button"
+        className="fr-btn fr-btn--sm fr-btn--secondary fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
+        onClick={() => setModaleAnimOpen(true)}
+        disabled={!etabContexte}
+      >
+        Voir l&apos;évolution
+      </button>
+      {modaleAnimOpen && (
+        <ModaleAnimation open onClose={() => setModaleAnimOpen(false)} />
+      )}
+
       <button
         type="button"
         className={`fr-btn fr-btn--tertiary-no-outline fr-btn--icon-left ${chevron}`}
@@ -315,21 +333,9 @@ export default function AdvancedFilters() {
         </div>
       </div>
 
-      {/* Bouton « Voir l'évolution » + Méthodologie en pied du
-          panneau d'options. Posés en pied pour rester visibles quel
-          que soit l'état (replié / déplié) du panneau avancé.
-          Animation au-dessus de Méthodologie (Phase 11b). */}
-      <button
-        type="button"
-        className="fr-btn fr-btn--sm fr-btn--secondary fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
-        onClick={() => setModaleAnimOpen(true)}
-        disabled={!etabContexte}
-      >
-        Voir l&apos;évolution
-      </button>
-      {modaleAnimOpen && (
-        <ModaleAnimation open onClose={() => setModaleAnimOpen(false)} />
-      )}
+      {/* « Voir l'évolution » est désormais au-dessus du toggle
+          « Plus d'options ». Méthodologie reste en pied (rôle
+          secondaire). */}
       <button
         type="button"
         className="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-btn--icon-left fr-icon-question-line bouton-methodologie"
