@@ -20,93 +20,74 @@ const ORDRE_RENDU_ETAB = {
   selectionne:                 4,
 };
 
-// Quadrant SVG animé pour la modale d'évolution temporelle (Phase 11
-// MVP). Différences avec Quadrant.jsx :
-//   - pas de zoom, pas d'interaction (clic, survol, tooltip)
-//   - pas de tri par couleur/profondeur (bulles dans l'ordre du tableau)
-//   - rendu sans état React local (props-driven seulement)
-//   - bulles avec transition CSS sur cx/cy/opacity → animation
-//     fluide quand le millésime courant change
-//   - axes pointillés animés via les mêmes transitions
+// Quadrant SVG animé pour la modale d'évolution temporelle (Phase 11b).
 //
-// Toutes les bulles renvoyées par /quadrant/serie-temporelle ont
-// `forme=rond` (seuil systématique appliqué côté API), donc pas de
-// gestion triangle/croix.
+// Props :
+//   - bulles, axes, referenceAxesMode, vue, libelleX, libelleY,
+//     millesimeCourant, bullesTouteSerie : cf. MVP.
+//   - dureeTransitionMs : durée des transitions CSS sur cx/cy
+//     (adaptée à la vitesse de lecture, cf. ModaleAnimation).
+//   - traceContinue : Map<id, Array<{cx, cy}>> — positions
+//     successives des bulles (max 4 = 3 segments). Dessine une
+//     polyline fine derrière chaque bulle pour montrer sa
+//     trajectoire récente.
+//   - traceComparaison : null OU { from: {id→{cx,cy}}, to: {id→{cx,cy}},
+//     fading: bool } — trace one-shot du mode « Comparer avec
+//     millésime précédent », plus visible (stroke 2, opacity 0.6),
+//     fade-out sur 1 s quand fading=true.
 //
-// Stratégie d'animation : on rend TOUS les <circle> indexés par leur
-// id stable (HMAC pour les anonymes), avec une clé React = id. Quand
-// le millésime change, les bulles partagent la même clé entre les
-// deux renders → React conserve le DOM node → CSS transitions
-// s'appliquent automatiquement sur cx/cy.
-//
-// Bulles présentes au millésime précédent mais absentes du nouveau :
-// on les rend en `opacity: 0` (CSS transition l'estompe sur 400 ms).
-// Inverse pour les nouvelles bulles (montent en opacity).
+// Différences avec Quadrant.jsx (rappel MVP) : pas de zoom, pas
+// d'interaction (clic, survol, tooltip). Toutes les bulles sont
+// `forme=rond` (seuil systématique côté API).
 
 export default function QuadrantAnime({
-  bulles,             // bulles du millésime courant (peut contenir < bulles totales)
-  axes,               // { mediane_etab_x, ... } selon vue
-  referenceAxesMode,  // 'mediane_etab' | 'moyenne_etab' | 'moyenne_nationale' | 'mediane' | 'moyenne'
-  vue,                // 'mentions' | 'etablissements'
+  bulles,
+  axes,
+  referenceAxesMode,
+  vue,
   libelleX,
   libelleY,
-  millesimeCourant,   // pour l'affichage du grand chiffre en arrière-plan
-  bullesTouteSerie,   // ensemble (Map id → meta) des bulles qui apparaissent au moins une fois — pour les fade-out
+  millesimeCourant,
+  bullesTouteSerie,
+  dureeTransitionMs = 800,
+  traceContinue,
+  traceComparaison,
 }) {
-  // Index id → bulle courante. Permet de savoir vite si une bulle est
-  // présente ce millésime ou non, et de lire ses x/y/denom.
+  // Index id → bulle courante. Permet de savoir vite si une bulle
+  // est présente ce millésime et de lire ses coords.
   const bulleParId = useMemo(() => {
     const m = new Map();
     for (const b of bulles) m.set(b.id, b);
     return m;
   }, [bulles]);
 
-  // Pour rendre les fade-in/out propres, on itère sur l'UNION des
-  // bulles de toute la série, pas juste celles du millésime courant.
-  // Si une bulle est absente du courant, on la rend à sa dernière
-  // position connue avec opacity: 0.
-  //
-  // bullesTouteSerie = Map<id, dernière bulle meta connue>.
-  //
-  // Tri STABLE pour toute la durée de l'animation (cf. Quadrant.jsx,
-  // même principe différent par vue) :
-  //   - vue=mentions : par denom max observé sur la série, décroissant.
-  //     Les grosses bulles arrivent en tête du tableau → peintes en
-  //     fond ; les petites en queue → peintes au premier plan
-  //     (cliquables si on activait le clic, lisibles en tous cas).
-  //     On utilise le denom MAX sur la série (pas le denom courant)
-  //     pour garder un ordre stable pendant l'animation — un
-  //     re-tri par millésime ferait sauter les <circle> dans le DOM
-  //     et casserait visuellement les transitions CSS.
-  //   - vue=etablissements : z-index sémantique via ORDRE_RENDU_ETAB
-  //     (couleur_key constant entre millésimes, donc tri stable
-  //     par construction).
+  // Ordre stable des bulles (cf. principe Quadrant.jsx) :
+  //   - vue=mentions : par denom décroissant. Grosses bulles en fond,
+  //     petites au premier plan.
+  //   - vue=etablissements : z-index sémantique via ORDRE_RENDU_ETAB.
+  // Tri basé sur bullesTouteSerie pour rester stable entre millésimes.
   const idsAffiches = useMemo(() => {
     if (!bullesTouteSerie || bullesTouteSerie.size === 0) {
       return bulles.map((b) => b.id);
     }
     const entries = Array.from(bullesTouteSerie.entries());
     if (vue === 'mentions') {
-      // Pour le denom max stable, on parcourt toutes les bulles de la
-      // série (chaque bulle dans bullesTouteSerie est la DERNIÈRE
-      // vue, pas forcément la plus grosse). Pour le MVP, on fait
-      // simple : tri par dernier denom connu. À durcir si besoin.
       return entries
-        .sort(([, a], [, b]) => (b.denom_x ?? b.denom ?? 0) - (a.denom_x ?? a.denom ?? 0))
+        .sort(([, a], [, b]) =>
+          (b.denom_x ?? b.denom ?? 0) - (a.denom_x ?? a.denom ?? 0)
+        )
         .map(([id]) => id);
     }
     return entries
       .sort(([, a], [, b]) => {
         const za = ORDRE_RENDU_ETAB[a.couleur_key] ?? 0;
         const zb = ORDRE_RENDU_ETAB[b.couleur_key] ?? 0;
-        return za - zb; // z faibles en premier = au fond
+        return za - zb;
       })
       .map(([id]) => id);
   }, [bullesTouteSerie, bulles, vue]);
 
-  // Rayons : on calcule à partir des denoms de toute la série (sinon
-  // la taille des bulles ferait du yo-yo entre millésimes). Pour
-  // l'animation, on veut une échelle stable.
+  // Rayons stables sur toute la série
   const allDenoms = useMemo(() => {
     const out = [];
     if (bullesTouteSerie) {
@@ -119,16 +100,32 @@ export default function QuadrantAnime({
     return out.filter((d) => d > 0);
   }, [bullesTouteSerie, bulles]);
 
-  // Référence des axes : x/y des lignes pointillées selon le mode.
+  // Référence des axes (lignes pointillées)
   const refXY = useMemo(() => {
     if (!axes) return null;
-    const xKey = `${referenceAxesMode}_x`;
-    const yKey = `${referenceAxesMode}_y`;
-    const x = axes[xKey];
-    const y = axes[yKey];
+    const x = axes[`${referenceAxesMode}_x`];
+    const y = axes[`${referenceAxesMode}_y`];
     if (x == null || y == null) return null;
     return { x, y };
   }, [axes, referenceAxesMode]);
+
+  // Helper : couleur d'une bulle selon vue + id
+  function couleurPourBulle(b) {
+    if (!b) return '#888';
+    return vue === 'mentions'
+      ? (COLORS_DOMAINE[b.dom] || '#888')
+      : (COULEUR_ETAB_PAR_KEY[b.couleur_key] || '#888');
+  }
+
+  // Style de transition appliqué inline (durée variable selon vitesse).
+  // L'opacité a sa propre durée fixe (400 ms) pour les fade-in/out
+  // qui sont visuellement OK indépendamment de la vitesse.
+  const transitionStyleBulle = {
+    transition: `cx ${dureeTransitionMs}ms ease-in-out, cy ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`,
+  };
+  const transitionStyleLigne = {
+    transition: `x1 ${dureeTransitionMs}ms ease-in-out, x2 ${dureeTransitionMs}ms ease-in-out, y1 ${dureeTransitionMs}ms ease-in-out, y2 ${dureeTransitionMs}ms ease-in-out`,
+  };
 
   return (
     <svg
@@ -139,7 +136,7 @@ export default function QuadrantAnime({
       role="img"
       aria-label={`Quadrant animé — millésime ${millesimeCourant}`}
     >
-      {/* Année courante en filigrane (sobre, pas trop intrusif) */}
+      {/* Année courante en filigrane */}
       <text
         className="quadrant-anime-millesime"
         x={MARGIN.left + PLOT_WIDTH - 16}
@@ -160,10 +157,9 @@ export default function QuadrantAnime({
         libelleY={libelleY}
       />
 
-      {/* Lignes de référence (pointillés). Transition CSS sur les
-          positions → glissement fluide entre millésimes. */}
+      {/* Lignes de référence (transition CSS sur durée variable) */}
       {refXY && (
-        <g className="quadrant-anime-ref">
+        <g>
           <line
             className="quadrant-anime-ref-line"
             x1={xScaleBase(toPercent(refXY.x))}
@@ -172,6 +168,7 @@ export default function QuadrantAnime({
             y2={MARGIN.top + PLOT_HEIGHT}
             stroke="#555"
             strokeDasharray="4 3"
+            style={transitionStyleLigne}
           />
           <line
             className="quadrant-anime-ref-line"
@@ -181,16 +178,74 @@ export default function QuadrantAnime({
             y2={yScaleBase(toPercent(refXY.y))}
             stroke="#555"
             strokeDasharray="4 3"
+            style={transitionStyleLigne}
           />
         </g>
       )}
 
-      {/* Bulles. Une <circle> par id stable, key=id. Les transitions
-          CSS sur cx/cy/opacity gèrent l'animation. */}
+      {/* Traces résiduelles continues — fines, opacity 0.3, max 3
+          segments par bulle. Dessinées AVANT les bulles pour rester
+          en arrière-plan.
+          En vue=etablissements (~700 bulles), désactivées (cf.
+          ModaleAnimation passe traceContinue=null dans ce cas). */}
+      {traceContinue && (
+        <g className="quadrant-anime-traces-continues">
+          {Array.from(traceContinue.entries()).map(([id, positions]) => {
+            if (!positions || positions.length < 2) return null;
+            const points = positions.map((p) => `${p.cx},${p.cy}`).join(' ');
+            const b = bullesTouteSerie?.get(id) || bulleParId.get(id);
+            const couleur = couleurPourBulle(b);
+            return (
+              <polyline
+                key={`trace-${id}`}
+                points={points}
+                stroke={couleur}
+                strokeWidth={1}
+                strokeOpacity={0.3}
+                strokeLinecap="round"
+                fill="none"
+              />
+            );
+          })}
+        </g>
+      )}
+
+      {/* Trace de comparaison M-1 → M (mode « Comparer ») — plus
+          visible (stroke 2, opacity 0.6). Fade-out via opacity 0
+          quand traceComparaison.fading=true (transition CSS 1 s). */}
+      {traceComparaison && (
+        <g
+          className="quadrant-anime-trace-comparaison"
+          style={{
+            opacity: traceComparaison.fading ? 0 : 1,
+            transition: 'opacity 1000ms ease-in-out',
+          }}
+        >
+          {idsAffiches.map((id) => {
+            const from = traceComparaison.from?.get(id);
+            const to   = traceComparaison.to?.get(id);
+            if (!from || !to) return null;
+            const b = bullesTouteSerie?.get(id) || bulleParId.get(id);
+            const couleur = couleurPourBulle(b);
+            return (
+              <line
+                key={`cmp-${id}`}
+                x1={from.cx} y1={from.cy}
+                x2={to.cx}   y2={to.cy}
+                stroke={couleur}
+                strokeWidth={2}
+                strokeOpacity={0.6}
+                strokeLinecap="round"
+              />
+            );
+          })}
+        </g>
+      )}
+
+      {/* Bulles. Transition CSS via inline style (durée variable). */}
       <g className="quadrant-anime-bulles">
         {idsAffiches.map((id) => {
           const present = bulleParId.has(id);
-          // Bulle courante OU dernière position connue (pour fade-out)
           const b = present
             ? bulleParId.get(id)
             : bullesTouteSerie?.get(id);
@@ -200,9 +255,7 @@ export default function QuadrantAnime({
           const cy = yScaleBase(toPercent(b.y));
           const denom = b.denom_x ?? b.denom ?? 0;
           const r = rayonBulle(denom, 'sqrt', allDenoms);
-          const couleur = vue === 'mentions'
-            ? (COLORS_DOMAINE[b.dom] || '#888')
-            : (COULEUR_ETAB_PAR_KEY[b.couleur_key] || '#888');
+          const couleur = couleurPourBulle(b);
 
           return (
             <circle
@@ -215,11 +268,25 @@ export default function QuadrantAnime({
               fillOpacity={0.61}
               stroke={couleur}
               strokeWidth={1}
-              style={{ opacity: present ? 1 : 0 }}
+              style={{
+                ...transitionStyleBulle,
+                opacity: present ? 1 : 0,
+              }}
             />
           );
         })}
       </g>
     </svg>
   );
+}
+
+// Helper exporté : calcule (cx, cy) en coordonnées SVG pour une bulle.
+// Sert à ModaleAnimation pour stocker les positions des bulles dans
+// l'historique de trace (pas envie de dupliquer le calcul xScaleBase
+// + toPercent dans deux endroits).
+export function bulleCxCy(b) {
+  return {
+    cx: xScaleBase(toPercent(b.x)),
+    cy: yScaleBase(toPercent(b.y)),
+  };
 }
