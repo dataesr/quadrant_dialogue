@@ -12,9 +12,30 @@
 // Robustesse : tous les helpers exposés sont sans-op si window._paq
 // n'existe pas (réseau coupé, blocage adblocker, CSP). L'app
 // continue de fonctionner sans tracking — ne rien faire échouer.
+//
+// Suivi des contextes (Phase 13b) : le `contexte_id` (5 alphanum
+// identifiant un périmètre — étab, rectorat, national) est posé en
+// custom variable au scope `visit`, slot 1. Tous les events de la
+// session héritent ainsi du tag, on peut filtrer les stats Matomo
+// par contexte sans avoir à enrichir chaque trackEvent. Le contexte
+// étant **partagé** entre plusieurs utilisateurs (et pas attaché à
+// une personne), c'est une dimension analytique agrégée, pas une
+// PII — pas de souci RGPD à le pousser à Matomo.
+// Note de migration : les Custom Variables Matomo sont marquées
+// « legacy » dans la doc — une Custom Dimension serait préférable
+// à terme. Conversion possible sans modification frontend dès que
+// l'admin MESRE crée le slot côté instance.
+
+import { getContexteId } from '../services/api.js';
 
 const MATOMO_URL = 'https://piwik.enseignementsup-recherche.pro/';
 const MATOMO_SITE_ID = '53';
+
+// Slot de Custom Variable utilisé pour le contexte_id. Matomo offre
+// 5 slots (1-5) au scope visit ; on prend le premier libre. Aucune
+// autre variable n'est posée par l'app aujourd'hui — pas de risque
+// de collision.
+const CV_SLOT_CONTEXTE = 1;
 
 // Liste officielle MESRE — paramètres sensibles à exclure des URL
 // trackées (FR / EN / DE / ES / autres langues recensées par le
@@ -114,6 +135,22 @@ export function initMatomo() {
   // Endpoint et identifiant du site dans l'instance Matomo MESRE.
   window._paq.push(['setTrackerUrl', MATOMO_URL + 'matomo.php']);
   window._paq.push(['setSiteId', MATOMO_SITE_ID]);
+
+  // Suivi du contexte (étab/rectorat/national, partagé entre
+  // utilisateurs — anonyme au niveau personne). Posé AVANT le premier
+  // trackPageView pour que la pageview initiale soit déjà taguée.
+  // Silencieusement skip si la valeur n'est pas disponible (dev local
+  // sans .env + sans ?contexte_id=, ou prod hors iframe).
+  const contexteId = getContexteId();
+  if (contexteId) {
+    window._paq.push([
+      'setCustomVariable',
+      CV_SLOT_CONTEXTE,
+      'contexte_id',
+      contexteId,
+      'visit',
+    ]);
+  }
 
   // Tracking de vue initial + tracking automatique des clics sur liens.
   window._paq.push(['trackPageView']);

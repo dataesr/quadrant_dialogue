@@ -28,6 +28,29 @@ const CONTEXTE_ID_DEV = import.meta.env.VITE_CONTEXTE_ID_DEV || '';
 const CONTEXTE_ID_REGEX = /^[a-zA-Z0-9]{5}$/;
 
 /**
+ * Récupère le contexte_id actif quel que soit le mode de déploiement.
+ *
+ * Ordre de priorité :
+ *   1. <meta name="contexte-id"> injecté par /auth/init en prod iframe
+ *      (cf. CLAUDE.md §7 bis « Authentification iframe »).
+ *   2. getContexteIdDev() — query string puis VITE_CONTEXTE_ID_DEV.
+ *   3. null.
+ *
+ * Valide la forme (5 alphanum) à chaque étape — une valeur malformée
+ * est ignorée (pas la peine de fuiter un input arbitraire dans les
+ * stats Matomo ou les exports).
+ *
+ * Réutilisable par tout consommateur qui a besoin du contexte courant
+ * sans se soucier du mode (prod iframe / dev local) : Matomo,
+ * traçabilité d'exports PNG, futurs payloads analytics.
+ */
+export function getContexteId() {
+  const meta = readMeta('contexte-id');
+  if (meta && CONTEXTE_ID_REGEX.test(meta)) return meta;
+  return getContexteIdDev();
+}
+
+/**
  * Récupère le contexte_id à injecter en mode dev.
  *
  * Ordre de priorité :
