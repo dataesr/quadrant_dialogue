@@ -15,13 +15,14 @@ import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 // lecture, sélecteur de référence des axes, et trois enrichissements
 // v2 :
 //
-// 1. Trace résiduelle (continue) : pour chaque bulle qui bouge, on
-//    dessine une polyline fine reliant ses 3 dernières positions.
-//    FIFO : ajouter la nouvelle, retirer la plus ancienne au-delà de
-//    4 points. Reset si l'utilisateur recule manuellement le slider
-//    (sinon traces incohérentes en mode aller-retour).
-//    Active dans les deux vues : la vue Positionnement plafonne à
-//    ~80 bulles par millésime, soit ~240 segments — coût négligeable.
+// 1. Trace résiduelle (continue) : pour chaque bulle, polyline reliant
+//    TOUTES ses positions depuis le premier millésime jusqu'au
+//    millésime courant — trajectoire complète à la Gapminder.
+//    Dérivée directement des données (useMemo) plutôt qu'accumulée
+//    dans un state : la cohérence est garantie quel que soit le sens
+//    du parcours (lecture séquentielle, slider arrière, sauts). Active
+//    dans les deux vues — la vue Positionnement plafonne à ~80 bulles
+//    × ~6 millésimes = ~80 polylines de 5 segments max, coût trivial.
 //
 // 2. Mode « Comparer avec millésime précédent » : flow async qui
 //    saute instantanément à M-1, attend 200 ms, lance une transition
@@ -42,11 +43,6 @@ const VITESSES = {
   moyenne: { tickMs: 1000, transitionMs:  800, libelle: 'Moyenne' },
   rapide:  { tickMs:  500, transitionMs:  400, libelle: 'Rapide' },
 };
-
-// Pour la trace résiduelle continue : max 4 positions par bulle
-// (= 3 segments). Ajustable si on souhaite plus/moins de mémoire
-// visuelle.
-const TRACE_MAX_POSITIONS = 4;
 
 // Mode « Comparer » : durée de la transition one-shot M-1 → M (plus
 // lent que les transitions normales pour bien voir le mouvement) et
@@ -96,10 +92,10 @@ export default function ModaleAnimation({ open, onClose }) {
   const transitionMs = dureeOverride ?? VITESSES[vitesse].transitionMs;
 
   // -------------------- Trace résiduelle (v2) --------------------
-  // Map<id, Array<{cx, cy}>>. Active dans les deux vues (la vue
-  // Positionnement plafonne à ~80 bulles, coût négligeable).
+  // La Map<id, Array<{cx, cy}>> est calculée plus bas via useMemo —
+  // pas de state intermédiaire, pas d'accumulation par effet de bord.
+  // Active dans les deux vues.
   const traceContinueEnabled = true;
-  const [traceContinue, setTraceContinue] = useState(() => new Map());
 
   // -------------------- Mode Comparer (v2) --------------------
   // null OU { from: Map<id,{cx,cy}>, to: Map<id,{cx,cy}>, fading: bool }
@@ -150,15 +146,8 @@ export default function ModaleAnimation({ open, onClose }) {
         if (ms.length >= 2) {
           setMillesimeCourant(ms[0]);
           millesimePrecedentRef.current = ms[0];
-          // Init trace avec les positions du PREMIER millésime —
-          // évite le bug off-by-one où la position initiale n'était
-          // pas enregistrée et le 1er segment manquait. Trace active
-          // dans les deux vues depuis la Phase 12-13.
-          const initialTrace = new Map();
-          for (const b of (res.series[String(ms[0])]?.bulles || [])) {
-            initialTrace.set(b.id, [bulleCxCy(b)]);
-          }
-          setTraceContinue(initialTrace);
+          // La trace est dérivée des données via useMemo plus bas —
+          // pas besoin d'initialisation explicite.
           setPhaseAnim('normal');
         }
         setLoading(false);
@@ -268,77 +257,50 @@ export default function ModaleAnimation({ open, onClose }) {
   const libelleAxeX = formatLibelleAxe(variableX, dateInserX, populationX);
   const libelleAxeY = formatLibelleAxe(variableY, dateInserY, populationY);
 
-  // -------------------- Mise à jour de la trace continue --------------------
-  // À chaque changement de millesimeCourant :
-  //   - même millésime (init, snap loop) : skip (la trace est gérée
-  //     ailleurs — init au fetch, reset au snap).
-  //   - avancée séquentielle (idx = prev + 1) : append à la queue (FIFO
-  //     plafonné à TRACE_MAX_POSITIONS = 4 positions = 3 segments).
-  //   - loop (last → first) : reset à la nouvelle position courante
-  //     (l'animation entame un nouveau cycle).
-  //   - saut non séquentiel (slider en arrière) : reset à la position
-  //     courante.
-  // Skip pendant comparer (le ref M-1 → M déclencherait un reset à tort).
+  // -------------------- Trace continue (dérivée des données) --------------------
+  // Pour chaque bulle présente entre ms[0] et le millésime courant
+  // inclus, on construit la liste de ses positions successives
+  // (Map<id, Array<{cx, cy}>>). Le rendu côté QuadrantAnime trace une
+  // polyline reliant ces points dans l'ordre.
   //
-  // À la fin, le ref `millesimePrecedentRef` est mis à jour
-  // SYSTÉMATIQUEMENT, y compris quand la logique de trace est sautée
-  // (comparer en cours, traces sans effet ce render). Le setInterval
-  // de lecture auto lit ce ref pour calculer la prochaine étape — sans
-  // sync inconditionnel, après un premier tick le ref restait sur la
-  // valeur initiale et l'animation se figeait au 2ᵉ millésime
-  // (régression observée dès Phase 11b en vue Positionnement, où le
-  // trace useEffect retournait early sur `!traceContinueEnabled`).
-  useEffect(() => {
-    if (millesimeCourant == null) return;
+  // Trajectoire complète, esprit Gapminder : pas de plafond — la
+  // bulle traîne tout son chemin parcouru. Au snap loop (ms[N-1] →
+  // ms[0]), la trace redevient un point unique (et la polyline
+  // disparaît tant qu'on n'a pas un 2ᵉ millésime). Bouclage smooth
+  // visuel inchangé.
+  //
+  // Dérivation pure des données : pas d'historique en state, pas de
+  // sensibilité au sens du parcours (slider arrière OU avant → la
+  // trace reflète toujours strictement « ms[0] → millesimeCourant »).
+  const traceContinue = useMemo(() => {
+    const result = new Map();
+    if (!data?.series || !traceContinueEnabled || millesimeCourant == null) {
+      return result;
+    }
+    const ms = data.millesimes_disponibles || [];
+    const idxCourant = ms.indexOf(millesimeCourant);
+    if (idxCourant === -1) return result;
 
-    const traceLogique = traceContinueEnabled && !comparerEnCours;
-    const ms = data?.millesimes_disponibles || [];
-    const iCourant = ms.indexOf(millesimeCourant);
-    const iPrec    = ms.indexOf(millesimePrecedentRef.current);
-
-    if (traceLogique && iCourant !== -1 && iCourant !== iPrec) {
-      const enAvancee = iCourant === iPrec + 1;
-      const enLoop    = iPrec === ms.length - 1 && iCourant === 0;
-
-      if (enAvancee) {
-        // Append : nouvelle position à la queue, pop tête si > 4.
-        setTraceContinue((prev) => {
-          const next = new Map(prev);
-          for (const b of bullesCourantes) {
-            const { cx, cy } = bulleCxCy(b);
-            const historique = next.get(b.id)?.slice() || [];
-            historique.push({ cx, cy });
-            if (historique.length > TRACE_MAX_POSITIONS) historique.shift();
-            next.set(b.id, historique);
-          }
-          return next;
-        });
-      } else if (enLoop) {
-        // Loop : reset à la position du premier millésime (nouveau cycle)
-        setTraceContinue(() => {
-          const next = new Map();
-          for (const b of bullesCourantes) {
-            next.set(b.id, [bulleCxCy(b)]);
-          }
-          return next;
-        });
-      } else {
-        // Saut non séquentiel : reset à la position courante
-        setTraceContinue(() => {
-          const next = new Map();
-          for (const b of bullesCourantes) {
-            next.set(b.id, [bulleCxCy(b)]);
-          }
-          return next;
-        });
+    for (let i = 0; i <= idxCourant; i++) {
+      const bullesM = data.series[String(ms[i])]?.bulles || [];
+      for (const b of bullesM) {
+        const arr = result.get(b.id) || [];
+        arr.push(bulleCxCy(b));
+        result.set(b.id, arr);
       }
     }
+    return result;
+  }, [data, millesimeCourant, traceContinueEnabled]);
 
-    // Synchronisation inconditionnelle — la lecture auto (setInterval)
-    // lit ce ref pour décider du millésime suivant.
-    millesimePrecedentRef.current = millesimeCourant;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [millesimeCourant, bullesCourantes, comparerEnCours, traceContinueEnabled]);
+  // -------------------- Sync inconditionnel du ref --------------------
+  // Le setInterval de lecture auto lit `millesimePrecedentRef.current`
+  // pour décider du millésime suivant. Sans ce sync, le timer se
+  // figeait au 2ᵉ millésime (régression Phase 11b → 12-13).
+  useEffect(() => {
+    if (millesimeCourant != null) {
+      millesimePrecedentRef.current = millesimeCourant;
+    }
+  }, [millesimeCourant]);
 
   // -------------------- Handlers de base --------------------
   function handlePlayPause() {
@@ -644,8 +606,9 @@ export default function ModaleAnimation({ open, onClose }) {
               au moins {data.seuil_applique} effectifs sur les deux
               indicateurs sont affichées (les bulles fragiles présentes
               à l&apos;écran principal sont donc masquées ici). Les
-              traces fines derrière chaque bulle montrent ses 3
-              dernières positions.
+              traces fines derrière chaque bulle montrent leur
+              trajectoire depuis le premier millésime jusqu&apos;à
+              celui affiché.
             </p>
 
             <p className="modale-animation-source">

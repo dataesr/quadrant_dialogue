@@ -38,9 +38,10 @@ const LABEL_REF = {
 //   - dureeTransitionMs : durée des transitions CSS sur cx/cy
 //     (adaptée à la vitesse de lecture, cf. ModaleAnimation).
 //   - traceContinue : Map<id, Array<{cx, cy}>> — positions
-//     successives des bulles (max 4 = 3 segments). Dessine une
-//     polyline fine derrière chaque bulle pour montrer sa
-//     trajectoire récente.
+//     successives des bulles depuis le premier millésime jusqu'au
+//     millésime courant (trajectoire complète à la Gapminder,
+//     dérivée des données côté ModaleAnimation). Dessine une
+//     polyline fine derrière chaque bulle.
 //   - traceComparaison : null OU { from: {id→{cx,cy}}, to: {id→{cx,cy}},
 //     fading: bool } — trace one-shot du mode « Comparer avec
 //     millésime précédent », plus visible (stroke 2, opacity 0.6),
@@ -255,10 +256,11 @@ export default function QuadrantAnime({
         );
       })()}
 
-      {/* Traces résiduelles continues — fines, opacity 0.3, max 3
-          segments par bulle. Dessinées AVANT les bulles pour rester
-          en arrière-plan. Active dans les deux vues (la vue
-          Positionnement plafonne à ~80 bulles, coût négligeable). */}
+      {/* Traces résiduelles continues — fines, opacity 0.3,
+          trajectoire complète depuis ms[0] jusqu'au millésime courant.
+          Dessinées AVANT les bulles pour rester en arrière-plan.
+          Active dans les deux vues (la vue Positionnement plafonne
+          à ~80 bulles × ~6 millésimes = coût négligeable). */}
       {traceContinue && (
         <g className="quadrant-anime-traces-continues">
           {Array.from(traceContinue.entries()).map(([id, positions]) => {
