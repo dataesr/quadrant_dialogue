@@ -922,22 +922,21 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
 }
-/* SVG carré : on lui donne height: 100% (= prend toute la hauteur
-   disponible dans le container flex, le reste de la modale ayant déjà
-   pris ce qu'il fallait), width: auto laisse l'aspect ratio 1:1 du
-   viewBox calculer la largeur. max-width: 100% empêche le débordement
-   horizontal si la hauteur disponible dépasse la largeur dispo.
-   Note : on retire l'attribut width="100%" du JSX pour que ce sizing
-   CSS prenne le pas (cf. QuadrantAnime.jsx). */
+/* SVG carré : largeur 100% du container plafonnée. Sur portable
+   1366×768, on cible ~420 px de côté pour laisser place à l'en-tête,
+   aux contrôles et au pied de modale dans 92vh. height: auto laisse
+   l'aspect ratio 1:1 du viewBox calculer la hauteur — robuste sans
+   dépendre du sizing flex parent (l'approche précédente faisait
+   collapser le SVG à 0 sur certains layouts).
+   Si l'écran est plus large, le SVG reste centré dans la modale
+   (max-width 720 → quadrant pas plus de 420 px → ~660 px de hauteur
+   totale, confortable). */
 .modale-animation-quadrant .quadrant-anime-svg {
-  height: 100%;
-  width: auto;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  display: block;
 }
 .modale-animation-controls {
   display: flex;

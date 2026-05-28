@@ -8,6 +8,18 @@ import {
   COLORS_DOMAINE, COULEUR_ETAB_PAR_KEY,
 } from '../utils/colors.js';
 
+// Z-index sémantique pour la vue Établissements (cohérent avec
+// Quadrant.jsx). « autres » en fond, « selectionne » au premier plan.
+// Le SVG peint dans l'ordre du tableau → dernier élément = au-dessus.
+// On trie donc par z ASCENDANT (faibles d'abord = au fond).
+const ORDRE_RENDU_ETAB = {
+  autres:                      0,
+  meme_typologie_autre_region: 1,
+  meme_region_autre_typologie: 2,
+  meme_region_et_typologie:    3,
+  selectionne:                 4,
+};
+
 // Quadrant SVG animé pour la modale d'évolution temporelle (Phase 11
 // MVP). Différences avec Quadrant.jsx :
 //   - pas de zoom, pas d'interaction (clic, survol, tooltip)
@@ -54,15 +66,43 @@ export default function QuadrantAnime({
   // Si une bulle est absente du courant, on la rend à sa dernière
   // position connue avec opacity: 0.
   //
-  // bullesTouteSerie = Map<id, dernière bulle meta connue>. Si non
-  // fourni, on retombe sur les bulles du millésime courant
-  // uniquement (pas de fade-out gracieux dans ce cas).
+  // bullesTouteSerie = Map<id, dernière bulle meta connue>.
+  //
+  // Tri STABLE pour toute la durée de l'animation (cf. Quadrant.jsx,
+  // même principe différent par vue) :
+  //   - vue=mentions : par denom max observé sur la série, décroissant.
+  //     Les grosses bulles arrivent en tête du tableau → peintes en
+  //     fond ; les petites en queue → peintes au premier plan
+  //     (cliquables si on activait le clic, lisibles en tous cas).
+  //     On utilise le denom MAX sur la série (pas le denom courant)
+  //     pour garder un ordre stable pendant l'animation — un
+  //     re-tri par millésime ferait sauter les <circle> dans le DOM
+  //     et casserait visuellement les transitions CSS.
+  //   - vue=etablissements : z-index sémantique via ORDRE_RENDU_ETAB
+  //     (couleur_key constant entre millésimes, donc tri stable
+  //     par construction).
   const idsAffiches = useMemo(() => {
-    if (bullesTouteSerie && bullesTouteSerie.size > 0) {
-      return Array.from(bullesTouteSerie.keys());
+    if (!bullesTouteSerie || bullesTouteSerie.size === 0) {
+      return bulles.map((b) => b.id);
     }
-    return bulles.map((b) => b.id);
-  }, [bullesTouteSerie, bulles]);
+    const entries = Array.from(bullesTouteSerie.entries());
+    if (vue === 'mentions') {
+      // Pour le denom max stable, on parcourt toutes les bulles de la
+      // série (chaque bulle dans bullesTouteSerie est la DERNIÈRE
+      // vue, pas forcément la plus grosse). Pour le MVP, on fait
+      // simple : tri par dernier denom connu. À durcir si besoin.
+      return entries
+        .sort(([, a], [, b]) => (b.denom_x ?? b.denom ?? 0) - (a.denom_x ?? a.denom ?? 0))
+        .map(([id]) => id);
+    }
+    return entries
+      .sort(([, a], [, b]) => {
+        const za = ORDRE_RENDU_ETAB[a.couleur_key] ?? 0;
+        const zb = ORDRE_RENDU_ETAB[b.couleur_key] ?? 0;
+        return za - zb; // z faibles en premier = au fond
+      })
+      .map(([id]) => id);
+  }, [bullesTouteSerie, bulles, vue]);
 
   // Rayons : on calcule à partir des denoms de toute la série (sinon
   // la taille des bulles ferait du yo-yo entre millésimes). Pour
@@ -94,6 +134,7 @@ export default function QuadrantAnime({
     <svg
       className="quadrant-anime-svg"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      width="100%"
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={`Quadrant animé — millésime ${millesimeCourant}`}
