@@ -257,9 +257,8 @@ export default function QuadrantAnime({
 
       {/* Traces résiduelles continues — fines, opacity 0.3, max 3
           segments par bulle. Dessinées AVANT les bulles pour rester
-          en arrière-plan.
-          En vue=etablissements (~700 bulles), désactivées (cf.
-          ModaleAnimation passe traceContinue=null dans ce cas). */}
+          en arrière-plan. Active dans les deux vues (la vue
+          Positionnement plafonne à ~80 bulles, coût négligeable). */}
       {traceContinue && (
         <g className="quadrant-anime-traces-continues">
           {Array.from(traceContinue.entries()).map(([id, positions]) => {

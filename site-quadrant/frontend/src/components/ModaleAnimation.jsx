@@ -20,8 +20,8 @@ import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 //    FIFO : ajouter la nouvelle, retirer la plus ancienne au-delà de
 //    4 points. Reset si l'utilisateur recule manuellement le slider
 //    (sinon traces incohérentes en mode aller-retour).
-//    Désactivée en vue=etablissements (~700 polylines = bruit visuel
-//    + coût).
+//    Active dans les deux vues : la vue Positionnement plafonne à
+//    ~80 bulles par millésime, soit ~240 segments — coût négligeable.
 //
 // 2. Mode « Comparer avec millésime précédent » : flow async qui
 //    saute instantanément à M-1, attend 200 ms, lance une transition
@@ -96,8 +96,9 @@ export default function ModaleAnimation({ open, onClose }) {
   const transitionMs = dureeOverride ?? VITESSES[vitesse].transitionMs;
 
   // -------------------- Trace résiduelle (v2) --------------------
-  // Map<id, Array<{cx, cy}>>. Désactivée pour vue=etablissements.
-  const traceContinueEnabled = vue === 'mentions';
+  // Map<id, Array<{cx, cy}>>. Active dans les deux vues (la vue
+  // Positionnement plafonne à ~80 bulles, coût négligeable).
+  const traceContinueEnabled = true;
   const [traceContinue, setTraceContinue] = useState(() => new Map());
 
   // -------------------- Mode Comparer (v2) --------------------
@@ -151,13 +152,11 @@ export default function ModaleAnimation({ open, onClose }) {
           millesimePrecedentRef.current = ms[0];
           // Init trace avec les positions du PREMIER millésime —
           // évite le bug off-by-one où la position initiale n'était
-          // pas enregistrée et le 1er segment manquait. Vue
-          // Établissements : trace désactivée, on init avec Map vide.
+          // pas enregistrée et le 1er segment manquait. Trace active
+          // dans les deux vues depuis la Phase 12-13.
           const initialTrace = new Map();
-          if (vue === 'mentions') {
-            for (const b of (res.series[String(ms[0])]?.bulles || [])) {
-              initialTrace.set(b.id, [bulleCxCy(b)]);
-            }
+          for (const b of (res.series[String(ms[0])]?.bulles || [])) {
+            initialTrace.set(b.id, [bulleCxCy(b)]);
           }
           setTraceContinue(initialTrace);
           setPhaseAnim('normal');
@@ -280,59 +279,63 @@ export default function ModaleAnimation({ open, onClose }) {
   //   - saut non séquentiel (slider en arrière) : reset à la position
   //     courante.
   // Skip pendant comparer (le ref M-1 → M déclencherait un reset à tort).
+  //
+  // À la fin, le ref `millesimePrecedentRef` est mis à jour
+  // SYSTÉMATIQUEMENT, y compris quand la logique de trace est sautée
+  // (comparer en cours, traces sans effet ce render). Le setInterval
+  // de lecture auto lit ce ref pour calculer la prochaine étape — sans
+  // sync inconditionnel, après un premier tick le ref restait sur la
+  // valeur initiale et l'animation se figeait au 2ᵉ millésime
+  // (régression observée dès Phase 11b en vue Positionnement, où le
+  // trace useEffect retournait early sur `!traceContinueEnabled`).
   useEffect(() => {
-    if (!traceContinueEnabled) return;
     if (millesimeCourant == null) return;
-    if (comparerEnCours) return;
 
+    const traceLogique = traceContinueEnabled && !comparerEnCours;
     const ms = data?.millesimes_disponibles || [];
     const iCourant = ms.indexOf(millesimeCourant);
     const iPrec    = ms.indexOf(millesimePrecedentRef.current);
 
-    if (iCourant === -1) return;
+    if (traceLogique && iCourant !== -1 && iCourant !== iPrec) {
+      const enAvancee = iCourant === iPrec + 1;
+      const enLoop    = iPrec === ms.length - 1 && iCourant === 0;
 
-    // Pas de changement (init ou re-render) → skip ; la trace est
-    // initialisée par le fetch.
-    if (iCourant === iPrec) {
-      return;
+      if (enAvancee) {
+        // Append : nouvelle position à la queue, pop tête si > 4.
+        setTraceContinue((prev) => {
+          const next = new Map(prev);
+          for (const b of bullesCourantes) {
+            const { cx, cy } = bulleCxCy(b);
+            const historique = next.get(b.id)?.slice() || [];
+            historique.push({ cx, cy });
+            if (historique.length > TRACE_MAX_POSITIONS) historique.shift();
+            next.set(b.id, historique);
+          }
+          return next;
+        });
+      } else if (enLoop) {
+        // Loop : reset à la position du premier millésime (nouveau cycle)
+        setTraceContinue(() => {
+          const next = new Map();
+          for (const b of bullesCourantes) {
+            next.set(b.id, [bulleCxCy(b)]);
+          }
+          return next;
+        });
+      } else {
+        // Saut non séquentiel : reset à la position courante
+        setTraceContinue(() => {
+          const next = new Map();
+          for (const b of bullesCourantes) {
+            next.set(b.id, [bulleCxCy(b)]);
+          }
+          return next;
+        });
+      }
     }
 
-    const enAvancee = iCourant === iPrec + 1;
-    const enLoop    = iPrec === ms.length - 1 && iCourant === 0;
-
-    if (enAvancee) {
-      // Append : nouvelle position à la queue, pop tête si > 4.
-      setTraceContinue((prev) => {
-        const next = new Map(prev);
-        for (const b of bullesCourantes) {
-          const { cx, cy } = bulleCxCy(b);
-          const historique = next.get(b.id)?.slice() || [];
-          historique.push({ cx, cy });
-          if (historique.length > TRACE_MAX_POSITIONS) historique.shift();
-          next.set(b.id, historique);
-        }
-        return next;
-      });
-    } else if (enLoop) {
-      // Loop : reset à la position du premier millésime (nouveau cycle)
-      setTraceContinue(() => {
-        const next = new Map();
-        for (const b of bullesCourantes) {
-          next.set(b.id, [bulleCxCy(b)]);
-        }
-        return next;
-      });
-    } else {
-      // Saut non séquentiel : reset à la position courante
-      setTraceContinue(() => {
-        const next = new Map();
-        for (const b of bullesCourantes) {
-          next.set(b.id, [bulleCxCy(b)]);
-        }
-        return next;
-      });
-    }
-
+    // Synchronisation inconditionnelle — la lecture auto (setInterval)
+    // lit ce ref pour décider du millésime suivant.
     millesimePrecedentRef.current = millesimeCourant;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [millesimeCourant, bullesCourantes, comparerEnCours, traceContinueEnabled]);
@@ -517,7 +520,7 @@ export default function ModaleAnimation({ open, onClose }) {
                 millesimeCourant={millesimeCourant}
                 bullesTouteSerie={bullesTouteSerie}
                 dureeTransitionMs={transitionMs}
-                traceContinue={traceContinueEnabled ? traceContinue : null}
+                traceContinue={traceContinue}
                 traceComparaison={traceComparaison}
                 phaseAnim={phaseAnim}
               />
@@ -640,10 +643,9 @@ export default function ModaleAnimation({ open, onClose }) {
               ⓘ Pour l&apos;exploration historique, seules les bulles avec
               au moins {data.seuil_applique} effectifs sur les deux
               indicateurs sont affichées (les bulles fragiles présentes
-              à l&apos;écran principal sont donc masquées ici).
-              {traceContinueEnabled
-                ? ' Les traces fines derrière chaque bulle montrent ses 3 dernières positions.'
-                : " Traces résiduelles désactivées en vue Positionnement (trop de bulles pour rester lisible)."}
+              à l&apos;écran principal sont donc masquées ici). Les
+              traces fines derrière chaque bulle montrent ses 3
+              dernières positions.
             </p>
 
             <p className="modale-animation-source">
