@@ -160,6 +160,13 @@ export default function Quadrant({ forExport = false } = {}) {
   // hovered : { bulle, x, y } en coordonnées du wrapper (pixels écran
   // relatifs au .quadrant-wrapper, pas au SVG).
   const [hovered, setHovered] = useState(null);
+  // hoveredHisto : tooltip de répartition au survol d'une barre
+  // d'histogramme. Même format de coordonnées que `hovered`. State
+  // séparé : un tooltip de bulle et un tooltip d'histogramme ne peuvent
+  // pas être actifs simultanément en pratique (les barres sont dans
+  // les marges, les bulles dans le plot), mais on garde la séparation
+  // pour ne pas mélanger les sémantiques.
+  const [hoveredHisto, setHoveredHisto] = useState(null);
   const wrapperRef = useRef(null);
 
   const handleHover = useCallback((bulle, event) => {
@@ -172,6 +179,17 @@ export default function Quadrant({ forExport = false } = {}) {
     });
   }, []);
   const handleLeave = useCallback(() => setHovered(null), []);
+
+  const handleHoverHisto = useCallback((info, event) => {
+    const wrapperRect = wrapperRef.current?.getBoundingClientRect();
+    if (!wrapperRect) return;
+    setHoveredHisto({
+      info,
+      x: event.clientX - wrapperRect.left + 12,
+      y: event.clientY - wrapperRect.top  + 12,
+    });
+  }, []);
+  const handleLeaveHisto = useCallback(() => setHoveredHisto(null), []);
 
   // ---------------- Zoom ----------------
   // Callback ref : le useEffect d'attachement de d3-zoom doit pouvoir
@@ -233,6 +251,12 @@ export default function Quadrant({ forExport = false } = {}) {
   // identité, on retombe sur xScaleBase / yScaleBase (domaine 0..100).
   const xScale = transform.rescaleX(xScaleBase);
   const yScale = transform.rescaleY(yScaleBase);
+
+  // Zoom actif = transform ≠ identité. Sert à masquer les histogrammes
+  // pendant le zoom : ceux-ci sont calculés sur l'échelle 0..100 et
+  // rendus dans les marges, donc ils restent en place pendant que les
+  // bulles bougent — incohérence visuelle. Plus simple de les cacher.
+  const zoomActif = transform.k !== 1 || transform.x !== 0 || transform.y !== 0;
 
   // ---------------- Données dérivées ----------------
   // Memoize : sans ça, `bulles` change de référence à chaque render et
@@ -559,8 +583,17 @@ export default function Quadrant({ forExport = false } = {}) {
         {/* Histogrammes de distribution (toggle « Afficher les
             distributions »). Rendus hors clip-bulles, dans les marges
             haut/droit du SVG. Calculés sur la liste `bulles` déjà
-            filtrée (zone visible + seuil applicable en export). */}
-        {afficherDistributions && <Histogrammes bulles={bulles} />}
+            filtrée (zone visible + seuil applicable en export). Masqués
+            tant qu'un zoom est actif (les barres sont en coords du plot
+            non-zoomé et créeraient une incohérence avec les bulles
+            repositionnées). */}
+        {afficherDistributions && !zoomActif && (
+          <Histogrammes
+            bulles={bulles}
+            onHoverBar={handleHoverHisto}
+            onLeaveBar={handleLeaveHisto}
+          />
+        )}
       </svg>
 
       {/* Boutons de zoom en surimpression */}
@@ -579,6 +612,13 @@ export default function Quadrant({ forExport = false } = {}) {
             le tooltip informatif sans révéler l'identité. */}
       {hovered && (
         <QuadrantTooltip hovered={hovered} vue={vue} />
+      )}
+
+      {/* Tooltip de répartition au survol d'une barre d'histogramme.
+          Format : « 70 % - 80 % : 5 / 22 (23 %) ». Réutilise le même
+          conteneur visuel (.quadrant-tooltip) que le tooltip de bulle. */}
+      {hoveredHisto && (
+        <HistogrammeTooltip hovered={hoveredHisto} />
       )}
 
       {/* Message API « pas de données » (filtres valides mais résultat vide) */}
@@ -685,6 +725,24 @@ function QuadrantTooltip({ hovered, vue }) {
       )}
       <div>Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %</div>
       <div>Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %</div>
+    </div>
+  );
+}
+
+// Tooltip de répartition au survol d'une barre d'histogramme. Format
+// « 70 % - 80 % : 5 / 22 (23 %) » — tranche × compte × total × pct.
+// useAutoPlacement gère le débordement à droite/bas du wrapper.
+function HistogrammeTooltip({ hovered }) {
+  const ref = useAutoPlacement([hovered]);
+  const { borneInf, borneSup, compte, total } = hovered.info;
+  const pct = total > 0 ? Math.round((compte / total) * 100) : 0;
+  return (
+    <div
+      ref={ref}
+      className="quadrant-tooltip"
+      style={{ left: `${hovered.x}px`, top: `${hovered.y}px` }}
+    >
+      {borneInf}&nbsp;% – {borneSup}&nbsp;% : {compte}&nbsp;/ {total} ({pct}&nbsp;%)
     </div>
   );
 }
