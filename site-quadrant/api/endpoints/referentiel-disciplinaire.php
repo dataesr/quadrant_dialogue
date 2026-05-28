@@ -21,14 +21,18 @@
  * Structure de la réponse :
  *  {
  *    "domaines":    [{"code": "DEG", "libelle": "Droit, économie, gestion"}, ...],
- *    "disciplines": [{"code": "01",  "libelle": "Droit"}, ...],
- *    "secteurs":    [{"code": "Droit", "libelle": "Droit"}, ...],
+ *    "disciplines": [{"code": "01",  "libelle": "Droit", "dom_code": "DEG"}, ...],
+ *    "secteurs":    [{"code": "Droit", "libelle": "Droit",
+ *                     "discipli_code": "01", "dom_code": "DEG"}, ...],
  *    "mentions":    [{"code": "<diplom>", "libelle": "<intitulé>", "secteur": "<secteur>"}, ...]
  *  }
  *
- * Les domaines / disciplines / secteurs ont la même forme {code, libelle}.
- * Les mentions portent en plus le secteur quadrant rattaché, utile au
- * filtre mention sur la vue Établissements.
+ * Les domaines portent juste {code, libelle}. Les disciplines portent
+ * en plus `dom_code` (domaine parent) et les secteurs portent
+ * `discipli_code` + `dom_code` — utilisés côté frontend pour griser
+ * les options incompatibles dans les sélecteurs en cascade
+ * (Domaine → Discipline → Secteur). Les mentions portent le secteur
+ * quadrant rattaché, utile au filtre mention sur la vue Établissements.
  *
  * Tri alphabétique par libellé pour stabilité de l'affichage côté React.
  * Les valeurs nulles ou vides sont ignorées.
@@ -98,8 +102,8 @@ $whereClause = implode(' AND ', $conditions);
 $pdo = Database::get();
 
 $domaines    = chargerNomenclature($pdo, 'dom',      'dom_lib',      $whereClause, $params);
-$disciplines = chargerNomenclature($pdo, 'discipli', 'discipli_lib', $whereClause, $params);
-$secteurs    = chargerNomenclature($pdo, 'secteur_disciplinaire_quadrant', null, $whereClause, $params);
+$disciplines = chargerDisciplinesAvecDomaine($pdo, $whereClause, $params);
+$secteurs    = chargerSecteursAvecParents($pdo, $whereClause, $params);
 $mentions    = chargerMentions($pdo, $whereClause, $params);
 
 // =============================================================================
@@ -191,6 +195,92 @@ function chargerNomenclature(PDO $pdo, string $colonneCode, ?string $colonneLibe
  *
  * Ignore les lignes sans diplom.
  */
+/**
+ * Charge les disciplines présentes dans le périmètre AVEC leur domaine
+ * parent. Sert au filtrage en cascade côté frontend : sélectionner un
+ * domaine grise les disciplines incompatibles.
+ *
+ * Structure : [{"code": "01", "libelle": "Droit", "dom_code": "DEG"}, ...]
+ *
+ * GROUP BY discipli garantit l'unicité même si plusieurs rows portent
+ * le même (discipli, dom) — ce qui devrait être le cas standard, une
+ * discipline étant rattachée à un seul domaine. MAX(dom) absorbe une
+ * éventuelle incohérence source en choisissant arbitrairement (les
+ * doublons par discipline sont des cas de données aberrantes, on évite
+ * juste de planter dessus).
+ */
+function chargerDisciplinesAvecDomaine(PDO $pdo, string $whereClause, array $params): array
+{
+    $sql = "
+        SELECT
+            discipli              AS code,
+            MAX(discipli_lib)     AS libelle,
+            MAX(dom)              AS dom_code
+        FROM stats_quadrant
+        WHERE $whereClause
+          AND discipli IS NOT NULL AND discipli <> ''
+        GROUP BY discipli
+        ORDER BY COALESCE(NULLIF(MAX(discipli_lib), ''), discipli)
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    $resultats = [];
+    foreach ($rows as $r) {
+        $code = (string)$r['code'];
+        $lib  = $r['libelle'] !== null && $r['libelle'] !== '' ? (string)$r['libelle'] : $code;
+        $resultats[] = [
+            'code'     => $code,
+            'libelle'  => $lib,
+            'dom_code' => $r['dom_code'] !== null ? (string)$r['dom_code'] : '',
+        ];
+    }
+    return $resultats;
+}
+
+/**
+ * Charge les secteurs présents dans le périmètre AVEC leur discipline
+ * et domaine parents. Sert au filtrage en cascade côté frontend.
+ *
+ * Structure : [{"code": "Droit", "libelle": "Droit",
+ *               "discipli_code": "01", "dom_code": "DEG"}, ...]
+ *
+ * Le secteur n'a pas de colonne libellé séparée — le code EST le
+ * libellé (varchar long). On garde le pattern {code, libelle} pour
+ * que le frontend traite uniformément les trois nomenclatures.
+ */
+function chargerSecteursAvecParents(PDO $pdo, string $whereClause, array $params): array
+{
+    $sql = "
+        SELECT
+            secteur_disciplinaire_quadrant AS code,
+            MAX(discipli)                  AS discipli_code,
+            MAX(dom)                       AS dom_code
+        FROM stats_quadrant
+        WHERE $whereClause
+          AND secteur_disciplinaire_quadrant IS NOT NULL
+          AND secteur_disciplinaire_quadrant <> ''
+        GROUP BY secteur_disciplinaire_quadrant
+        ORDER BY secteur_disciplinaire_quadrant
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    $resultats = [];
+    foreach ($rows as $r) {
+        $code = (string)$r['code'];
+        $resultats[] = [
+            'code'          => $code,
+            'libelle'       => $code,
+            'discipli_code' => $r['discipli_code'] !== null ? (string)$r['discipli_code'] : '',
+            'dom_code'      => $r['dom_code']      !== null ? (string)$r['dom_code']      : '',
+        ];
+    }
+    return $resultats;
+}
+
 function chargerMentions(PDO $pdo, string $whereClause, array $params): array
 {
     $sql = "

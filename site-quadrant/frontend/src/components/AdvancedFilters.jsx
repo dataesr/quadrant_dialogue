@@ -137,6 +137,10 @@ export default function AdvancedFilters() {
             onChange={setDiscipline}
             disabled={disabled}
             loading={disciLoading}
+            /* Filtrage en cascade : si un domaine est sélectionné, on
+               grise les disciplines qui n'en font pas partie. Items du
+               référentiel portent `dom_code`. */
+            isItemDisabled={domaine ? (it) => it.dom_code !== domaine : null}
           />
           <ReferentielSelect
             id="quadrant-secteur"
@@ -147,6 +151,17 @@ export default function AdvancedFilters() {
             onChange={setSecteur}
             disabled={disabled}
             loading={disciLoading}
+            /* Cascade depuis Domaine ET Discipline. Items portent
+               `dom_code` + `discipli_code`. Un secteur est désactivé si
+               un upstream est sélectionné et que le secteur n'y
+               appartient pas. */
+            isItemDisabled={
+              (domaine || discipline)
+                ? (it) =>
+                    (domaine    && it.dom_code      !== domaine) ||
+                    (discipline && it.discipli_code !== discipline)
+                : null
+            }
           />
           {/* Le filtre Mention (vue Positionnement) a été remonté
               hors d'AdvancedFilters dans le panneau principal — il

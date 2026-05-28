@@ -342,6 +342,47 @@ export function AppProvider({ children }) {
     [referentiels.variables.data]
   );
 
+  // ---------------------------------------------------------------------------
+  // Setters disciplinaires en cascade — auto-clear downstream
+  // ---------------------------------------------------------------------------
+  // Quand l'utilisateur change un filtre amont (Domaine ou Discipline),
+  // les filtres aval (Discipline / Secteur) sont vidés s'ils ne sont
+  // plus compatibles. Cohérent avec le grisage des options
+  // incompatibles côté ReferentielSelect (`isItemDisabled`). Sans cet
+  // auto-clear, un utilisateur qui passe de Domaine=STS+Discipline=Chimie
+  // à Domaine=DEG enverrait à l'API une combinaison invalide et
+  // verrait 0 bulle sans comprendre pourquoi.
+  //
+  // Pas d'auto-set upstream : choisir un Secteur ne fixe PAS
+  // automatiquement le Domaine / Discipline parents — cela ferait
+  // apparaître des pills que l'utilisateur n'a pas explicitement
+  // ajoutées, sentiment de magie indésirable.
+  const setDomaineCascade = useCallback((newDom) => {
+    setDomaine(newDom);
+    if (!newDom) return;
+    const data = referentiels.disciplinaire?.data;
+    if (!data) return;
+    if (discipline) {
+      const item = (data.disciplines || []).find((d) => d.code === discipline);
+      if (item && item.dom_code !== newDom) setDiscipline(null);
+    }
+    if (secteur) {
+      const item = (data.secteurs || []).find((s) => s.code === secteur);
+      if (item && item.dom_code !== newDom) setSecteur(null);
+    }
+  }, [discipline, secteur, referentiels.disciplinaire?.data]);
+
+  const setDisciplineCascade = useCallback((newDis) => {
+    setDiscipline(newDis);
+    if (!newDis) return;
+    const data = referentiels.disciplinaire?.data;
+    if (!data) return;
+    if (secteur) {
+      const item = (data.secteurs || []).find((s) => s.code === secteur);
+      if (item && item.discipli_code !== newDis) setSecteur(null);
+    }
+  }, [secteur, referentiels.disciplinaire?.data]);
+
   // Remet à zéro tous les filtres avancés (laisse vue / cursus / variables /
   // millésime / établissement intacts). Utilisé par le bouton « Réinitialiser
   // les filtres » dans AdvancedFilters.
@@ -389,7 +430,13 @@ export function AppProvider({ children }) {
     setMillesime,
     setVariableX, setVariableY,
     setDateInserX, setDateInserY,
-    setDomaine, setDiscipline, setSecteur, setMention,
+    // Setters disciplinaires exposés en version cascade (auto-clear
+     // downstream). Les setters bruts (setDomaine, setDiscipline) restent
+     // utilisés en interne par resetAdvancedFilters et setCursus.
+    setDomaine: setDomaineCascade,
+    setDiscipline: setDisciplineCascade,
+    setSecteur,
+    setMention,
     setTypeMaster,
     setRepresentativite,
     setMemeTypologie,

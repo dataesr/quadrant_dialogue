@@ -1,17 +1,26 @@
 // Sélecteur générique pour les listes du référentiel disciplinaire :
-// Domaine, Discipline, Secteur, Mention. Les 4 listes restent indépendantes
-// (pas de cascade), conformément à la spec phase 3.
+// Domaine, Discipline, Secteur, Mention.
+//
+// Filtrage en cascade : un appelant peut passer `isItemDisabled` pour
+// griser les items incompatibles avec une sélection upstream. Ex.
+// quand Domaine=STS est choisi, les disciplines hors STS sont
+// passées en `disabled` dans le <option>. L'utilisateur les voit mais
+// ne peut pas les sélectionner.
 //
 // Props :
-//  - id          : id technique (pour htmlFor)
-//  - label       : libellé visible (ex : "Domaine")
-//  - defaultLabel: texte de l'option par défaut (ex : "Tous", "Toutes")
-//  - items       : tableau d'objets {code, libelle} (et éventuellement
-//                  d'autres propriétés, ignorées ici)
-//  - value       : code courant ou null
-//  - onChange    : (newCode) => void  — null si l'option par défaut sélectionnée
-//  - disabled    : booléen
-//  - loading     : true tant que la liste charge
+//  - id             : id technique (pour htmlFor)
+//  - label          : libellé visible (ex : "Domaine")
+//  - defaultLabel   : texte de l'option par défaut (ex : "Tous", "Toutes")
+//  - items          : tableau d'objets {code, libelle, ...} — les
+//                     propriétés additionnelles (dom_code, discipli_code…)
+//                     sont utilisées par `isItemDisabled` côté appelant.
+//  - value          : code courant ou null
+//  - onChange       : (newCode) => void  — null si option par défaut
+//  - disabled       : booléen — grise tout le groupe
+//  - loading        : true tant que la liste charge
+//  - isItemDisabled : (item) => boolean — optionnel, grise un item
+//                     spécifique dans la liste sans désactiver le
+//                     groupe entier.
 
 export default function ReferentielSelect({
   id,
@@ -22,6 +31,7 @@ export default function ReferentielSelect({
   onChange,
   disabled = false,
   loading = false,
+  isItemDisabled = null,
 }) {
   const list = Array.isArray(items) ? items : [];
   const groupDisabled = disabled || loading;
@@ -41,7 +51,11 @@ export default function ReferentielSelect({
       >
         <option value="">{defaultLabel}</option>
         {list.map((item) => (
-          <option key={item.code} value={item.code}>
+          <option
+            key={item.code}
+            value={item.code}
+            disabled={typeof isItemDisabled === 'function' ? isItemDisabled(item) : false}
+          >
             {item.libelle || item.code}
           </option>
         ))}
