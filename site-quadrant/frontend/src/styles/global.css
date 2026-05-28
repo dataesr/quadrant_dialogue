@@ -1436,11 +1436,6 @@ body.exporting .source-attribution {
   outline-offset: 2px;
 }
 
-.promo-data-esr-invitation {
-  font-size: 0.85rem;
-  color: #666;
-  font-style: italic;
-}
 .promo-data-esr-marque {
   font-size: 1.4rem;
   letter-spacing: -0.01em;

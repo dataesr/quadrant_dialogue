@@ -24,9 +24,8 @@ export default function PromoDataEsr() {
       target="_blank"
       rel="noopener noreferrer"
       className="promo-data-esr"
-      aria-label="Découvrez #dataESR, la plateforme de données ouverte de l’ESR — data.esr.gouv.fr, ouvre dans une nouvelle fenêtre"
+      aria-label="#dataESR, la plateforme de données ouverte de l’ESR — data.esr.gouv.fr, ouvre dans une nouvelle fenêtre"
     >
-      <span className="promo-data-esr-invitation">Découvrez</span>
       <span className="promo-data-esr-marque">
         <strong className="promo-data-esr-data">#data</strong>
         <span className="promo-data-esr-esr">ESR</span>
@@ -34,9 +33,7 @@ export default function PromoDataEsr() {
       <span className="promo-data-esr-baseline">
         La plateforme de données ouverte de l’ESR
       </span>
-      <span className="promo-data-esr-url">
-        data.esr.gouv.fr <span aria-hidden="true">↗</span>
-      </span>
+      <span className="promo-data-esr-url">data.esr.gouv.fr</span>
     </a>
   );
 }
