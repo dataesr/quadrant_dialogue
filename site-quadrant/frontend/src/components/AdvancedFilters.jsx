@@ -265,7 +265,7 @@ export default function AdvancedFilters() {
           Animation au-dessus de Méthodologie (Phase 11b). */}
       <button
         type="button"
-        className="fr-btn fr-btn--tertiary-no-outline fr-btn--sm fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
+        className="fr-btn fr-btn--sm fr-btn--secondary fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
         onClick={() => setModaleAnimOpen(true)}
         disabled={!etabContexte}
       >

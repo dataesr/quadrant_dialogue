@@ -94,7 +94,7 @@ export default function QuadrantAnime({
     <svg
       className="quadrant-anime-svg"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      width="100%"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={`Quadrant animé — millésime ${millesimeCourant}`}
     >
