@@ -979,41 +979,28 @@
   cursor: not-allowed;
 }
 
-/* Fieldset DSFR inline : layout horizontal (legend + options
-   alignées en flex), pour les sélecteurs Vitesse + Référence des
-   axes de la modale. Override le rendu vertical par défaut du DSFR
-   (qui empile chaque fr-fieldset__element). Conservation du markup
-   conforme (fr-fieldset > fr-fieldset__element > fr-radio-group)
-   pour que les puces radio DSFR s'affichent correctement. */
-.modale-animation-fieldset-inline.fr-fieldset {
+/* Composant DSFR fr-segmented dans la modale : on aligne le legend
+   à gauche du segmented (par défaut DSFR l'empile au-dessus, ce qui
+   prend trop de hauteur dans la modale). */
+.modale-animation-options .fr-segmented,
+.modale-animation-ref-axes.fr-segmented {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem 1rem;
+  gap: 0.5rem 0.75rem;
   flex-wrap: wrap;
   margin: 0;
   padding: 0;
-  border: none;
 }
-.modale-animation-fieldset-inline .fr-fieldset__legend {
+.modale-animation-options .fr-segmented__legend,
+.modale-animation-ref-axes .fr-segmented__legend {
   font-size: 0.85rem;
   font-weight: 500;
   color: #555;
   padding: 0;
-  margin: 0 0.25rem 0 0;
-}
-.modale-animation-fieldset-inline .fr-fieldset__element {
   margin: 0;
 }
-.modale-animation-fieldset-inline .fr-radio-group {
-  margin: 0;
-}
-.modale-animation-fieldset-inline .fr-radio-group .fr-label {
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.modale-animation-ref-axes.fr-fieldset {
+.modale-animation-ref-axes.fr-segmented {
   padding: 0.5rem 1.25rem;
   border-top: 1px solid #f0f0f0;
 }

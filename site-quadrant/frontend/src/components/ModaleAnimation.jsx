@@ -561,20 +561,21 @@ export default function ModaleAnimation({ open, onClose }) {
             </div>
 
             <div className="modale-animation-options">
-              {/* Sélecteur de vitesse — markup DSFR conforme :
-                  fr-fieldset + fr-fieldset__element + fr-radio-group
-                  (cf. AdvancedFilters). Sans cette structure, le CSS
-                  DSFR ne stylise pas les radios proprement. */}
+              {/* Sélecteur de vitesse — composant DSFR `fr-segmented`
+                  en taille `--sm` (boutons inline plus esthétiques que
+                  les radios verticaux pour des libellés courts comme
+                  Lente / Moyenne / Rapide). Cohérent avec
+                  AffichageSelector qui utilise déjà ce pattern. */}
               <fieldset
-                className="fr-fieldset modale-animation-fieldset-inline"
+                className="fr-segmented fr-segmented--sm"
                 disabled={comparerEnCours}
               >
-                <legend className="fr-fieldset__legend">Vitesse</legend>
-                {Object.entries(VITESSES).map(([code, conf]) => {
-                  const id = `modale-anim-vitesse-${code}`;
-                  return (
-                    <div key={code} className="fr-fieldset__element">
-                      <div className="fr-radio-group">
+                <legend className="fr-segmented__legend">Vitesse</legend>
+                <div className="fr-segmented__elements">
+                  {Object.entries(VITESSES).map(([code, conf]) => {
+                    const id = `modale-anim-vitesse-${code}`;
+                    return (
+                      <div key={code} className="fr-segmented__element">
                         <input
                           type="radio"
                           id={id}
@@ -585,9 +586,9 @@ export default function ModaleAnimation({ open, onClose }) {
                         />
                         <label className="fr-label" htmlFor={id}>{conf.libelle}</label>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </fieldset>
 
               <button
@@ -601,15 +602,17 @@ export default function ModaleAnimation({ open, onClose }) {
               </button>
             </div>
 
-            {/* Référence des axes — markup DSFR conforme, aligné sur
-                AdvancedFilters > sélecteur de référence. */}
-            <fieldset className="fr-fieldset modale-animation-fieldset-inline modale-animation-ref-axes">
-              <legend className="fr-fieldset__legend">Référence des axes</legend>
-              {modesAxes.map((m) => {
-                const id = `modale-anim-ref-${m.code}`;
-                return (
-                  <div key={m.code} className="fr-fieldset__element">
-                    <div className="fr-radio-group">
+            {/* Référence des axes — même composant `fr-segmented--sm`,
+                cohérent avec le sélecteur de vitesse au-dessus. Pour
+                les libellés longs (« Moyenne nationale »), le segment
+                wrap si besoin de largeur. */}
+            <fieldset className="fr-segmented fr-segmented--sm modale-animation-ref-axes">
+              <legend className="fr-segmented__legend">Référence des axes</legend>
+              <div className="fr-segmented__elements">
+                {modesAxes.map((m) => {
+                  const id = `modale-anim-ref-${m.code}`;
+                  return (
+                    <div key={m.code} className="fr-segmented__element">
                       <input
                         type="radio"
                         id={id}
@@ -620,9 +623,9 @@ export default function ModaleAnimation({ open, onClose }) {
                       />
                       <label className="fr-label" htmlFor={id}>{m.libelle}</label>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </fieldset>
 
             <p className="modale-animation-mention-seuil">
