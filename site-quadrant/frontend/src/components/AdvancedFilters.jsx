@@ -39,6 +39,7 @@ export default function AdvancedFilters() {
     referenceAxesPositionnement, setReferenceAxesPositionnement,
     setDomaine, setDiscipline, setSecteur,
     setRepresentativite,
+    afficherDistributions, setAfficherDistributions,
     resetAdvancedFilters,
   } = useApp();
 
@@ -165,6 +166,22 @@ export default function AdvancedFilters() {
             />
             <label className="fr-label" htmlFor="quadrant-representativite">
               Représentatif uniquement (denom ≥ 20)
+            </label>
+          </div>
+
+          {/* Affichage des histogrammes de distribution sur les bords
+              haut/droit. Hors filtre — pas pris en compte dans
+              `activeCount` (option d'affichage purement visuelle). */}
+          <div className="fr-checkbox-group">
+            <input
+              type="checkbox"
+              id="quadrant-afficher-distributions"
+              checked={afficherDistributions}
+              onChange={(e) => setAfficherDistributions(e.target.checked)}
+              disabled={disabled}
+            />
+            <label className="fr-label" htmlFor="quadrant-afficher-distributions">
+              Afficher les distributions
             </label>
           </div>
 

@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import Axes from './quadrant/Axes.jsx';
 import Bulles from './quadrant/Bulles.jsx';
+import Histogrammes from './quadrant/Histogrammes.jsx';
 import LignesReference from './quadrant/LignesReference.jsx';
 import {
   WIDTH, HEIGHT, MARGIN, PLOT_WIDTH, PLOT_HEIGHT,
@@ -107,6 +108,7 @@ export default function Quadrant({ forExport = false } = {}) {
     setAffichage,
     setDetailsCible,
     referentiels,
+    afficherDistributions,
   } = useApp();
 
   // Populations de référence à incruster dans les titres d'axes du SVG
@@ -553,6 +555,12 @@ export default function Quadrant({ forExport = false } = {}) {
             onSelect={handleSelectBulle}
           />
         </g>
+
+        {/* Histogrammes de distribution (toggle « Afficher les
+            distributions »). Rendus hors clip-bulles, dans les marges
+            haut/droit du SVG. Calculés sur la liste `bulles` déjà
+            filtrée (zone visible + seuil applicable en export). */}
+        {afficherDistributions && <Histogrammes bulles={bulles} />}
       </svg>
 
       {/* Boutons de zoom en surimpression */}

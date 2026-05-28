@@ -83,6 +83,12 @@ export function AppProvider({ children }) {
   // signatures de Bulles.jsx / rayonBulle() ; le sélecteur d'UI a
   // été retiré (phase 7 — un seul mode validé).
   const [scaleMode] = useState('sqrt');
+  // Affichage optionnel des histogrammes de distribution sur les
+  // bords haut (axe X) et droit (axe Y) du quadrant. Toggle exposé
+  // dans le panneau « Plus d'options » (cf. AdvancedFilters), désactivé
+  // par défaut. Les histogrammes comptent uniquement les bulles
+  // effectivement affichées (cohérent en export — qui filtre seuil 20).
+  const [afficherDistributions, setAfficherDistributions] = useState(false);
   // Highlight de mention par recherche (distinct du filtre `mention` qui,
   // lui, réduit la liste des bulles côté API en vue=etablissements).
   const [rechercheMention, setRechercheMention] = useState('');
@@ -364,6 +370,7 @@ export function AppProvider({ children }) {
     affichage,
     nbBullesAccessibles,
     detailsCible,
+    afficherDistributions,
     // Référentiels chargés
     referentiels,
     frontendConfig,
@@ -385,6 +392,7 @@ export function AppProvider({ children }) {
     setAffichage,
     setNbBullesAccessibles,
     setDetailsCible,
+    setAfficherDistributions,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
