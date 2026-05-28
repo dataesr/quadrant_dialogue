@@ -105,6 +105,18 @@ export default function ModaleAnimation({ open, onClose }) {
   const [comparerEnCours, setComparerEnCours]   = useState(false);
   const comparerInstanceRef = useRef(0);
 
+  // -------------------- Boucle smooth (v2 ajustement) --------------------
+  // Phase de l'animation à la transition dernier → premier millésime :
+  //   'normal'   : transitions cx/cy normales
+  //   'fade-out' : opacity → 0 sur 400 ms (transitions cx/cy actives,
+  //                mais les bulles disparaissent avant de bouger)
+  //   'snap'     : changement de millésime instantané, transitions
+  //                cx/cy DÉSACTIVÉES pour ne pas voir les bulles
+  //                « voler » du dernier point au premier
+  //   après 'snap' on revient à 'normal' → opacité revient à 1
+  //                (fade-in via la transition opacity 400 ms).
+  const [phaseAnim, setPhaseAnim] = useState('normal');
+
   // Mode de référence des axes (initialise sur celui de l'app)
   const [refMode, setRefMode] = useState(
     vue === 'mentions' ? referenceAxes : referenceAxesPositionnement
@@ -136,7 +148,18 @@ export default function ModaleAnimation({ open, onClose }) {
         if (ms.length >= 2) {
           setMillesimeCourant(ms[0]);
           millesimePrecedentRef.current = ms[0];
-          setTraceContinue(new Map());
+          // Init trace avec les positions du PREMIER millésime —
+          // évite le bug off-by-one où la position initiale n'était
+          // pas enregistrée et le 1er segment manquait. Vue
+          // Établissements : trace désactivée, on init avec Map vide.
+          const initialTrace = new Map();
+          if (vue === 'mentions') {
+            for (const b of (res.series[String(ms[0])]?.bulles || [])) {
+              initialTrace.set(b.id, [bulleCxCy(b)]);
+            }
+          }
+          setTraceContinue(initialTrace);
+          setPhaseAnim('normal');
         }
         setLoading(false);
       })
@@ -153,23 +176,50 @@ export default function ModaleAnimation({ open, onClose }) {
   ]);
 
   // -------------------- Lecture auto --------------------
+  // Au tick, si on est au dernier millésime, on déclenche le flow
+  // « smooth loop » (fade-out → snap au premier → fade-in) au lieu
+  // d'un setMillesimeCourant brutal qui ferait voler les bulles à
+  // l'envers à travers tout le quadrant.
   useEffect(() => {
     if (!enLecture || !data) return;
+    if (phaseAnim !== 'normal') return; // boucle en cours, on attend
     const ms = data.millesimes_disponibles || [];
     if (ms.length < 2) return;
 
     intervalRef.current = setInterval(() => {
-      setMillesimeCourant((courant) => {
-        const i = ms.indexOf(courant);
-        return i === -1 || i === ms.length - 1 ? ms[0] : ms[i + 1];
-      });
+      const courant = millesimePrecedentRef.current; // valeur la plus à jour
+      const i = ms.indexOf(courant);
+      if (i === ms.length - 1) {
+        // Loop smooth : fade-out, snap, fade-in
+        lancerBouclage();
+      } else {
+        setMillesimeCourant(ms[i + 1]);
+      }
     }, tickMs);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = null;
     };
-  }, [enLecture, data, tickMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enLecture, data, tickMs, phaseAnim]);
+
+  // Orchestre la transition dernier → premier millésime en fade.
+  async function lancerBouclage() {
+    const ms = data.millesimes_disponibles || [];
+    if (ms.length < 2) return;
+    setPhaseAnim('fade-out');
+    // Attendre la fin du fade-out (400 ms = même durée que la
+    // transition opacity côté SVG)
+    await new Promise((r) => setTimeout(r, 400));
+    setPhaseAnim('snap');
+    setMillesimeCourant(ms[0]);
+    // Attendre 2 frames pour laisser React commit le DOM avec
+    // transition: none AVANT de réactiver les transitions.
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    setPhaseAnim('normal'); // fade-in via opacity transition
+  }
 
   // -------------------- Échap ferme --------------------
   useEffect(() => {
@@ -220,11 +270,15 @@ export default function ModaleAnimation({ open, onClose }) {
 
   // -------------------- Mise à jour de la trace continue --------------------
   // À chaque changement de millesimeCourant :
-  //   - si avancée (idx > précédent) : append des positions courantes
-  //     (FIFO à TRACE_MAX_POSITIONS).
-  //   - si recul ou saut non séquentiel : reset (trace vide).
-  // Skip pendant le mode Comparer (le ref M-1 → M peut faire baisser
-  // le millésime temporairement et déclencherait un reset à tort).
+  //   - même millésime (init, snap loop) : skip (la trace est gérée
+  //     ailleurs — init au fetch, reset au snap).
+  //   - avancée séquentielle (idx = prev + 1) : append à la queue (FIFO
+  //     plafonné à TRACE_MAX_POSITIONS = 4 positions = 3 segments).
+  //   - loop (last → first) : reset à la nouvelle position courante
+  //     (l'animation entame un nouveau cycle).
+  //   - saut non séquentiel (slider en arrière) : reset à la position
+  //     courante.
+  // Skip pendant comparer (le ref M-1 → M déclencherait un reset à tort).
   useEffect(() => {
     if (!traceContinueEnabled) return;
     if (millesimeCourant == null) return;
@@ -236,11 +290,17 @@ export default function ModaleAnimation({ open, onClose }) {
 
     if (iCourant === -1) return;
 
-    if (iPrec === -1 || iCourant !== iPrec + 1) {
-      // Saut non séquentiel : reset
-      setTraceContinue(new Map());
-    } else {
-      // Avancée d'un cran : append
+    // Pas de changement (init ou re-render) → skip ; la trace est
+    // initialisée par le fetch.
+    if (iCourant === iPrec) {
+      return;
+    }
+
+    const enAvancee = iCourant === iPrec + 1;
+    const enLoop    = iPrec === ms.length - 1 && iCourant === 0;
+
+    if (enAvancee) {
+      // Append : nouvelle position à la queue, pop tête si > 4.
       setTraceContinue((prev) => {
         const next = new Map(prev);
         for (const b of bullesCourantes) {
@@ -249,6 +309,24 @@ export default function ModaleAnimation({ open, onClose }) {
           historique.push({ cx, cy });
           if (historique.length > TRACE_MAX_POSITIONS) historique.shift();
           next.set(b.id, historique);
+        }
+        return next;
+      });
+    } else if (enLoop) {
+      // Loop : reset à la position du premier millésime (nouveau cycle)
+      setTraceContinue(() => {
+        const next = new Map();
+        for (const b of bullesCourantes) {
+          next.set(b.id, [bulleCxCy(b)]);
+        }
+        return next;
+      });
+    } else {
+      // Saut non séquentiel : reset à la position courante
+      setTraceContinue(() => {
+        const next = new Map();
+        for (const b of bullesCourantes) {
+          next.set(b.id, [bulleCxCy(b)]);
         }
         return next;
       });
@@ -433,6 +511,7 @@ export default function ModaleAnimation({ open, onClose }) {
                 dureeTransitionMs={transitionMs}
                 traceContinue={traceContinueEnabled ? traceContinue : null}
                 traceComparaison={traceComparaison}
+                phaseAnim={phaseAnim}
               />
             </div>
 
@@ -482,22 +561,34 @@ export default function ModaleAnimation({ open, onClose }) {
             </div>
 
             <div className="modale-animation-options">
-              <div className="modale-animation-vitesse">
-                <span className="label">Vitesse :</span>
-                {Object.entries(VITESSES).map(([code, conf]) => (
-                  <label key={code} className="fr-radio-group fr-radio-group--sm">
-                    <input
-                      type="radio"
-                      name="vitesse-anim"
-                      value={code}
-                      checked={vitesse === code}
-                      onChange={() => setVitesse(code)}
-                      disabled={comparerEnCours}
-                    />
-                    <span>{conf.libelle}</span>
-                  </label>
-                ))}
-              </div>
+              {/* Sélecteur de vitesse — markup DSFR conforme :
+                  fr-fieldset + fr-fieldset__element + fr-radio-group
+                  (cf. AdvancedFilters). Sans cette structure, le CSS
+                  DSFR ne stylise pas les radios proprement. */}
+              <fieldset
+                className="fr-fieldset modale-animation-fieldset-inline"
+                disabled={comparerEnCours}
+              >
+                <legend className="fr-fieldset__legend">Vitesse</legend>
+                {Object.entries(VITESSES).map(([code, conf]) => {
+                  const id = `modale-anim-vitesse-${code}`;
+                  return (
+                    <div key={code} className="fr-fieldset__element">
+                      <div className="fr-radio-group">
+                        <input
+                          type="radio"
+                          id={id}
+                          name="modale-anim-vitesse"
+                          value={code}
+                          checked={vitesse === code}
+                          onChange={() => setVitesse(code)}
+                        />
+                        <label className="fr-label" htmlFor={id}>{conf.libelle}</label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </fieldset>
 
               <button
                 type="button"
@@ -510,21 +601,29 @@ export default function ModaleAnimation({ open, onClose }) {
               </button>
             </div>
 
-            <div className="modale-animation-ref-axes">
-              <span className="label">Référence des axes :</span>
-              {modesAxes.map((m) => (
-                <label key={m.code} className="fr-radio-group fr-radio-group--sm">
-                  <input
-                    type="radio"
-                    name="ref-axes-anim"
-                    value={m.code}
-                    checked={refMode === m.code}
-                    onChange={() => setRefMode(m.code)}
-                  />
-                  <span>{m.libelle}</span>
-                </label>
-              ))}
-            </div>
+            {/* Référence des axes — markup DSFR conforme, aligné sur
+                AdvancedFilters > sélecteur de référence. */}
+            <fieldset className="fr-fieldset modale-animation-fieldset-inline modale-animation-ref-axes">
+              <legend className="fr-fieldset__legend">Référence des axes</legend>
+              {modesAxes.map((m) => {
+                const id = `modale-anim-ref-${m.code}`;
+                return (
+                  <div key={m.code} className="fr-fieldset__element">
+                    <div className="fr-radio-group">
+                      <input
+                        type="radio"
+                        id={id}
+                        name="modale-anim-ref"
+                        value={m.code}
+                        checked={refMode === m.code}
+                        onChange={() => setRefMode(m.code)}
+                      />
+                      <label className="fr-label" htmlFor={id}>{m.libelle}</label>
+                    </div>
+                  </div>
+                );
+              })}
+            </fieldset>
 
             <p className="modale-animation-mention-seuil">
               ⓘ Pour l&apos;exploration historique, seules les bulles avec

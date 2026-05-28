@@ -975,37 +975,47 @@
   border-top: 1px solid #f0f0f0;
   flex-wrap: wrap;
 }
-.modale-animation-vitesse {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.85rem;
-}
-.modale-animation-vitesse .label {
-  color: #555;
-  font-weight: 500;
-}
-.modale-animation-vitesse .fr-radio-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin: 0;
-}
-.modale-animation-vitesse .fr-radio-group span {
-  font-size: 0.85rem;
-}
 .modale-animation-comparer:disabled {
   cursor: not-allowed;
 }
 
-.modale-animation-ref-axes {
+/* Fieldset DSFR inline : layout horizontal (legend + options
+   alignées en flex), pour les sélecteurs Vitesse + Référence des
+   axes de la modale. Override le rendu vertical par défaut du DSFR
+   (qui empile chaque fr-fieldset__element). Conservation du markup
+   conforme (fr-fieldset > fr-fieldset__element > fr-radio-group)
+   pour que les puces radio DSFR s'affichent correctement. */
+.modale-animation-fieldset-inline.fr-fieldset {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1.25rem;
-  font-size: 0.85rem;
-  border-top: 1px solid #f0f0f0;
+  gap: 0.5rem 1rem;
   flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.modale-animation-fieldset-inline .fr-fieldset__legend {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+  padding: 0;
+  margin: 0 0.25rem 0 0;
+}
+.modale-animation-fieldset-inline .fr-fieldset__element {
+  margin: 0;
+}
+.modale-animation-fieldset-inline .fr-radio-group {
+  margin: 0;
+}
+.modale-animation-fieldset-inline .fr-radio-group .fr-label {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.modale-animation-ref-axes.fr-fieldset {
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid #f0f0f0;
 }
 .modale-animation-ref-axes .label {
   color: #555;

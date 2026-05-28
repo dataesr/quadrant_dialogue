@@ -20,6 +20,16 @@ const ORDRE_RENDU_ETAB = {
   selectionne:                 4,
 };
 
+// Libellés des modes d'axes (cohérent LignesReference.jsx) — affichés
+// à côté des pointillés dans le quadrant animé.
+const LABEL_REF = {
+  mediane_etab:      'Médiane établissement',
+  moyenne_etab:      'Moyenne établissement',
+  moyenne_nationale: 'Moyenne nationale',
+  mediane: 'Médiane',
+  moyenne: 'Moyenne',
+};
+
 // Quadrant SVG animé pour la modale d'évolution temporelle (Phase 11b).
 //
 // Props :
@@ -52,6 +62,7 @@ export default function QuadrantAnime({
   dureeTransitionMs = 800,
   traceContinue,
   traceComparaison,
+  phaseAnim = 'normal',
 }) {
   // Index id → bulle courante. Permet de savoir vite si une bulle
   // est présente ce millésime et de lire ses coords.
@@ -120,12 +131,32 @@ export default function QuadrantAnime({
   // Style de transition appliqué inline (durée variable selon vitesse).
   // L'opacité a sa propre durée fixe (400 ms) pour les fade-in/out
   // qui sont visuellement OK indépendamment de la vitesse.
+  //
+  // phaseAnim (smooth loop) :
+  //   - 'normal'   : transitions cx/cy + opacité actives
+  //   - 'fade-out' : transitions actives, mais la prop opacité ci-dessous
+  //                  force 0 → fade-out animé par la transition opacity
+  //   - 'snap'     : transitions cx/cy DÉSACTIVÉES (pour ne pas voir
+  //                  les bulles voler du dernier point au premier).
+  //                  L'opacité reste à 0 jusqu'au retour à 'normal'.
+  const enSnap = phaseAnim === 'snap';
   const transitionStyleBulle = {
-    transition: `cx ${dureeTransitionMs}ms ease-in-out, cy ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`,
+    transition: enSnap
+      ? 'opacity 400ms ease-in-out' // pas de transition cx/cy pendant le snap
+      : `cx ${dureeTransitionMs}ms ease-in-out, cy ${dureeTransitionMs}ms ease-in-out, opacity 400ms ease-in-out`,
   };
   const transitionStyleLigne = {
-    transition: `x1 ${dureeTransitionMs}ms ease-in-out, x2 ${dureeTransitionMs}ms ease-in-out, y1 ${dureeTransitionMs}ms ease-in-out, y2 ${dureeTransitionMs}ms ease-in-out`,
+    transition: enSnap
+      ? 'none'
+      : `x1 ${dureeTransitionMs}ms ease-in-out, x2 ${dureeTransitionMs}ms ease-in-out, y1 ${dureeTransitionMs}ms ease-in-out, y2 ${dureeTransitionMs}ms ease-in-out`,
   };
+
+  // Opacité à appliquer aux bulles : 0 pendant fade-out et snap,
+  // sinon état présent/absent normal.
+  function opaciteBulle(present) {
+    if (phaseAnim === 'fade-out' || phaseAnim === 'snap') return 0;
+    return present ? 1 : 0;
+  }
 
   return (
     <svg
@@ -157,31 +188,67 @@ export default function QuadrantAnime({
         libelleY={libelleY}
       />
 
-      {/* Lignes de référence (transition CSS sur durée variable) */}
-      {refXY && (
-        <g>
-          <line
-            className="quadrant-anime-ref-line"
-            x1={xScaleBase(toPercent(refXY.x))}
-            x2={xScaleBase(toPercent(refXY.x))}
-            y1={MARGIN.top}
-            y2={MARGIN.top + PLOT_HEIGHT}
-            stroke="#555"
-            strokeDasharray="4 3"
-            style={transitionStyleLigne}
-          />
-          <line
-            className="quadrant-anime-ref-line"
-            x1={MARGIN.left}
-            x2={MARGIN.left + PLOT_WIDTH}
-            y1={yScaleBase(toPercent(refXY.y))}
-            y2={yScaleBase(toPercent(refXY.y))}
-            stroke="#555"
-            strokeDasharray="4 3"
-            style={transitionStyleLigne}
-          />
-        </g>
-      )}
+      {/* Lignes de référence + libellés (cohérent LignesReference.jsx).
+          Libellé verticale en bas-gauche du plot (zone peu dense),
+          libellé horizontale à gauche juste au-dessus de la ligne. */}
+      {refXY && (() => {
+        const xPx = xScaleBase(toPercent(refXY.x));
+        const yPx = yScaleBase(toPercent(refXY.y));
+        const plotTop    = MARGIN.top;
+        const plotBottom = MARGIN.top + PLOT_HEIGHT;
+        const plotLeft   = MARGIN.left;
+        const plotRight  = MARGIN.left + PLOT_WIDTH;
+        const label      = LABEL_REF[referenceAxesMode] || '';
+        // Transition CSS aussi sur la position du texte (suit la
+        // ligne qui se déplace).
+        const transitionStyleTexte = {
+          transition: `x ${dureeTransitionMs}ms ease-in-out, y ${dureeTransitionMs}ms ease-in-out`,
+        };
+        return (
+          <g>
+            <line
+              className="quadrant-anime-ref-line"
+              x1={xPx} x2={xPx}
+              y1={plotTop} y2={plotBottom}
+              stroke="#555"
+              strokeDasharray="4 3"
+              style={transitionStyleLigne}
+            />
+            <line
+              className="quadrant-anime-ref-line"
+              x1={plotLeft} x2={plotRight}
+              y1={yPx} y2={yPx}
+              stroke="#555"
+              strokeDasharray="4 3"
+              style={transitionStyleLigne}
+            />
+            {label && (
+              <>
+                <text
+                  x={xPx - 5}
+                  y={plotBottom - 8}
+                  fontSize={11}
+                  fill="#666"
+                  textAnchor="end"
+                  style={transitionStyleTexte}
+                >
+                  {label}
+                </text>
+                <text
+                  x={plotLeft + 5}
+                  y={yPx - 5}
+                  fontSize={11}
+                  fill="#666"
+                  textAnchor="start"
+                  style={transitionStyleTexte}
+                >
+                  {label}
+                </text>
+              </>
+            )}
+          </g>
+        );
+      })()}
 
       {/* Traces résiduelles continues — fines, opacity 0.3, max 3
           segments par bulle. Dessinées AVANT les bulles pour rester
@@ -270,7 +337,7 @@ export default function QuadrantAnime({
               strokeWidth={1}
               style={{
                 ...transitionStyleBulle,
-                opacity: present ? 1 : 0,
+                opacity: opaciteBulle(present),
               }}
             />
           );
