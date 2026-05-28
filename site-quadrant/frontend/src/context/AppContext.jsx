@@ -73,6 +73,12 @@ export function AppProvider({ children }) {
   const [mention,           setMention]           = useState(null);
   const [typeMaster,        setTypeMaster]        = useState(null);
   const [representativite,  setRepresentativite]  = useState(DEFAULT_REPRESENTATIVITE);
+  // Filtre « Même typologie uniquement » — vue Positionnement
+  // uniquement. Quand actif, restreint les bulles affichées aux étabs
+  // partageant la typologie de l'établissement de contexte. La
+  // typologie est lue côté backend (à partir d'etab_contexte) — pas
+  // de duplication d'info côté state.
+  const [memeTypologie, setMemeTypologie] = useState(false);
   const [referenceAxes,     setReferenceAxes]     = useState(DEFAULT_REFERENCE_AXES);
   const [referenceAxesPositionnement, setReferenceAxesPositionnement] =
     useState(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
@@ -346,6 +352,7 @@ export function AppProvider({ children }) {
     setMention(null);
     setTypeMaster(null);
     setRepresentativite(DEFAULT_REPRESENTATIVITE);
+    setMemeTypologie(false);
     setReferenceAxes(DEFAULT_REFERENCE_AXES);
     setReferenceAxesPositionnement(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
   }, []);
@@ -361,6 +368,7 @@ export function AppProvider({ children }) {
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite,
+    memeTypologie,
     referenceAxes,
     referenceAxesPositionnement,
     // Phase 4b
@@ -384,6 +392,7 @@ export function AppProvider({ children }) {
     setDomaine, setDiscipline, setSecteur, setMention,
     setTypeMaster,
     setRepresentativite,
+    setMemeTypologie,
     setReferenceAxes,
     setReferenceAxesPositionnement,
     resetAdvancedFilters,

@@ -67,7 +67,8 @@ export default function ModaleAnimation({ open, onClose }) {
     etabInfo, cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
     etabContexte, domaine, discipline, secteur, mention, typeMaster,
-    representativite, referenceAxes, referenceAxesPositionnement,
+    representativite, memeTypologie,
+    referenceAxes, referenceAxesPositionnement,
   } = useApp();
 
   const fermerRef = useRef(null);
@@ -136,6 +137,7 @@ export default function ModaleAnimation({ open, onClose }) {
       dom: domaine, discipli: discipline, secteur, mention,
       master: typeMaster,
       representativite: representativite ? 'representatif' : 'toutes',
+      ...(memeTypologie ? { meme_typologie: 1 } : {}),
     };
 
     getQuadrantSerieTemporelle(params)
@@ -161,7 +163,7 @@ export default function ModaleAnimation({ open, onClose }) {
     return () => { cancelled = true; };
   }, [
     open, cursus, vue, variableX, variableY, dateInserX, dateInserY,
-    etabContexte, domaine, discipline, secteur, mention, typeMaster, representativite,
+    etabContexte, domaine, discipline, secteur, mention, typeMaster, representativite, memeTypologie,
   ]);
 
   // -------------------- Lecture auto --------------------

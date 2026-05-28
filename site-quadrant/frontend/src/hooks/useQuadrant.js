@@ -31,6 +31,7 @@ export function useQuadrant({
   mention,
   typeMaster,
   representativite,
+  memeTypologie,
   // En vue Positionnement (= vue=etablissements côté API), 'mediane' ou
   // 'moyenne' selon le sélecteur. En vue Mentions, le paramètre est
   // ignoré : data.reference n'y est plus consulté (cf. Quadrant.jsx
@@ -83,6 +84,7 @@ export function useQuadrant({
     if (secteur)    params.secteur  = secteur;
     if (mention)    params.mention  = mention;
     if (typeMaster) params.master   = typeMaster;
+    if (memeTypologie) params.meme_typologie = 1;
     if (forExport)  params.for_export = 1;
 
     getQuadrant(params)
@@ -108,6 +110,7 @@ export function useQuadrant({
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    memeTypologie,
     agregation,
     forExport,
   ]);

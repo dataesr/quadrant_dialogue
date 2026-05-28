@@ -39,6 +39,7 @@ export default function AdvancedFilters() {
     referenceAxesPositionnement, setReferenceAxesPositionnement,
     setDomaine, setDiscipline, setSecteur,
     setRepresentativite,
+    memeTypologie, setMemeTypologie,
     afficherDistributions, setAfficherDistributions,
     resetAdvancedFilters,
   } = useApp();
@@ -70,12 +71,13 @@ export default function AdvancedFilters() {
     if (mention     !== null) n++;
     if (cursus === 'Master' && typeMaster !== null) n++;
     if (representativite !== DEFAULT_REPRESENTATIVITE) n++;
+    if (vue === 'etablissements' && memeTypologie) n++;
     if (vue === 'mentions' && referenceAxes !== DEFAULT_REFERENCE_AXES) n++;
     if (vue === 'etablissements'
         && referenceAxesPositionnement !== DEFAULT_REFERENCE_AXES_POSITIONNEMENT) n++;
     return n;
   }, [domaine, discipline, secteur, mention, cursus, typeMaster,
-      representativite, vue, referenceAxes, referenceAxesPositionnement]);
+      representativite, memeTypologie, vue, referenceAxes, referenceAxesPositionnement]);
 
   // Auto-dépli quand un filtre devient actif (au montage si l'utilisateur
   // recharge avec un état pré-positionné, ou en cours d'utilisation).
@@ -168,6 +170,28 @@ export default function AdvancedFilters() {
               Représentatif uniquement (denom ≥ 20)
             </label>
           </div>
+
+          {/* Vue Positionnement uniquement : restreint les étabs
+              affichés à ceux qui partagent la typologie de l'étab de
+              contexte. La typologie est lue côté backend à partir
+              d'etab_contexte — pas besoin de la dupliquer côté state.
+              En vue Mentions, n'apparaît pas (toutes les bulles
+              proviennent d'un seul étab, le filtre n'aurait pas de
+              sens). */}
+          {vue === 'etablissements' && (
+            <div className="fr-checkbox-group">
+              <input
+                type="checkbox"
+                id="quadrant-meme-typologie"
+                checked={memeTypologie}
+                onChange={(e) => setMemeTypologie(e.target.checked)}
+                disabled={disabled}
+              />
+              <label className="fr-label" htmlFor="quadrant-meme-typologie">
+                Établissements de même typologie uniquement
+              </label>
+            </div>
+          )}
 
           {/* Affichage des histogrammes de distribution sur les bords
               haut/droit. Hors filtre — pas pris en compte dans

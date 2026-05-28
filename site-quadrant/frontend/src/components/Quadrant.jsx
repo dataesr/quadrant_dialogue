@@ -98,6 +98,7 @@ export default function Quadrant({ forExport = false } = {}) {
     etabContexte, etabInfo,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    memeTypologie,
     referenceAxes,
     referenceAxesPositionnement,
     scaleMode,
@@ -149,6 +150,7 @@ export default function Quadrant({ forExport = false } = {}) {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    memeTypologie,
     // Vue Positionnement : le sélecteur Médiane/Moyenne pilote data.reference
     // via le paramètre `agregation` de l'API. Vue Mentions : data.axes est
     // consulté via referenceAxes côté Quadrant — on laisse 'mediane' (sans
@@ -244,6 +246,7 @@ export default function Quadrant({ forExport = false } = {}) {
     etabContexte,
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
+    memeTypologie,
     referenceAxes,
     referenceAxesPositionnement,
   ]);

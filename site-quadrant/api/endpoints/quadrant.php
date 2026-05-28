@@ -103,6 +103,7 @@ $mention          = $_GET['mention']          ?? '';
 $representativite = $_GET['representativite'] ?? 'toutes';
 $agregation       = $_GET['agregation']       ?? 'mediane';
 $forExport        = !empty($_GET['for_export']);
+$memeTypologie    = !empty($_GET['meme_typologie']);
 
 // Validations basiques
 $formationsAutorisees = [
@@ -269,6 +270,27 @@ if ($secteur !== '') {
 if ($mention !== '') {
     $conditions[] = 'm1.diplom = :mention';
     $params[':mention'] = $mention;
+}
+
+// Filtre « Même typologie uniquement » (vue=etablissements
+// uniquement, etab de contexte requis). Restreint les bulles aux
+// étabs partageant la typologie de l'étab de contexte. On lit la
+// typologie une fois en BDD plutôt que via un sous-SELECT — le
+// planner MySQL n'inline pas toujours la corrélation et ça simplifie
+// le SQL principal. Cas dégénéré (typologie de l'étab de contexte
+// vide ou inconnue) : on ne filtre pas — la checkbox est sans effet
+// plutôt que de tout vider à l'écran.
+if ($memeTypologie && $vue === 'etablissements' && $etabContexte !== '') {
+    $stmtTypo = Database::get()->prepare(
+        "SELECT typologie_d_universites_et_assimiles
+         FROM stats_quadrant WHERE id_paysage = :etab LIMIT 1"
+    );
+    $stmtTypo->execute([':etab' => $etabContexte]);
+    $typologieContexte = $stmtTypo->fetchColumn();
+    if (is_string($typologieContexte) && $typologieContexte !== '') {
+        $conditions[] = 'm1.typologie_d_universites_et_assimiles = :typologieContexte';
+        $params[':typologieContexte'] = $typologieContexte;
+    }
 }
 
 // Filtre type de Master (Masters uniquement)

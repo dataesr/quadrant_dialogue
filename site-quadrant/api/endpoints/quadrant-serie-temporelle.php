@@ -100,6 +100,7 @@ $master           = $_GET['master']           ?? '';
 $etabContexte     = $_GET['etab_contexte']    ?? '';
 $mention          = $_GET['mention']          ?? '';
 $representativite = $_GET['representativite'] ?? 'toutes';
+$memeTypologie    = !empty($_GET['meme_typologie']);
 
 // =============================================================================
 // 2. Validation (identique /quadrant minus millesime)
@@ -218,11 +219,27 @@ if (count($millesimesCommuns) < 2) {
 // Pour la moyenne nationale (vue=mentions uniquement), on tirera 2
 // requêtes supplémentaires sans filtre_perimetre LIKE — voir §7.
 
+// Filtre « Même typologie uniquement » (vue=etablissements, etab de
+// contexte requis). On pré-fetch la typologie de l'étab de contexte
+// une fois ; chaîne vide → la fonction de fetch principal ignorera la
+// contrainte. Cohérent avec /quadrant.php.
+$typologieContexte = '';
+if ($memeTypologie && $vue === 'etablissements' && $etabContexte !== '') {
+    $stmtTypo = $pdo->prepare(
+        "SELECT typologie_d_universites_et_assimiles
+         FROM stats_quadrant WHERE id_paysage = :etab LIMIT 1"
+    );
+    $stmtTypo->execute([':etab' => $etabContexte]);
+    $val = $stmtTypo->fetchColumn();
+    if (is_string($val)) $typologieContexte = $val;
+}
+
 $lignesContextuelles = fetcherLignesPourVariables(
     $pdo, $formation, $millesimesCommuns,
     $var1, $dateInserVar1, $var2, $dateInserVar2,
     $vue, $contexteId,
     $dom, $discipli, $secteur, $master, $mention,
+    $typologieContexte,
     /* national = */ false
 );
 
@@ -280,6 +297,7 @@ if ($vue === 'mentions') {
         $var1, $dateInserVar1, $var2, $dateInserVar2,
         $vue, $contexteId,
         $dom, $discipli, $secteur, $master, $mention,
+        /* typologieContexte = */ '', // moyenne nationale : pas de filtre typologie
         /* national = */ true
     );
 
@@ -370,6 +388,7 @@ function fetcherLignesPourVariables(
     string $var1, string $date1, string $var2, string $date2,
     string $vue, string $contexteId,
     string $dom, string $discipli, string $secteur, string $master, string $mention,
+    string $typologieContexte,
     bool $national
 ): array {
     $placeholders = implode(',', array_map(fn($i) => ":m$i", array_keys($millesimes)));
@@ -397,6 +416,13 @@ function fetcherLignesPourVariables(
     if ($formation === 'Master' && $master !== '') {
         $conditions[] = 'master = :master';
         $paramsCommuns[':master'] = $master;
+    }
+    // Filtre « Même typologie uniquement » (vue=etablissements,
+    // pré-fetché côté appelant). Pas de filtre national : la moyenne
+    // nationale reste un agrégat France entière.
+    if (!$national && $typologieContexte !== '') {
+        $conditions[] = 'typologie_d_universites_et_assimiles = :typologieContexte';
+        $paramsCommuns[':typologieContexte'] = $typologieContexte;
     }
     $whereCommun = implode(' AND ', $conditions);
 
