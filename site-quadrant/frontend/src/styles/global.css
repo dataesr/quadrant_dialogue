@@ -1402,3 +1402,79 @@ body.exporting .source-attribution {
     opacity: 0.5;
   }
 }
+
+/* -------------------------------------------------------------------
+   Bloc de promotion #dataESR posé sous les loaders (LoaderQuadrant +
+   LoaderBarre). Fade-in 600 ms après un délai d'1 s, soit ~1,35 s
+   après le début d'un fetch (le loader lui-même apparaît à 350 ms via
+   useDelayedLoading) — invisible sur les chargements rapides.
+   Bleu Marianne #000091 cohérent avec le reste de l'app pour
+   #data + ESR ; bleu lien #0063CB (DSFR Blue France 525) pour l'URL.
+   Animation respectée sous prefers-reduced-motion (apparition
+   instantanée, pas de translation). */
+.promo-data-esr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: inherit;
+  margin-top: 24px;
+  padding: 12px 20px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+
+  opacity: 0;
+  animation: promoFadeIn 0.6s ease-in-out forwards;
+  animation-delay: 1s;
+}
+.promo-data-esr:hover {
+  background-color: rgba(0, 0, 145, 0.04);
+}
+.promo-data-esr:focus-visible {
+  outline: 2px solid #0a76f6;
+  outline-offset: 2px;
+}
+
+.promo-data-esr-invitation {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+.promo-data-esr-marque {
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.promo-data-esr-data {
+  font-weight: 700;
+  color: #000091;
+}
+.promo-data-esr-esr {
+  font-weight: 300;
+  color: #000091;
+}
+.promo-data-esr-baseline {
+  font-size: 0.85rem;
+  color: #666;
+  text-align: center;
+}
+.promo-data-esr-url {
+  font-size: 0.85rem;
+  color: #0063CB;
+  margin-top: 4px;
+}
+
+@keyframes promoFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-data-esr {
+    animation: none;
+    animation-delay: 0s;
+    opacity: 1;
+    transform: none;
+  }
+}

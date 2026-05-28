@@ -9,6 +9,7 @@
 // explicite. Respecte prefers-reduced-motion (animation stoppée, opacité
 // fixée à 0.6 — l'utilisateur voit toujours qu'on charge).
 import { COLORS_DOMAINE } from '../utils/colors.js';
+import PromoDataEsr from './PromoDataEsr.jsx';
 
 export default function LoaderQuadrant({ message = 'Chargement des données…' }) {
   return (
@@ -20,6 +21,7 @@ export default function LoaderQuadrant({ message = 'Chargement des données…' 
         <rect className="lq-cell lq-cell-4" x="6"  y="38" width="28" height="28" rx="2" fill={COLORS_DOMAINE.SHS} />
       </svg>
       <p className="loader-quadrant-message">{message}</p>
+      <PromoDataEsr />
     </div>
   );
 }
