@@ -188,32 +188,25 @@ export default function AdvancedFilters() {
             </label>
           </div>
 
-          {/* Filtre « Même typologie uniquement » — désactivé hors vue
-              Positionnement (en vue Mentions toutes les bulles
-              proviennent d'un seul étab, le filtre n'a pas de sens),
-              mais reste visible avec mention « (non disponible) »
-              pour rester discoverable et cohérent avec TypeMasterSelect. */}
-          {(() => {
-            const memeTypoNonApplicable = vue !== 'etablissements';
-            const memeTypoDisabled      = disabled || memeTypoNonApplicable;
-            const memeTypoLabel = memeTypoNonApplicable
-              ? 'Établissements de même typologie uniquement (non disponible en vue Mentions)'
-              : 'Établissements de même typologie uniquement';
-            return (
-              <div className={'fr-checkbox-group' + (memeTypoDisabled ? ' fr-checkbox-group--disabled' : '')}>
-                <input
-                  type="checkbox"
-                  id="quadrant-meme-typologie"
-                  checked={memeTypologie && !memeTypoNonApplicable}
-                  onChange={(e) => setMemeTypologie(e.target.checked)}
-                  disabled={memeTypoDisabled}
-                />
-                <label className="fr-label" htmlFor="quadrant-meme-typologie">
-                  {memeTypoLabel}
-                </label>
-              </div>
-            );
-          })()}
+          {/* Filtre « Même typologie uniquement » — vue Positionnement
+              uniquement. Caché en vue Mentions (toutes les bulles
+              proviennent d'un seul étab, le filtre n'a pas de sens).
+              L'état interne `memeTypologie` est préservé : si l'on
+              repasse en vue Positionnement le réglage revient tel quel. */}
+          {vue === 'etablissements' && (
+            <div className="fr-checkbox-group">
+              <input
+                type="checkbox"
+                id="quadrant-meme-typologie"
+                checked={memeTypologie}
+                onChange={(e) => setMemeTypologie(e.target.checked)}
+                disabled={disabled}
+              />
+              <label className="fr-label" htmlFor="quadrant-meme-typologie">
+                Établissements de même typologie uniquement
+              </label>
+            </div>
+          )}
 
           {/* Affichage des histogrammes de distribution sur les bords
               haut/droit. Hors filtre — pas pris en compte dans
