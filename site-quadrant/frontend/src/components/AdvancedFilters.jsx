@@ -155,8 +155,10 @@ export default function AdvancedFilters() {
               (Graphique / Tableau). Cf. App.jsx +
               MentionFilterCombobox.jsx. */}
 
-          {/* Options diverses (Master only pour TypeMaster, sinon caché). */}
-          {cursus === 'Master' && <TypeMasterSelect disabled={disabled} />}
+          {/* Options diverses. TypeMasterSelect gère lui-même sa
+              désactivation hors cursus Master (libellé enrichi
+              « (non disponible) ») pour rester visible et discoverable. */}
+          <TypeMasterSelect disabled={disabled} />
 
           <div className="fr-checkbox-group">
             <input
@@ -171,27 +173,32 @@ export default function AdvancedFilters() {
             </label>
           </div>
 
-          {/* Vue Positionnement uniquement : restreint les étabs
-              affichés à ceux qui partagent la typologie de l'étab de
-              contexte. La typologie est lue côté backend à partir
-              d'etab_contexte — pas besoin de la dupliquer côté state.
-              En vue Mentions, n'apparaît pas (toutes les bulles
-              proviennent d'un seul étab, le filtre n'aurait pas de
-              sens). */}
-          {vue === 'etablissements' && (
-            <div className="fr-checkbox-group">
-              <input
-                type="checkbox"
-                id="quadrant-meme-typologie"
-                checked={memeTypologie}
-                onChange={(e) => setMemeTypologie(e.target.checked)}
-                disabled={disabled}
-              />
-              <label className="fr-label" htmlFor="quadrant-meme-typologie">
-                Établissements de même typologie uniquement
-              </label>
-            </div>
-          )}
+          {/* Filtre « Même typologie uniquement » — désactivé hors vue
+              Positionnement (en vue Mentions toutes les bulles
+              proviennent d'un seul étab, le filtre n'a pas de sens),
+              mais reste visible avec mention « (non disponible) »
+              pour rester discoverable et cohérent avec TypeMasterSelect. */}
+          {(() => {
+            const memeTypoNonApplicable = vue !== 'etablissements';
+            const memeTypoDisabled      = disabled || memeTypoNonApplicable;
+            const memeTypoLabel = memeTypoNonApplicable
+              ? 'Établissements de même typologie uniquement (non disponible en vue Mentions)'
+              : 'Établissements de même typologie uniquement';
+            return (
+              <div className={'fr-checkbox-group' + (memeTypoDisabled ? ' fr-checkbox-group--disabled' : '')}>
+                <input
+                  type="checkbox"
+                  id="quadrant-meme-typologie"
+                  checked={memeTypologie && !memeTypoNonApplicable}
+                  onChange={(e) => setMemeTypologie(e.target.checked)}
+                  disabled={memeTypoDisabled}
+                />
+                <label className="fr-label" htmlFor="quadrant-meme-typologie">
+                  {memeTypoLabel}
+                </label>
+              </div>
+            );
+          })()}
 
           {/* Affichage des histogrammes de distribution sur les bords
               haut/droit. Hors filtre — pas pris en compte dans

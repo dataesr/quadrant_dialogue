@@ -100,23 +100,30 @@ export default function FiltresActifs() {
 
   if (pills.length === 0) return null;
 
+  // Singulier / pluriel selon le nombre de filtres actifs. « Filtre
+  // actif » est plus juste à 1 que « Filtres actifs » qui sonne
+  // toujours pluriel.
+  const libelleLabel = pills.length === 1 ? 'Filtre actif' : 'Filtres actifs';
+
   return (
-    <div className="filtres-actifs" aria-label="Filtres actifs">
-      <span className="filtres-actifs-label">Filtres actifs&nbsp;:</span>
-      <ul className="fr-tags-group">
-        {pills.map((p) => (
-          <li key={p.key}>
-            <button
-              type="button"
-              className="fr-tag fr-tag--sm fr-tag--dismiss"
-              onClick={p.onRemove}
-              aria-label={`Retirer le filtre : ${p.label}`}
-            >
-              {p.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div className="filtres-actifs" aria-label={libelleLabel}>
+      <span className="filtres-actifs-label">{libelleLabel}&nbsp;:</span>
+      {/* Pas de <ul>/<li> ici — DSFR fr-tags-group ajoute des marges
+          qui désalignent les tags par rapport au label. On rend les
+          boutons directement comme flex-items du conteneur, ce qui
+          permet à `align-items: center` du parent de centrer
+          proprement les pills sur la même ligne que le label. */}
+      {pills.map((p) => (
+        <button
+          key={p.key}
+          type="button"
+          className="fr-tag fr-tag--sm fr-tag--dismiss"
+          onClick={p.onRemove}
+          aria-label={`Retirer le filtre : ${p.label}`}
+        >
+          {p.label}
+        </button>
+      ))}
     </div>
   );
 }

@@ -62,26 +62,33 @@
    au moins un filtre est actif (cf. FiltresActifs.jsx), donc pas de
    placeholder à vide. Pills DSFR (fr-tag--dismiss) — la croix de
    suppression vient nativement avec la classe utility, on garde le
-   markup minimal. */
+   markup minimal (boutons directement, pas de ul/li intermédiaire qui
+   réintroduit des marges et désaligne les pills). */
 .filtres-actifs {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
+  gap: 0.5rem 0.5rem;
   margin-bottom: 0.75rem;
+  /* En mode « avec panneau de détails », le parent `.zone-quadrant--
+     avec-details` est un CSS grid à 2 colonnes (quadrant + panneau).
+     Sans cette règle, le bandeau prend la première cellule et le
+     quadrant glisse en colonne droite, masquant le panneau. On force
+     le bandeau à occuper toute la largeur (no-op en mode block). */
+  grid-column: 1 / -1;
 }
 .filtres-actifs-label {
   font-size: 0.875rem;
   font-weight: 500;
   color: #555;
 }
-.filtres-actifs .fr-tags-group {
-  /* Reset des marges DSFR pour rester compact dans la barre. La
-     liste tags-group est sémantique (ul), mais visuellement elle
-     se fond dans le flex parent. */
+/* Reset du décalage vertical par défaut des fr-tag à l'intérieur du
+   conteneur flex (DSFR pose un vertical-align baseline qui descend
+   le tag d'1-2 px sous le baseline de la ligne). align-items du
+   parent gère le centrage, on retire les overrides DSFR au passage. */
+.filtres-actifs .fr-tag {
+  vertical-align: middle;
   margin: 0;
-  padding: 0;
-  display: contents;
 }
 
 /* Quadrant rendu hors écran en mode tableau : sert exclusivement à
