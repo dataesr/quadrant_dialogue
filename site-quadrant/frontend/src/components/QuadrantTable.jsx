@@ -5,7 +5,8 @@ import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { trackEvent } from '../utils/matomo.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
-import Skeleton from './Skeleton.jsx';
+import LoaderTableau from './LoaderTableau.jsx';
+import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 import { libelleReferenceAxes } from '../utils/libelleReferenceAxes.js';
 import { formatDelta } from '../utils/formatDelta.js';
 
@@ -165,17 +166,18 @@ export default function QuadrantTable() {
     );
   }, [data]);
 
+  // Anti-flash : même logique que Quadrant.jsx — pendant les 350
+  // premiers ms d'un fetch, on garde un cadre vide ; au-delà on
+  // bascule sur LoaderTableau. Évite le clignotement sur un
+  // changement de filtre rapide.
+  const showLoader = useDelayedLoading(loading);
   if (loading) {
-    // Skeleton léger : entête de section + quelques lignes grisées
-    // à hauteur approximative. Évite le saut de layout entre
-    // l'attente et le tableau réel.
+    if (!showLoader) {
+      return <div aria-busy="true" aria-label="Chargement du tableau" />;
+    }
     return (
       <div aria-busy="true" aria-label="Chargement du tableau">
-        <Skeleton height="1.2rem" width="50%" style={{ marginBottom: '0.5rem' }} />
-        <Skeleton height="2.4rem" width="100%" radius="2px" style={{ marginBottom: '0.5rem' }} />
-        <Skeleton height="2rem" width="100%" radius="2px" style={{ marginBottom: '0.25rem' }} />
-        <Skeleton height="2rem" width="100%" radius="2px" style={{ marginBottom: '0.25rem' }} />
-        <Skeleton height="2rem" width="100%" radius="2px" style={{ marginBottom: '0.25rem' }} />
+        <LoaderTableau />
       </div>
     );
   }

@@ -1437,6 +1437,41 @@ body.exporting .source-attribution {
   margin: 0;
 }
 
+/* LoaderTableau : 4 rangées horizontales (largeurs variables pour
+   évoquer un tableau réel) qui pulsent en séquence. Même cycle que
+   LoaderQuadrant pour la cohérence visuelle (l'utilisateur perçoit
+   que c'est la même app, juste une représentation différente). */
+.loader-tableau {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 300px;
+}
+.loader-tableau svg {
+  display: block;
+}
+.lt-row {
+  animation: lqFill 1.6s ease-in-out infinite;
+  transform-origin: left center;
+}
+.lt-row-1 { animation-delay: 0s;   }
+.lt-row-2 { animation-delay: 0.2s; }
+.lt-row-3 { animation-delay: 0.4s; }
+.lt-row-4 { animation-delay: 0.6s; }
+.loader-tableau-message {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lt-row {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 .loader-barre {
   display: flex;
   flex-direction: column;
