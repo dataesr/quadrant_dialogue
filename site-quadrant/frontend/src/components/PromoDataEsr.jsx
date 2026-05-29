@@ -31,7 +31,7 @@ export default function PromoDataEsr() {
         <span className="promo-data-esr-esr">ESR</span>
       </span>
       <span className="promo-data-esr-baseline">
-        La plateforme de données ouverte de l’ESR
+        Les données de l'enseignement supérieur, la recherche et l'innovation
       </span>
       <span className="promo-data-esr-url">data.esr.gouv.fr</span>
     </a>
