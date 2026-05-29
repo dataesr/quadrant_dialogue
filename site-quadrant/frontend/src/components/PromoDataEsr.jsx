@@ -24,7 +24,7 @@ export default function PromoDataEsr() {
       target="_blank"
       rel="noopener noreferrer"
       className="promo-data-esr"
-      aria-label="#dataESR, la plateforme de données ouverte de l’ESR — data.esr.gouv.fr, ouvre dans une nouvelle fenêtre"
+      aria-label="#dataESR, les données de l'enseignement supérieur, la recherche et l'innovation — data.esr.gouv.fr, ouvre dans une nouvelle fenêtre"
     >
       <span className="promo-data-esr-marque">
         <strong className="promo-data-esr-data">#data</strong>
