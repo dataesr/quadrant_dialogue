@@ -11,27 +11,35 @@ import {
   COULEUR_CRITERE_SOUS_POP, LIBELLE_CRITERE_SOUS_POP,
 } from '../../utils/colors.js';
 
-// Mini-quadrant animé de la modale d'analyse fine (Phase 14, Section 3).
+// Mini-quadrant animé de la modale d'analyse fine (Phase 14, étendu 14.1).
 //
-// Axes FIXES : X = Taux sortants en emploi salarié en France,
-// Y = Taux sortants en emploi stable. L'animation porte sur la durée
-// d'observation (6 → 12 → 18 → 24 → 30 mois), pas sur le millésime.
+// Axes FIXES : X = emploi salarié FR, Y = emploi stable. L'animation
+// porte sur la durée d'observation (6 → 30 mois). Reprend les patterns
+// du quadrant principal : zoom d3-zoom, tooltip .quadrant-tooltip, ordre
+// de rendu grosses bulles au fond / petites au premier plan.
 //
-// Reprend les patterns du quadrant principal (Quadrant.jsx) : zoom
-// d3-zoom (molette / drag / boutons), tooltip de survol via la classe
-// .quadrant-tooltip + useAutoPlacement, ordre de rendu grosses bulles
-// au fond / petites au premier plan (sinon une petite bulle nichée
-// derrière la grosse référence devient impossible à survoler).
-//
-// Mêmes principes d'animation que QuadrantAnime.jsx : bulles
-// translatées via la PROPRIÉTÉ CSS transform (fluide cross-navigateur),
-// traces dérivées des données (useMemo), filigrane de durée.
+// Phase 14.1 :
+//   - bouton « Zoomer sur les bulles » : cadrage auto sur la bounding
+//     box des bulles (marge 10 %, marge mini si concentrées) ;
+//   - reset du zoom au lancement de l'animation (enLecture) — sinon les
+//     bulles sortent du cadre zoomé ;
+//   - libellés courts à côté des bulles UNIQUEMENT quand le zoom est
+//     actif (placement anti-chevauchement 4 positions).
 
 const OVERFLOW = 30;
+const ZOOM_MAX = 8;
 
-// Construit la liste des points (référence + sous-populations
-// diffusables) pour une durée donnée. Coordonnées 0..1 : emploi
-// salarié FR en X, emploi stable en Y.
+// Libellés courts pour l'affichage sur les bulles (zoom actif).
+const LIBELLE_COURT = {
+  femmes: 'Femmes',
+  hommes: 'Hommes',
+  apprentis: 'Apprentis',
+  femmes_apprenties: 'Femmes app.',
+  hommes_apprentis: 'Hommes app.',
+  ensemble_diplomation: 'Dip.+non-dip.',
+  tous_nationalite: 'Fr.+étrangers',
+};
+
 function pointsPourDuree(donneesParDuree, duree) {
   const bloc = donneesParDuree?.[String(duree)];
   if (!bloc) return [];
@@ -78,27 +86,57 @@ function formaterPct(taux) {
   })} %`;
 }
 
+// Placement anti-chevauchement des libellés. `pts` : [{id, cx, cy, r, text}].
+// Essaie droite → bas → gauche → haut ; ignore la bulle si tout chevauche.
+function placerLibelles(pts) {
+  const H = 13;
+  const charW = 6.0;
+  const placed = [];
+  const bubbleRects = pts.map((p) => ({ x0: p.cx - p.r, y0: p.cy - p.r, x1: p.cx + p.r, y1: p.cy + p.r }));
+  const chevauche = (a, b) => !(a.x1 <= b.x0 || a.x0 >= b.x1 || a.y1 <= b.y0 || a.y0 >= b.y1);
+  const result = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const w = p.text.length * charW;
+    const candidats = [
+      { anchor: 'start',  x: p.cx + p.r + 5, y: p.cy, rect: { x0: p.cx + p.r + 5, y0: p.cy - H / 2, x1: p.cx + p.r + 5 + w, y1: p.cy + H / 2 } },
+      { anchor: 'middle', x: p.cx, y: p.cy + p.r + 5 + H * 0.7, rect: { x0: p.cx - w / 2, y0: p.cy + p.r + 5, x1: p.cx + w / 2, y1: p.cy + p.r + 5 + H } },
+      { anchor: 'end',    x: p.cx - p.r - 5, y: p.cy, rect: { x0: p.cx - p.r - 5 - w, y0: p.cy - H / 2, x1: p.cx - p.r - 5, y1: p.cy + H / 2 } },
+      { anchor: 'middle', x: p.cx, y: p.cy - p.r - 7, rect: { x0: p.cx - w / 2, y0: p.cy - p.r - 7 - H, x1: p.cx + w / 2, y1: p.cy - p.r - 7 } },
+    ];
+    let choisi = null;
+    for (const cand of candidats) {
+      const collPlaced = placed.some((r) => chevauche(cand.rect, r));
+      const collBulle = bubbleRects.some((r, j) => j !== i && chevauche(cand.rect, r));
+      if (!collPlaced && !collBulle) { choisi = cand; break; }
+    }
+    if (choisi) {
+      placed.push(choisi.rect);
+      result.push({ id: p.id, text: p.text, x: choisi.x, y: choisi.y, anchor: choisi.anchor });
+    }
+  }
+  return result;
+}
+
 export default function MiniQuadrantSousPop({
   donneesParDuree,
   dureesDisponibles,
   dureeCourante,
   phaseAnim = 'normal',
   dureeTransitionMs = 800,
+  enLecture = false,
 }) {
   // ---------------- Zoom (d3-zoom, cf. Quadrant.jsx) ----------------
   const [svgEl, setSvgEl] = useState(null);
   const zoomRef = useRef(null);
   const [transform, setTransform] = useState(zoomIdentity);
-  // Pendant un geste de zoom/pan on coupe les transitions CSS des
-  // bulles : sinon chaque event de drag déclencherait une transition
-  // de 800 ms → pan saccadé. L'animation de durée reste fluide hors zoom.
   const [zooming, setZooming] = useState(false);
 
   useEffect(() => {
     if (!svgEl) return;
     const svg = select(svgEl);
     const z = zoom()
-      .scaleExtent([1, 8])
+      .scaleExtent([1, ZOOM_MAX])
       .extent([[0, 0], [WIDTH, HEIGHT]])
       .translateExtent([[0, 0], [WIDTH, HEIGHT]])
       .on('start', () => setZooming(true))
@@ -112,18 +150,18 @@ export default function MiniQuadrantSousPop({
     };
   }, [svgEl]);
 
+  function zoomReset() {
+    if (!zoomRef.current || !svgEl) return;
+    select(svgEl).transition().duration(220).call(zoomRef.current.transform, zoomIdentity);
+  }
   function zoomBy(factor) {
     if (!zoomRef.current || !svgEl) return;
     select(svgEl).transition().duration(180).call(zoomRef.current.scaleBy, factor);
   }
-  function zoomReset() {
-    if (!zoomRef.current || !svgEl) return;
-    select(svgEl).transition().duration(180).call(zoomRef.current.transform, zoomIdentity);
-  }
 
-  // Échelles effectives = base × transform d3-zoom.
   const xScale = transform.rescaleX(xScaleBase);
   const yScale = transform.rescaleY(yScaleBase);
+  const estZoome = transform.k !== 1 || transform.x !== 0 || transform.y !== 0;
 
   // ---------------- Tooltip de survol ----------------
   const plotRef = useRef(null);
@@ -131,11 +169,7 @@ export default function MiniQuadrantSousPop({
   const handleHover = useCallback((point, event) => {
     const rect = plotRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setHovered({
-      point,
-      x: event.clientX - rect.left + 12,
-      y: event.clientY - rect.top + 12,
-    });
+    setHovered({ point, x: event.clientX - rect.left + 12, y: event.clientY - rect.top + 12 });
   }, []);
   const handleLeave = useCallback(() => setHovered(null), []);
 
@@ -150,11 +184,6 @@ export default function MiniQuadrantSousPop({
     return m;
   }, [pointsCourants]);
 
-  // Ensemble stable des points sur toutes les durées (pour un rendu
-  // cohérent quand un point apparaît/disparaît selon la durée). Tri par
-  // effectif DÉCROISSANT : les grosses bulles d'abord (= peintes au
-  // fond), les petites ensuite (= au premier plan, survolables). La
-  // référence, plus grosse que les sous-populations, passe donc au fond.
   const idsAffiches = useMemo(() => {
     const map = new Map();
     for (const d of (dureesDisponibles || [])) {
@@ -174,8 +203,6 @@ export default function MiniQuadrantSousPop({
 
   const refCourante = pointParId.get('reference') || null;
 
-  // Traces résiduelles en coordonnées taux (0..1) — converties en pixels
-  // au rendu via xScale/yScale pour suivre le zoom sans recalcul du memo.
   const tracesTaux = useMemo(() => {
     const result = new Map();
     const durees = dureesDisponibles || [];
@@ -190,6 +217,66 @@ export default function MiniQuadrantSousPop({
     }
     return result;
   }, [donneesParDuree, dureesDisponibles, dureeCourante]);
+
+  // ---------------- Cadrage auto sur les bulles ----------------
+  function zoomToBubbles() {
+    if (!zoomRef.current || !svgEl || pointsCourants.length === 0) return;
+    let xMin = Math.min(...pointsCourants.map((p) => p.x));
+    let xMax = Math.max(...pointsCourants.map((p) => p.x));
+    let yMin = Math.min(...pointsCourants.map((p) => p.y));
+    let yMax = Math.max(...pointsCourants.map((p) => p.y));
+    let mx = (xMax - xMin) * 0.10;
+    let my = (yMax - yMin) * 0.10;
+    // Bulles concentrées (< 5 % d'étendue) : marge mini ±2.5 % du centre.
+    if (xMax - xMin < 0.05) { const c = (xMin + xMax) / 2; xMin = c - 0.025; xMax = c + 0.025; mx = 0; }
+    if (yMax - yMin < 0.05) { const c = (yMin + yMax) / 2; yMin = c - 0.025; yMax = c + 0.025; my = 0; }
+    const vMinX = Math.max(0, xMin - mx);
+    const vMaxX = Math.min(1, xMax + mx);
+    const vMinY = Math.max(0, yMin - my);
+    const vMaxY = Math.min(1, yMax + my);
+
+    const px0 = xScaleBase(toPercent(vMinX));
+    const px1 = xScaleBase(toPercent(vMaxX));
+    const pyTop = yScaleBase(toPercent(vMaxY)); // Y inversé : taux max en haut
+    const pyBot = yScaleBase(toPercent(vMinY));
+    const bboxW = Math.abs(px1 - px0);
+    const bboxH = Math.abs(pyBot - pyTop);
+    if (bboxW < 1 || bboxH < 1) return;
+
+    let k = Math.min(PLOT_WIDTH / bboxW, PLOT_HEIGHT / bboxH);
+    k = Math.max(1, Math.min(k, ZOOM_MAX));
+    const cx = (px0 + px1) / 2;
+    const cy = (pyTop + pyBot) / 2;
+    const pcx = MARGIN.left + PLOT_WIDTH / 2;
+    const pcy = MARGIN.top + PLOT_HEIGHT / 2;
+    const tx = pcx - k * cx;
+    const ty = pcy - k * cy;
+    const target = zoomIdentity.translate(tx, ty).scale(k);
+    select(svgEl).transition().duration(300).call(zoomRef.current.transform, target);
+  }
+
+  // Reset du zoom au lancement de l'animation (les bulles bougeraient
+  // hors cadre). Ne se redéclenche qu'au passage en lecture.
+  useEffect(() => {
+    if (enLecture) zoomReset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enLecture]);
+
+  // ---------------- Libellés conditionnels (zoom actif) ----------------
+  const labels = useMemo(() => {
+    if (!estZoome) return [];
+    const pts = pointsCourants
+      .filter((p) => !p.estReference)
+      .map((p) => ({
+        id: p.id,
+        cx: xScale(toPercent(p.x)),
+        cy: yScale(toPercent(p.y)),
+        r: rayonBulle(p.nb_etudiants, 'sqrt', allNb),
+        text: LIBELLE_COURT[p.id] || p.libelle,
+      }));
+    return placerLibelles(pts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estZoome, pointsCourants, transform, allNb]);
 
   // ---------------- Transitions ----------------
   const enSnap = phaseAnim === 'snap';
@@ -238,7 +325,6 @@ export default function MiniQuadrantSousPop({
             </clipPath>
           </defs>
 
-          {/* Durée courante en filigrane (fixe, hors zoom) */}
           <text
             className="mini-quadrant-sp-duree"
             x={MARGIN.left + PLOT_WIDTH - 16}
@@ -252,7 +338,6 @@ export default function MiniQuadrantSousPop({
             {dureeCourante} mois
           </text>
 
-          {/* Surface de capture pour le drag d3-zoom */}
           <rect
             x={MARGIN.left}
             y={MARGIN.top}
@@ -270,7 +355,6 @@ export default function MiniQuadrantSousPop({
           />
 
           <g clipPath="url(#msp-clip-bulles)">
-            {/* Lignes de référence sur la référence courante */}
             {refCourante && (() => {
               const xPx = xScale(toPercent(refCourante.x));
               const yPx = yScale(toPercent(refCourante.y));
@@ -294,7 +378,6 @@ export default function MiniQuadrantSousPop({
               );
             })()}
 
-            {/* Traces résiduelles (trajectoire 6 → durée courante) */}
             <g className="mini-quadrant-sp-traces">
               {Array.from(tracesTaux.entries()).map(([id, positions]) => {
                 if (!positions || positions.length < 2) return null;
@@ -317,7 +400,6 @@ export default function MiniQuadrantSousPop({
               })}
             </g>
 
-            {/* Bulles (grosses au fond, petites au premier plan) */}
             <g className="mini-quadrant-sp-bulles">
               {idsAffiches.map((meta) => {
                 const courant = pointParId.get(meta.id);
@@ -369,10 +451,24 @@ export default function MiniQuadrantSousPop({
                 );
               })}
             </g>
+
+            {/* Libellés courts à côté des bulles (zoom actif uniquement) */}
+            {estZoome && labels.map((l) => (
+              <text
+                key={`lbl-${l.id}`}
+                className="mini-quadrant-sp-label"
+                x={l.x}
+                y={l.y}
+                textAnchor={l.anchor}
+                dominantBaseline="middle"
+                fontSize={11}
+              >
+                {l.text}
+              </text>
+            ))}
           </g>
         </svg>
 
-        {/* Boutons de zoom (mêmes classes que le quadrant principal) */}
         <div className="quadrant-zoom-controls">
           <button type="button" onClick={() => zoomBy(1.5)}    aria-label="Zoom avant">+</button>
           <button type="button" onClick={() => zoomBy(1 / 1.5)} aria-label="Zoom arrière">−</button>
@@ -380,6 +476,16 @@ export default function MiniQuadrantSousPop({
         </div>
 
         {hovered && <TooltipSousPop hovered={hovered} />}
+      </div>
+
+      <div className="mini-quadrant-sp-barre-actions">
+        <button
+          type="button"
+          className="fr-btn fr-btn--sm fr-btn--tertiary fr-icon-zoom-in-line fr-btn--icon-left"
+          onClick={() => (estZoome ? zoomReset() : zoomToBubbles())}
+        >
+          {estZoome ? 'Réinitialiser le zoom' : 'Zoomer sur les bulles'}
+        </button>
       </div>
 
       <div className="mini-quadrant-sp-legende">
@@ -401,8 +507,6 @@ export default function MiniQuadrantSousPop({
   );
 }
 
-// Tooltip de survol — même conteneur visuel (.quadrant-tooltip) et même
-// auto-placement que le quadrant principal.
 function TooltipSousPop({ hovered }) {
   const ref = useAutoPlacement([hovered]);
   const p = hovered.point;

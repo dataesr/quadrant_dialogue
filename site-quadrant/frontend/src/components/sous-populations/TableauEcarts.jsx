@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 
-// Section 2 de la modale d'analyse fine (Phase 14) : tableau de
-// comparaison des sous-populations à la référence (diplômés français).
+// Section 2 (Phase 14.1) : tableau de comparaison des sous-populations à
+// la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
+// d'impact ouvre sur une ligne de titre puis une barre de répartition
+// (composition de la promo sur ce critère), suivie des sous-populations.
 //
-// Colonnes structurelles fixes (Sous-population, Effectif, Taux de
-// poursuivants — indépendant de la durée). Colonnes d'insertion (emploi
-// salarié FR / non salarié / stable) animées : elles se mettent à jour
-// à chaque tick de durée via la prop `bloc` (donnees_par_duree[durée]).
+// Les barres de répartition (ex-Section 1) sont dérivées des effectifs
+// présents dans `bloc` (nb_etudiants exposés même sous le seuil) — pas
+// besoin de l'objet `repartitions` de l'API. Les segments sous le seuil
+// sont hachurés ; leur tooltip n'expose pas l'effectif.
 
 const COLONNES_EMPLOI = [
   { cle: 'taux_emploi_sal_fr',  ecart: 'ecart_taux_emploi_sal_fr',  libelle: 'Taux emploi sal. FR' },
@@ -14,9 +17,31 @@ const COLONNES_EMPLOI = [
   { cle: 'taux_emploi_stable',  ecart: 'ecart_taux_emploi_stable',  libelle: 'Taux emploi stable' },
 ];
 
+// Nombre de colonnes du tableau (pour les <td colspan>).
+const NB_COLONNES = 2 /* sous-pop + effectif */ + COLONNES_EMPLOI.length + 1 /* poursuivants */;
+
+// Regroupement par impact : titre, sous-populations (ids), et clé de
+// barre de répartition. L'ordre des sous-pops est l'ordre d'affichage.
+const GROUPES = [
+  { key: 'genre',       titre: 'Impact du genre',           sousPops: ['femmes', 'hommes'] },
+  { key: 'regime',      titre: "Impact de l'apprentissage", sousPops: ['apprentis', 'femmes_apprenties', 'hommes_apprentis'] },
+  { key: 'diplomation', titre: 'Impact de la diplomation',  sousPops: ['ensemble_diplomation'] },
+  { key: 'nationalite', titre: 'Impact de la nationalité',  sousPops: ['tous_nationalite'] },
+];
+
+const COULEUR_SEG_PRIMAIRE   = '#6A6AF4';
+const COULEUR_SEG_SECONDAIRE = '#c2c2f0';
+
 function formatPct(taux) {
   if (taux == null) return 'n.s.';
   return `${(taux * 100).toLocaleString('fr-FR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} %`;
+}
+
+function formatPctSimple(part) {
+  return `${(part * 100).toLocaleString('fr-FR', {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })} %`;
@@ -32,7 +57,6 @@ function formatEcart(ecart) {
   return `${signe}${abs} pts`;
 }
 
-// Classe de couleur de l'écart selon les seuils du cadrage.
 function bucketEcart(ecart) {
   const pts = ecart * 100;
   if (pts >= 5)  return 'vert-fonce';
@@ -40,6 +64,54 @@ function bucketEcart(ecart) {
   if (pts > -2)  return 'neutre';
   if (pts > -5)  return 'rouge-clair';
   return 'rouge-fonce';
+}
+
+// Construit les 2 segments d'une barre de répartition pour un groupe.
+// Chaque segment : { cle, libelle, n, part, diffusable, couleur }.
+function construireBarre(groupeKey, bloc, seuil) {
+  const ref = bloc.reference;
+  const get = (id) => (bloc.sous_populations || []).find((s) => s.id === id);
+  const nb = (sp) => (sp && sp.nb_etudiants != null ? sp.nb_etudiants : 0);
+
+  let base = 0;
+  let segs = [];
+  if (groupeKey === 'genre') {
+    const nf = nb(get('femmes'));
+    const nh = nb(get('hommes'));
+    base = nf + nh;
+    segs = [
+      { cle: 'femmes', libelle: 'Femmes', n: nf },
+      { cle: 'hommes', libelle: 'Hommes', n: nh },
+    ];
+  } else if (groupeKey === 'regime') {
+    const na = nb(get('apprentis'));
+    base = nb(ref);
+    segs = [
+      { cle: 'apprentis',     libelle: 'Apprentis',     n: na },
+      { cle: 'non_apprentis', libelle: 'Non-apprentis', n: Math.max(0, base - na) },
+    ];
+  } else if (groupeKey === 'diplomation') {
+    const nDip = nb(ref);
+    base = nb(get('ensemble_diplomation'));
+    segs = [
+      { cle: 'diplomes',     libelle: 'Diplômés',     n: nDip },
+      { cle: 'non_diplomes', libelle: 'Non-diplômés', n: Math.max(0, base - nDip) },
+    ];
+  } else if (groupeKey === 'nationalite') {
+    const nFr = nb(ref);
+    base = nb(get('tous_nationalite'));
+    segs = [
+      { cle: 'francais',  libelle: 'Français',  n: nFr },
+      { cle: 'etrangers', libelle: 'Étrangers', n: Math.max(0, base - nFr) },
+    ];
+  }
+
+  return segs.map((s, i) => ({
+    ...s,
+    part: base > 0 ? s.n / base : 0,
+    diffusable: s.n >= seuil,
+    couleur: i === 0 ? COULEUR_SEG_PRIMAIRE : COULEUR_SEG_SECONDAIRE,
+  }));
 }
 
 // Cellule de taux : valeur + écart coloré (sauf référence). « n.s. » si
@@ -53,19 +125,14 @@ function CelluleTaux({ taux, ecart, estReference }) {
   }
   const bucket = ecart != null ? bucketEcart(ecart) : 'neutre';
   const afficheBarre = ecart != null && Math.abs(ecart * 100) >= 2;
-  const largeur = ecart != null
-    ? Math.min(Math.abs(ecart * 100), 20) / 20 * 100
-    : 0;
+  const largeur = ecart != null ? Math.min(Math.abs(ecart * 100), 20) / 20 * 100 : 0;
   return (
     <td className="cellule-taux">
       <span className="cellule-taux-valeur">{formatPct(taux)}</span>
       {ecart != null && (
         <span className={`cellule-ecart cellule-ecart--${bucket}`}>
           {afficheBarre && (
-            <span
-              className="cellule-ecart-barre"
-              style={{ width: `${largeur}%` }}
-            />
+            <span className="cellule-ecart-barre" style={{ width: `${largeur}%` }} />
           )}
           <span className="cellule-ecart-texte">{formatEcart(ecart)}</span>
         </span>
@@ -79,18 +146,42 @@ function CelluleEffectif({ nb, present }) {
   return <td className="cellule-effectif">{nb.toLocaleString('fr-FR')}</td>;
 }
 
-export default function TableauEcarts({ bloc, dureeCourante }) {
+// Ligne d'une sous-population (taux + écarts ; poursuivants en dernier).
+function LigneSousPop({ sp }) {
+  return (
+    <tr className={sp.croisement ? 'ligne-croisement' : undefined}>
+      <th scope="row">{sp.libelle}</th>
+      <CelluleEffectif nb={sp.nb_etudiants} present={sp.present} />
+      {COLONNES_EMPLOI.map((c) => (
+        <CelluleTaux key={c.cle} taux={sp[c.cle]} ecart={sp[c.ecart]} />
+      ))}
+      <CelluleTaux taux={sp.taux_poursuivants} ecart={sp.ecart_taux_poursuivants} />
+    </tr>
+  );
+}
+
+export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
   const [croisementsSimples, setCroisementsSimples] = useState(false);
+  const wrapperRef = useRef(null);
+  const [hoveredSeg, setHoveredSeg] = useState(null);
+
+  const handleHoverSeg = useCallback((seg, event) => {
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setHoveredSeg({
+      seg,
+      x: event.clientX - rect.left + 12,
+      y: event.clientY - rect.top + 12,
+    });
+  }, []);
+  const handleLeaveSeg = useCallback(() => setHoveredSeg(null), []);
 
   if (!bloc) return null;
   const reference = bloc.reference;
-  let sousPops = bloc.sous_populations || [];
-  if (croisementsSimples) {
-    sousPops = sousPops.filter((sp) => !sp.croisement);
-  }
+  const parId = (id) => (bloc.sous_populations || []).find((s) => s.id === id);
 
   return (
-    <section className="tableau-ecarts">
+    <section className="tableau-ecarts" ref={wrapperRef}>
       <div className="tableau-ecarts-entete">
         <h3>Comparaison à la référence (diplômés français)</h3>
         <span className="tableau-ecarts-duree">
@@ -135,26 +226,89 @@ export default function TableauEcarts({ bloc, dureeCourante }) {
               </tr>
             )}
 
-            {sousPops.map((sp) => (
-              <tr key={sp.id} className={sp.croisement ? 'ligne-croisement' : undefined}>
-                <th scope="row">{sp.libelle}</th>
-                <CelluleEffectif nb={sp.nb_etudiants} present={sp.present} />
-                {COLONNES_EMPLOI.map((c) => (
-                  <CelluleTaux
-                    key={c.cle}
-                    taux={sp[c.cle]}
-                    ecart={sp[c.ecart]}
-                  />
-                ))}
-                <CelluleTaux
-                  taux={sp.taux_poursuivants}
-                  ecart={sp.ecart_taux_poursuivants}
+            {/* Groupes par impact : titre + barre de répartition + sous-pops */}
+            {GROUPES.map((groupe) => {
+              const segments = construireBarre(groupe.key, bloc, seuil);
+              let sousPops = groupe.sousPops
+                .map(parId)
+                .filter(Boolean);
+              if (croisementsSimples) {
+                sousPops = sousPops.filter((sp) => !sp.croisement);
+              }
+              return (
+                <ImpactGroupe
+                  key={groupe.key}
+                  titre={groupe.titre}
+                  segments={segments}
+                  sousPops={sousPops}
+                  onHoverSeg={handleHoverSeg}
+                  onLeaveSeg={handleLeaveSeg}
                 />
-              </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {hoveredSeg && <TooltipSegment hovered={hoveredSeg} />}
     </section>
+  );
+}
+
+// Un groupe d'impact : ligne titre (colspan), ligne barre (colspan),
+// puis les lignes de sous-populations.
+function ImpactGroupe({ titre, segments, sousPops, onHoverSeg, onLeaveSeg }) {
+  return (
+    <>
+      <tr className="ligne-impact">
+        <th scope="colgroup" colSpan={NB_COLONNES}>{titre}</th>
+      </tr>
+      <tr className="ligne-barre-repartition">
+        <td colSpan={NB_COLONNES}>
+          <div className="repartition-barre repartition-barre--table">
+            {segments.map((seg) => {
+              if (seg.part <= 0 && seg.n <= 0) return null;
+              const masque = !seg.diffusable;
+              const pct = Math.round(seg.part * 100);
+              return (
+                <span
+                  key={seg.cle}
+                  className={'repartition-segment' + (masque ? ' repartition-segment--masque' : '')}
+                  style={{ width: `${seg.part * 100}%`, background: masque ? undefined : seg.couleur }}
+                  onMouseMove={(e) => onHoverSeg(seg, e)}
+                  onMouseEnter={(e) => onHoverSeg(seg, e)}
+                  onMouseLeave={onLeaveSeg}
+                >
+                  {seg.part > 0.15 && (
+                    <span className="repartition-segment-texte">{seg.libelle} {pct} %</span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        </td>
+      </tr>
+      {sousPops.map((sp) => (
+        <LigneSousPop key={sp.id} sp={sp} />
+      ))}
+    </>
+  );
+}
+
+// Tooltip de survol d'un segment de barre — même conteneur que les
+// autres tooltips de l'app (.quadrant-tooltip + useAutoPlacement).
+function TooltipSegment({ hovered }) {
+  const ref = useAutoPlacement([hovered]);
+  const { seg } = hovered;
+  return (
+    <div
+      ref={ref}
+      className="quadrant-tooltip"
+      style={{ left: `${hovered.x}px`, top: `${hovered.y}px` }}
+    >
+      {seg.diffusable
+        ? `${seg.libelle} : ${formatPctSimple(seg.part)} (N = ${seg.n.toLocaleString('fr-FR')})`
+        : `${seg.libelle} : effectif insuffisant pour diffusion`}
+    </div>
   );
 }

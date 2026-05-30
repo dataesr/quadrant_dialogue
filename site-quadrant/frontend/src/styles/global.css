@@ -1692,30 +1692,20 @@ body.exporting .source-attribution {
   margin: 0 0 0.75rem;
 }
 
-/* ---- Section 1 : répartitions (barres empilées 100 %) ---- */
-.repartitions-promo-barres {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-.repartition-ligne {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.repartition-label {
-  width: 180px;
-  flex: 0 0 180px;
-  font-size: 0.82rem;
-  color: #444;
-}
+/* ---- Barres de répartition (intégrées au tableau, Phase 14.1) ---- */
 .repartition-barre {
   flex: 1;
   display: flex;
-  height: 26px;
+  height: 24px;
   border-radius: 3px;
   overflow: hidden;
   background: #f0f0f0;
+}
+/* Variante dans une cellule de tableau : prend toute la largeur, avec
+   une légère marge intérieure pour ne pas coller aux bords des colonnes. */
+.repartition-barre--table {
+  width: 100%;
+  margin: 2px 0;
 }
 .repartition-segment {
   display: flex;
@@ -1786,6 +1776,21 @@ body.exporting .source-attribution {
   padding-left: 1.25rem;
   font-weight: 400;
   color: #555;
+}
+/* Ligne titre d'un groupe d'impact (Phase 14.1) */
+.tableau-ecarts-table tr.ligne-impact th {
+  background: #f5f5f5;
+  font-style: italic;
+  font-weight: 700;
+  color: #555;
+  text-align: left;
+  padding: 0.55rem 0.5rem 0.35rem;
+  border-bottom: 1px solid #e5e5e5;
+}
+/* Ligne barre de répartition d'un groupe d'impact */
+.tableau-ecarts-table tr.ligne-barre-repartition td {
+  padding: 0.15rem 0.5rem 0.45rem;
+  border-bottom: 1px solid #eee;
 }
 .cellule-effectif { text-align: right; font-variant-numeric: tabular-nums; }
 .cellule-taux { white-space: nowrap; }
@@ -1858,6 +1863,25 @@ body.exporting .source-attribution {
   display: inline-block;
 }
 .mini-quadrant-sp-legende-taille { color: #888; font-style: italic; }
+
+/* Libellés courts sur les bulles (zoom actif) : halo blanc pour rester
+   lisibles par-dessus les bulles et la grille. */
+.mini-quadrant-sp-label {
+  fill: #161616;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Bouton « Zoomer sur les bulles » sous le mini-quadrant */
+.mini-quadrant-sp-barre-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
 
 /* Contrôles d'animation (mêmes patterns que la modale temporelle) */
 .modale-asp-controls {

@@ -4,7 +4,6 @@ import { messageErreur } from '../../utils/errors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../../utils/constants.js';
 import { useDelayedLoading } from '../../hooks/useDelayedLoading.js';
 import LoaderBarre from '../LoaderBarre.jsx';
-import RepartitionsPromo from './RepartitionsPromo.jsx';
 import TableauEcarts from './TableauEcarts.jsx';
 import MiniQuadrantSousPop from './MiniQuadrantSousPop.jsx';
 
@@ -211,7 +210,7 @@ export default function ModaleAnalyseSousPopulations({
             </p>
             {donneesUtilisables && (
               <p className="modale-asp-reference">
-                Millésime {millesime} — Référence : diplômés français
+                Étudiants inscrits en année terminale en {millesime} — Référence : diplômés français
                 {refN != null ? ` (N = ${refN.toLocaleString('fr-FR')})` : ''}
               </p>
             )}
@@ -249,9 +248,11 @@ export default function ModaleAnalyseSousPopulations({
 
         {!loading && !error && donneesUtilisables && (
           <div className="modale-asp-corps">
-            <RepartitionsPromo repartitions={data.repartitions} />
-
-            <TableauEcarts bloc={blocCourant} dureeCourante={dureeCourante} />
+            <TableauEcarts
+              bloc={blocCourant}
+              dureeCourante={dureeCourante}
+              seuil={data.contexte?.seuil_applique}
+            />
 
             <section className="modale-asp-trajectoires">
               <h3>Trajectoires d&apos;insertion</h3>
@@ -261,6 +262,7 @@ export default function ModaleAnalyseSousPopulations({
                 dureeCourante={dureeCourante}
                 phaseAnim={phaseAnim}
                 dureeTransitionMs={transitionMs}
+                enLecture={enLecture}
               />
 
               {animationDispo && (
