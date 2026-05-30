@@ -1825,11 +1825,16 @@ body.exporting .source-attribution {
   flex-direction: column;
   align-items: center;
 }
+.mini-quadrant-sp-plot {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+}
 .mini-quadrant-sp-svg {
   width: 100%;
-  max-width: 500px;
   height: auto;
   display: block;
+  touch-action: none; /* le drag d3-zoom gère le geste, pas le scroll */
 }
 .mini-quadrant-sp-svg .mini-quadrant-sp-duree,
 .mini-quadrant-sp-svg .mini-quadrant-sp-traces {
