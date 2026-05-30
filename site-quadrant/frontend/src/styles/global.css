@@ -1647,17 +1647,24 @@ body.exporting .source-attribution {
 }
 .modale-asp header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1.25rem;
   border-bottom: 1px solid #e5e5e5;
   background: #f6f6f6;
 }
-.modale-asp-titre-zone { flex: 1; }
 .modale-asp header h2 {
-  margin: 0 0 0.25rem;
+  flex: 1;
+  margin: 0;
   font-size: 1.15rem;
   color: #161616;
+}
+/* Cartouche : bande dédiée sous le titre, commune à tous les onglets
+   (Phase 14.3). */
+.modale-asp-cartouche {
+  padding: 0.6rem 1.25rem;
+  background: #f6f6f6;
+  border-bottom: 1px solid #e5e5e5;
 }
 .modale-asp-contexte {
   margin: 0;
@@ -1801,10 +1808,30 @@ body.exporting .source-attribution {
   color: #000091;
   font-weight: 500;
 }
-.tableau-ecarts-toggle { margin: 0.25rem 0 0.5rem; }
-/* overflow visible : la table reste dans le contexte de scroll du
-   panneau d'onglet, condition pour que le thead sticky se cale sur le
-   haut du panneau (Phase 14.2). */
+/* Ligne de contrôles : toggle « croisements simples » + slider de durée
+   (Phase 14.3). */
+.tableau-ecarts-barre-controles {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 0.6rem;
+}
+.tableau-ecarts-toggle { margin: 0; }
+.tableau-ecarts-duree-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+.tableau-ecarts-duree-label {
+  font-size: 0.82rem;
+  color: #000091;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tableau-ecarts-duree-range { width: 160px; min-width: 120px; }
 .tableau-ecarts-scroll { overflow: visible; }
 .tableau-ecarts-table {
   width: 100%;
@@ -1818,12 +1845,18 @@ body.exporting .source-attribution {
   border-bottom: 2px solid #ddd;
   padding: 0.4rem 0.5rem;
   vertical-align: bottom;
-  /* En-tête persistant au scroll du panneau */
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 2;
-  box-shadow: 0 1px 0 #ddd;
+}
+/* Rappel d'en-tête au début de chaque rubrique d'impact (Phase 14.3 :
+   remplace le thead sticky, peu robuste en iframe). Même look que le
+   thead — gras, fond clair. */
+.tableau-ecarts-table tr.ligne-rappel-entete td {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
+  border-bottom: 1px solid #ddd;
+  padding: 0.3rem 0.5rem;
+  vertical-align: bottom;
 }
 .tableau-ecarts-table th[scope="row"] {
   text-align: left;
@@ -1969,6 +2002,19 @@ body.exporting .source-attribution {
   padding: 0 0.5rem;
 }
 .modale-asp-ticks .tick.actif { color: #000091; font-weight: 600; }
+/* Ticks cliquables (slider de durée onglet Comparaison) : reset du
+   style bouton natif pour rester cohérent avec les ticks du quadrant. */
+.modale-asp-ticks button.tick {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: #666;
+  cursor: pointer;
+}
+.modale-asp-ticks button.tick.actif { color: #000091; font-weight: 600; }
+.modale-asp-ticks button.tick:hover { color: #000091; }
 .modale-asp-vitesse.fr-segmented {
   display: flex;
   flex-direction: row;

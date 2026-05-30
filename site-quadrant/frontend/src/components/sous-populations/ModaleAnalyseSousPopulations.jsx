@@ -222,28 +222,7 @@ export default function ModaleAnalyseSousPopulations({
         aria-labelledby="modale-asp-titre"
       >
         <header>
-          <div className="modale-asp-titre-zone">
-            <h2 id="modale-asp-titre">Analyse de l&apos;insertion par sous-population</h2>
-            <p className="modale-asp-contexte">
-              <strong>{etabLabel}</strong>
-              {' · '}{formation}
-              {mentionLabel ? <>{' · '}{mentionLabel}</> : null}
-            </p>
-            {donneesUtilisables && (
-              <>
-                <p className="modale-asp-reference">
-                  Étudiants inscrits en année terminale en {millesime}
-                  {nTotal != null ? ` (N = ${nTotal.toLocaleString('fr-FR')})` : ''}
-                </p>
-                <p className="modale-asp-reference">
-                  Référence : diplômés français
-                  {refN != null
-                    ? ` (N = ${refN.toLocaleString('fr-FR')}${pctRef != null ? `, soit ${pctRef} %` : ''})`
-                    : ''}
-                </p>
-              </>
-            )}
-          </div>
+          <h2 id="modale-asp-titre">Analyse de l&apos;insertion par sous-population</h2>
           <button
             ref={fermerRef}
             type="button"
@@ -252,6 +231,30 @@ export default function ModaleAnalyseSousPopulations({
             onClick={onClose}
           />
         </header>
+
+        {/* Cartouche commun à tous les onglets (Phase 14.3 : bande dédiée
+            sous le titre, au-dessus des onglets). */}
+        <div className="modale-asp-cartouche">
+          <p className="modale-asp-contexte">
+            <strong>{etabLabel}</strong>
+            {' · '}{formation}
+            {mentionLabel ? <>{' · '}{mentionLabel}</> : null}
+          </p>
+          {donneesUtilisables && (
+            <>
+              <p className="modale-asp-reference">
+                Étudiants inscrits en année terminale en {millesime}
+                {nTotal != null ? ` (N = ${nTotal.toLocaleString('fr-FR')})` : ''}
+              </p>
+              <p className="modale-asp-reference">
+                Référence : diplômés français
+                {refN != null
+                  ? ` (N = ${refN.toLocaleString('fr-FR')}${pctRef != null ? `, soit ${pctRef} %` : ''})`
+                  : ''}
+              </p>
+            </>
+          )}
+        </div>
 
         {loading && showLoader && (
           <div className="modale-asp-loading"><LoaderBarre /></div>
@@ -306,6 +309,8 @@ export default function ModaleAnalyseSousPopulations({
                 <TableauEcarts
                   bloc={blocCourant}
                   dureeCourante={dureeCourante}
+                  durees={durees}
+                  onChangerDuree={setDureeCourante}
                   seuil={data.contexte?.seuil_applique}
                 />
               </div>

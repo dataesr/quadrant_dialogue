@@ -22,6 +22,15 @@ const COLONNES_EMPLOI = [
 
 const NB_COLONNES = 2 + COLONNES_EMPLOI.length + 1;
 
+// Intitulés de colonnes, réutilisés pour le rappel d'en-tête au début de
+// chaque rubrique d'impact (Phase 14.3 — remplace le thead sticky, peu
+// robuste en iframe).
+const ENTETE_COLONNES = [
+  'Sous-population', 'Effectif',
+  ...COLONNES_EMPLOI.map((c) => c.libelle),
+  'Taux de poursuivants',
+];
+
 // Groupes par impact : titre, critère (→ couleur), sous-populations.
 const GROUPES = [
   { key: 'genre',       critere: 'genre',       titre: 'Impact du genre',           sousPops: ['femmes', 'hommes'] },
@@ -141,7 +150,13 @@ function LigneSousPop({ sp }) {
   );
 }
 
-export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
+export default function TableauEcarts({
+  bloc,
+  dureeCourante,
+  durees = [],
+  onChangerDuree,
+  seuil = 20,
+}) {
   const [croisementsSimples, setCroisementsSimples] = useState(false);
   const [hoveredSeg, setHoveredSeg] = useState(null);
 
@@ -153,6 +168,17 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
   }, []);
   const handleLeaveSeg = useCallback(() => setHoveredSeg(null), []);
 
+  // Slider de durée (Phase 14.3) : snap sur la durée disponible la plus
+  // proche. État partagé avec le mini-quadrant via onChangerDuree.
+  const choisirDuree = useCallback((cible) => {
+    if (!onChangerDuree || durees.length === 0) return;
+    const proche = durees.reduce(
+      (a, b) => (Math.abs(b - cible) < Math.abs(a - cible) ? b : a),
+      durees[0]
+    );
+    onChangerDuree(proche);
+  }, [onChangerDuree, durees]);
+
   if (!bloc) return null;
   const reference = bloc.reference;
   const parId = (id) => (bloc.sous_populations || []).find((s) => s.id === id);
@@ -161,19 +187,50 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
     <section className="tableau-ecarts">
       <div className="tableau-ecarts-entete">
         <h3>Comparaison à la référence (diplômés français)</h3>
-        <span className="tableau-ecarts-duree">Observation à {dureeCourante} mois après la sortie</span>
       </div>
 
-      <div className="fr-checkbox-group fr-checkbox-group--sm tableau-ecarts-toggle">
-        <input
-          type="checkbox"
-          id="tableau-ecarts-simples"
-          checked={croisementsSimples}
-          onChange={(e) => setCroisementsSimples(e.target.checked)}
-        />
-        <label className="fr-label" htmlFor="tableau-ecarts-simples">
-          Afficher uniquement les croisements simples
-        </label>
+      <div className="tableau-ecarts-barre-controles">
+        <div className="fr-checkbox-group fr-checkbox-group--sm tableau-ecarts-toggle">
+          <input
+            type="checkbox"
+            id="tableau-ecarts-simples"
+            checked={croisementsSimples}
+            onChange={(e) => setCroisementsSimples(e.target.checked)}
+          />
+          <label className="fr-label" htmlFor="tableau-ecarts-simples">
+            Afficher uniquement les croisements simples
+          </label>
+        </div>
+
+        <div className="tableau-ecarts-duree-select">
+          <span className="tableau-ecarts-duree-label">
+            Observation à : {dureeCourante} mois
+          </span>
+          {durees.length > 1 && (
+            <>
+              <input
+                type="range"
+                className="modale-asp-slider tableau-ecarts-duree-range"
+                min={durees[0]}
+                max={durees[durees.length - 1]}
+                step={1}
+                value={dureeCourante ?? durees[0]}
+                onChange={(e) => choisirDuree(parseInt(e.target.value, 10))}
+                aria-label="Durée d'observation"
+              />
+              <div className="modale-asp-ticks">
+                {durees.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={'tick' + (d === dureeCourante ? ' actif' : '')}
+                    onClick={() => choisirDuree(d)}
+                  >{d}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="tableau-ecarts-scroll">
@@ -225,6 +282,20 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
   );
 }
 
+// Rappel de l'en-tête de colonnes, posé au début de chaque rubrique
+// d'impact. aria-hidden : le vrai <thead> en haut suffit aux lecteurs
+// d'écran (navigation par <th scope="col">) ; ces rappels sont une aide
+// visuelle redondante.
+function LigneRappelEntete() {
+  return (
+    <tr className="ligne-rappel-entete" aria-hidden="true">
+      {ENTETE_COLONNES.map((lbl, i) => (
+        <td key={i}>{lbl}</td>
+      ))}
+    </tr>
+  );
+}
+
 function ImpactGroupe({ titre, couleur, segments, sousPops, onHoverSeg, onLeaveSeg }) {
   return (
     <>
@@ -259,6 +330,7 @@ function ImpactGroupe({ titre, couleur, segments, sousPops, onHoverSeg, onLeaveS
           </div>
         </td>
       </tr>
+      <LigneRappelEntete />
       {sousPops.map((sp) => (
         <LigneSousPop key={sp.id} sp={sp} />
       ))}
@@ -276,7 +348,14 @@ function TooltipSegment({ hovered }) {
     <div
       ref={ref}
       className="quadrant-tooltip"
-      style={{ position: 'fixed', left: `${hovered.x + 12}px`, top: `${hovered.y + 12}px` }}
+      style={{
+        position: 'fixed',
+        left: `${hovered.x + 12}px`,
+        top: `${hovered.y + 12}px`,
+        // Portail dans document.body → doit repasser AU-DESSUS de
+        // l'overlay de la modale (z-index 200). 10000 par sécurité.
+        zIndex: 10000,
+      }}
     >
       <span className="tooltip-pastille" style={{ background: couleur }} />
       {seg.diffusable
