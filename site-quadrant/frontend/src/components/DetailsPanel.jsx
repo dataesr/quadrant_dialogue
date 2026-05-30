@@ -20,6 +20,7 @@ import { trackEvent } from '../utils/matomo.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
+import ModaleAnalyseSousPopulations from './sous-populations/ModaleAnalyseSousPopulations.jsx';
 
 // Panneau de détails d'une bulle.
 //
@@ -74,6 +75,10 @@ export default function DetailsPanel() {
   // panneau (capture des sous-éléments via html-to-image).
   const panneauRef = useRef(null);
   const [exportFiche, setExportFiche] = useState({ running: false, erreur: null });
+
+  // Modale « Analyse de l'insertion par sous-population » (Phase 14).
+  // État local au panneau, comme ModaleAnimation l'est à AdvancedFilters.
+  const [modaleAnalyseOuverte, setModaleAnalyseOuverte] = useState(false);
   // Override des données du panneau pendant la capture Word (cf.
   // handleExportFiche). null en temps normal — un objet ficheData
   // pendant la fenêtre de capture, qu'on lit en priorité sur
@@ -117,6 +122,13 @@ export default function DetailsPanel() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [detailsCible, setDetailsCible]);
+
+  // Referme la modale d'analyse fine si la bulle ciblée change (sinon
+  // l'état `modaleAnalyseOuverte` persisterait d'une bulle à l'autre, le
+  // panneau ne se démontant pas entre deux clics).
+  useEffect(() => {
+    setModaleAnalyseOuverte(false);
+  }, [detailsCible?.targetId, vue, millesime]);
 
   const bulleAssociee = useMemo(() => {
     if (!detailsCible || !quadrant.data?.bulles) return null;
@@ -259,7 +271,25 @@ export default function DetailsPanel() {
     }
   }
 
+  // Analyse fine par sous-population : disponibilité + identité de la
+  // mention ciblée. La mention est (etab_contexte, target_id) en vue
+  // Mentions, (target_id, mention) en vue Positionnement avec filtre.
+  const analyseSousPop = data?.analyse_sous_populations || null;
+  const analyseDisponible = !!analyseSousPop?.disponible;
+  const aspIdPaysage = vue === 'mentions' ? etabContexte : detailsCible.targetId;
+  const aspDiplom = vue === 'mentions'
+    ? detailsCible.targetId
+    : (detailsCible.mention || mention);
+  const aspEtabLabel = vue === 'mentions'
+    ? etabInfo?.libelle
+    : (identite?.uo_lib || identite?.id_paysage || '');
+  const aspMentionLabel = vue === 'mentions'
+    ? (identite?.libelle || identite?.diplom || '')
+    : resoudreMentionLibelle(aspDiplom, referentiels.disciplinaire.data?.mentions);
+  const aspInitialDateInser = dateInserX || dateInserY || '';
+
   return (
+    <>
     <aside className="panneau-details" ref={panneauRef}>
       <header>
         <div className="titre-zone">
@@ -351,12 +381,41 @@ export default function DetailsPanel() {
             cursus={cursus}
           />
 
+          {analyseSousPop && (
+            <button
+              type="button"
+              className="fr-btn fr-btn--secondary fr-btn--icon-left fr-icon-search-line bouton-analyse-sp"
+              disabled={!analyseDisponible}
+              title={!analyseDisponible
+                ? "Effectifs insuffisants pour l'analyse fine"
+                : undefined}
+              onClick={() => setModaleAnalyseOuverte(true)}
+            >
+              Analyse de l&apos;insertion par sous-population
+            </button>
+          )}
+
           <p className="source-attribution">
             {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
           </p>
         </>
       )}
     </aside>
+
+    {modaleAnalyseOuverte && (
+      <ModaleAnalyseSousPopulations
+        open={modaleAnalyseOuverte}
+        onClose={() => setModaleAnalyseOuverte(false)}
+        idPaysage={aspIdPaysage}
+        diplom={aspDiplom}
+        millesime={millesime}
+        formation={cursus}
+        etabLabel={aspEtabLabel}
+        mentionLabel={aspMentionLabel}
+        initialDateInser={aspInitialDateInser}
+      />
+    )}
+    </>
   );
 }
 
