@@ -315,6 +315,14 @@ $repartitions = construireRepartitions($parDuree[$dureesDisponibles[0]], $seuil)
 
 $identite = chargerIdentiteMention($pdo, $idPaysage, $diplom, $millesime);
 
+// Total des inscrits en année terminale (ensemble/ensemble/ensemble/ensemble) :
+// toutes obtentions, tous genres, toutes nationalités, tous régimes. Sert au
+// cartouche de la modale (« N total » + % de la référence). Date-indépendant
+// → lu sur la première durée. null si la ligne n'est pas présente (mentions
+// à données partielles) → le frontend retombe sur l'affichage sans total.
+$rowTotal = $parDuree[$dureesDisponibles[0]][cleSousPopulation('ensemble', 'ensemble', 'ensemble', 'ensemble')] ?? null;
+$nbTotalInscrits = $rowTotal && $rowTotal['nb_etudiants'] !== null ? (int)$rowTotal['nb_etudiants'] : null;
+
 // =============================================================================
 // 10. Réponse
 // =============================================================================
@@ -329,6 +337,7 @@ Response::json([
         'millesime'         => $millesime,
         'population'        => $population,
         'seuil_applique'    => $seuil,
+        'nb_total_inscrits' => $nbTotalInscrits,
     ],
     'durees_disponibles' => $dureesDisponibles,
     'donnees_par_duree'  => $donneesParDuree,

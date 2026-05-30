@@ -1,15 +1,18 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
+import { COULEUR_CRITERE_SOUS_POP } from '../../utils/colors.js';
 
-// Section 2 (Phase 14.1) : tableau de comparaison des sous-populations à
-// la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
-// d'impact ouvre sur une ligne de titre puis une barre de répartition
-// (composition de la promo sur ce critère), suivie des sous-populations.
+// Section « Comparaison » (Phase 14.1/14.2) : tableau des sous-populations
+// vs la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
+// ouvre sur une ligne titre puis une barre de répartition (composition de
+// la promo sur ce critère), suivie des sous-populations.
 //
-// Les barres de répartition (ex-Section 1) sont dérivées des effectifs
-// présents dans `bloc` (nb_etudiants exposés même sous le seuil) — pas
-// besoin de l'objet `repartitions` de l'API. Les segments sous le seuil
-// sont hachurés ; leur tooltip n'expose pas l'effectif.
+// Les barres sont dérivées des effectifs présents dans `bloc`
+// (nb_etudiants exposés même sous le seuil). Les couleurs reprennent
+// celles des bulles du mini-quadrant (COULEUR_CRITERE_SOUS_POP) pour la
+// cohérence visuelle entre onglets : modalité de référence en couleur
+// saturée, modalité complémentaire en version claire.
 
 const COLONNES_EMPLOI = [
   { cle: 'taux_emploi_sal_fr',  ecart: 'ecart_taux_emploi_sal_fr',  libelle: 'Taux emploi sal. FR' },
@@ -17,46 +20,46 @@ const COLONNES_EMPLOI = [
   { cle: 'taux_emploi_stable',  ecart: 'ecart_taux_emploi_stable',  libelle: 'Taux emploi stable' },
 ];
 
-// Nombre de colonnes du tableau (pour les <td colspan>).
-const NB_COLONNES = 2 /* sous-pop + effectif */ + COLONNES_EMPLOI.length + 1 /* poursuivants */;
+const NB_COLONNES = 2 + COLONNES_EMPLOI.length + 1;
 
-// Regroupement par impact : titre, sous-populations (ids), et clé de
-// barre de répartition. L'ordre des sous-pops est l'ordre d'affichage.
+// Groupes par impact : titre, critère (→ couleur), sous-populations.
 const GROUPES = [
-  { key: 'genre',       titre: 'Impact du genre',           sousPops: ['femmes', 'hommes'] },
-  { key: 'regime',      titre: "Impact de l'apprentissage", sousPops: ['apprentis', 'femmes_apprenties', 'hommes_apprentis'] },
-  { key: 'diplomation', titre: 'Impact de la diplomation',  sousPops: ['ensemble_diplomation'] },
-  { key: 'nationalite', titre: 'Impact de la nationalité',  sousPops: ['tous_nationalite'] },
+  { key: 'genre',       critere: 'genre',       titre: 'Impact du genre',           sousPops: ['femmes', 'hommes'] },
+  { key: 'regime',      critere: 'regime',      titre: "Impact de l'apprentissage", sousPops: ['apprentis', 'femmes_apprenties', 'hommes_apprentis'] },
+  { key: 'diplomation', critere: 'diplomation', titre: 'Impact de la diplomation',  sousPops: ['ensemble_diplomation'] },
+  { key: 'nationalite', critere: 'nationalite', titre: 'Impact de la nationalité',  sousPops: ['tous_nationalite'] },
 ];
 
-const COULEUR_SEG_PRIMAIRE   = '#6A6AF4';
-const COULEUR_SEG_SECONDAIRE = '#c2c2f0';
+// Nuance de chaque modalité : « fonce » = couleur saturée (modalité de
+// référence / standard de comparaison), « clair » = version translucide.
+const NUANCE = {
+  femmes: 'clair', hommes: 'fonce',
+  apprentis: 'fonce', non_apprentis: 'clair',
+  diplomes: 'fonce', non_diplomes: 'clair',
+  francais: 'fonce', etrangers: 'clair',
+};
+
+function hexToRgba(hex, a) {
+  const m = hex.replace('#', '');
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
 
 function formatPct(taux) {
   if (taux == null) return 'n.s.';
-  return `${(taux * 100).toLocaleString('fr-FR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })} %`;
+  return `${(taux * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 }
-
 function formatPctSimple(part) {
-  return `${(part * 100).toLocaleString('fr-FR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })} %`;
+  return `${(part * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 }
-
 function formatEcart(ecart) {
   const pts = ecart * 100;
   const signe = pts > 0 ? '+' : pts < 0 ? '−' : '';
-  const abs = Math.abs(pts).toLocaleString('fr-FR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+  const abs = Math.abs(pts).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return `${signe}${abs} pts`;
 }
-
 function bucketEcart(ecart) {
   const pts = ecart * 100;
   if (pts >= 5)  return 'vert-fonce';
@@ -66,8 +69,7 @@ function bucketEcart(ecart) {
   return 'rouge-fonce';
 }
 
-// Construit les 2 segments d'une barre de répartition pour un groupe.
-// Chaque segment : { cle, libelle, n, part, diffusable, couleur }.
+// Construit les segments d'une barre de répartition pour un groupe.
 function construireBarre(groupeKey, bloc, seuil) {
   const ref = bloc.reference;
   const get = (id) => (bloc.sous_populations || []).find((s) => s.id === id);
@@ -79,50 +81,32 @@ function construireBarre(groupeKey, bloc, seuil) {
     const nf = nb(get('femmes'));
     const nh = nb(get('hommes'));
     base = nf + nh;
-    segs = [
-      { cle: 'femmes', libelle: 'Femmes', n: nf },
-      { cle: 'hommes', libelle: 'Hommes', n: nh },
-    ];
+    segs = [{ cle: 'femmes', libelle: 'Femmes', n: nf }, { cle: 'hommes', libelle: 'Hommes', n: nh }];
   } else if (groupeKey === 'regime') {
     const na = nb(get('apprentis'));
     base = nb(ref);
-    segs = [
-      { cle: 'apprentis',     libelle: 'Apprentis',     n: na },
-      { cle: 'non_apprentis', libelle: 'Non-apprentis', n: Math.max(0, base - na) },
-    ];
+    segs = [{ cle: 'apprentis', libelle: 'Apprentis', n: na }, { cle: 'non_apprentis', libelle: 'Non-apprentis', n: Math.max(0, base - na) }];
   } else if (groupeKey === 'diplomation') {
     const nDip = nb(ref);
     base = nb(get('ensemble_diplomation'));
-    segs = [
-      { cle: 'diplomes',     libelle: 'Diplômés',     n: nDip },
-      { cle: 'non_diplomes', libelle: 'Non-diplômés', n: Math.max(0, base - nDip) },
-    ];
+    segs = [{ cle: 'diplomes', libelle: 'Diplômés', n: nDip }, { cle: 'non_diplomes', libelle: 'Non-diplômés', n: Math.max(0, base - nDip) }];
   } else if (groupeKey === 'nationalite') {
     const nFr = nb(ref);
     base = nb(get('tous_nationalite'));
-    segs = [
-      { cle: 'francais',  libelle: 'Français',  n: nFr },
-      { cle: 'etrangers', libelle: 'Étrangers', n: Math.max(0, base - nFr) },
-    ];
+    segs = [{ cle: 'francais', libelle: 'Français', n: nFr }, { cle: 'etrangers', libelle: 'Étrangers', n: Math.max(0, base - nFr) }];
   }
 
-  return segs.map((s, i) => ({
+  return segs.map((s) => ({
     ...s,
     part: base > 0 ? s.n / base : 0,
     diffusable: s.n >= seuil,
-    couleur: i === 0 ? COULEUR_SEG_PRIMAIRE : COULEUR_SEG_SECONDAIRE,
+    nuance: NUANCE[s.cle] || 'fonce',
   }));
 }
 
-// Cellule de taux : valeur + écart coloré (sauf référence). « n.s. » si
-// la valeur est masquée (sous le seuil).
 function CelluleTaux({ taux, ecart, estReference }) {
-  if (taux == null) {
-    return <td className="cellule-taux cellule-ns">n.s.</td>;
-  }
-  if (estReference) {
-    return <td className="cellule-taux cellule-reference">{formatPct(taux)}</td>;
-  }
+  if (taux == null) return <td className="cellule-taux cellule-ns">n.s.</td>;
+  if (estReference) return <td className="cellule-taux cellule-reference">{formatPct(taux)}</td>;
   const bucket = ecart != null ? bucketEcart(ecart) : 'neutre';
   const afficheBarre = ecart != null && Math.abs(ecart * 100) >= 2;
   const largeur = ecart != null ? Math.min(Math.abs(ecart * 100), 20) / 20 * 100 : 0;
@@ -131,9 +115,7 @@ function CelluleTaux({ taux, ecart, estReference }) {
       <span className="cellule-taux-valeur">{formatPct(taux)}</span>
       {ecart != null && (
         <span className={`cellule-ecart cellule-ecart--${bucket}`}>
-          {afficheBarre && (
-            <span className="cellule-ecart-barre" style={{ width: `${largeur}%` }} />
-          )}
+          {afficheBarre && <span className="cellule-ecart-barre" style={{ width: `${largeur}%` }} />}
           <span className="cellule-ecart-texte">{formatEcart(ecart)}</span>
         </span>
       )}
@@ -146,7 +128,6 @@ function CelluleEffectif({ nb, present }) {
   return <td className="cellule-effectif">{nb.toLocaleString('fr-FR')}</td>;
 }
 
-// Ligne d'une sous-population (taux + écarts ; poursuivants en dernier).
 function LigneSousPop({ sp }) {
   return (
     <tr className={sp.croisement ? 'ligne-croisement' : undefined}>
@@ -162,17 +143,13 @@ function LigneSousPop({ sp }) {
 
 export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
   const [croisementsSimples, setCroisementsSimples] = useState(false);
-  const wrapperRef = useRef(null);
   const [hoveredSeg, setHoveredSeg] = useState(null);
 
-  const handleHoverSeg = useCallback((seg, event) => {
-    const rect = wrapperRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setHoveredSeg({
-      seg,
-      x: event.clientX - rect.left + 12,
-      y: event.clientY - rect.top + 12,
-    });
+  // Tooltip de segment : coordonnées VIEWPORT (clientX/clientY) +
+  // rendu en portail position:fixed → immune au scroll de l'onglet et
+  // aux cascades de positionnement (fix du tooltip mal placé, Phase 14.2).
+  const handleHoverSeg = useCallback((seg, couleur, event) => {
+    setHoveredSeg({ seg, couleur, x: event.clientX, y: event.clientY });
   }, []);
   const handleLeaveSeg = useCallback(() => setHoveredSeg(null), []);
 
@@ -181,12 +158,10 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
   const parId = (id) => (bloc.sous_populations || []).find((s) => s.id === id);
 
   return (
-    <section className="tableau-ecarts" ref={wrapperRef}>
+    <section className="tableau-ecarts">
       <div className="tableau-ecarts-entete">
         <h3>Comparaison à la référence (diplômés français)</h3>
-        <span className="tableau-ecarts-duree">
-          Observation à {dureeCourante} mois après la sortie
-        </span>
+        <span className="tableau-ecarts-duree">Observation à {dureeCourante} mois après la sortie</span>
       </div>
 
       <div className="fr-checkbox-group fr-checkbox-group--sm tableau-ecarts-toggle">
@@ -214,7 +189,6 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
             </tr>
           </thead>
           <tbody>
-            {/* Référence — grisée, sans écart */}
             {reference && (
               <tr className="ligne-reference">
                 <th scope="row">Diplômés français (référence)</th>
@@ -226,19 +200,15 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
               </tr>
             )}
 
-            {/* Groupes par impact : titre + barre de répartition + sous-pops */}
             {GROUPES.map((groupe) => {
               const segments = construireBarre(groupe.key, bloc, seuil);
-              let sousPops = groupe.sousPops
-                .map(parId)
-                .filter(Boolean);
-              if (croisementsSimples) {
-                sousPops = sousPops.filter((sp) => !sp.croisement);
-              }
+              let sousPops = groupe.sousPops.map(parId).filter(Boolean);
+              if (croisementsSimples) sousPops = sousPops.filter((sp) => !sp.croisement);
               return (
                 <ImpactGroupe
                   key={groupe.key}
                   titre={groupe.titre}
+                  couleur={COULEUR_CRITERE_SOUS_POP[groupe.critere] || '#888'}
                   segments={segments}
                   sousPops={sousPops}
                   onHoverSeg={handleHoverSeg}
@@ -255,9 +225,7 @@ export default function TableauEcarts({ bloc, dureeCourante, seuil = 20 }) {
   );
 }
 
-// Un groupe d'impact : ligne titre (colspan), ligne barre (colspan),
-// puis les lignes de sous-populations.
-function ImpactGroupe({ titre, segments, sousPops, onHoverSeg, onLeaveSeg }) {
+function ImpactGroupe({ titre, couleur, segments, sousPops, onHoverSeg, onLeaveSeg }) {
   return (
     <>
       <tr className="ligne-impact">
@@ -270,13 +238,16 @@ function ImpactGroupe({ titre, segments, sousPops, onHoverSeg, onLeaveSeg }) {
               if (seg.part <= 0 && seg.n <= 0) return null;
               const masque = !seg.diffusable;
               const pct = Math.round(seg.part * 100);
+              const bg = masque ? undefined : (seg.nuance === 'fonce' ? couleur : hexToRgba(couleur, 0.5));
+              const cls = 'repartition-segment'
+                + (masque ? ' repartition-segment--masque' : (seg.nuance === 'clair' ? ' repartition-segment--clair' : ''));
               return (
                 <span
                   key={seg.cle}
-                  className={'repartition-segment' + (masque ? ' repartition-segment--masque' : '')}
-                  style={{ width: `${seg.part * 100}%`, background: masque ? undefined : seg.couleur }}
-                  onMouseMove={(e) => onHoverSeg(seg, e)}
-                  onMouseEnter={(e) => onHoverSeg(seg, e)}
+                  className={cls}
+                  style={{ width: `${seg.part * 100}%`, background: bg }}
+                  onMouseMove={(e) => onHoverSeg(seg, couleur, e)}
+                  onMouseEnter={(e) => onHoverSeg(seg, couleur, e)}
                   onMouseLeave={onLeaveSeg}
                 >
                   {seg.part > 0.15 && (
@@ -295,20 +266,23 @@ function ImpactGroupe({ titre, segments, sousPops, onHoverSeg, onLeaveSeg }) {
   );
 }
 
-// Tooltip de survol d'un segment de barre — même conteneur que les
-// autres tooltips de l'app (.quadrant-tooltip + useAutoPlacement).
+// Tooltip de segment — rendu en portail (document.body) avec
+// position:fixed et coordonnées viewport : pas d'ancrage à un parent
+// positionné, donc plus de décalage lié au scroll de l'onglet.
 function TooltipSegment({ hovered }) {
   const ref = useAutoPlacement([hovered]);
-  const { seg } = hovered;
-  return (
+  const { seg, couleur } = hovered;
+  return createPortal(
     <div
       ref={ref}
       className="quadrant-tooltip"
-      style={{ left: `${hovered.x}px`, top: `${hovered.y}px` }}
+      style={{ position: 'fixed', left: `${hovered.x + 12}px`, top: `${hovered.y + 12}px` }}
     >
+      <span className="tooltip-pastille" style={{ background: couleur }} />
       {seg.diffusable
         ? `${seg.libelle} : ${formatPctSimple(seg.part)} (N = ${seg.n.toLocaleString('fr-FR')})`
         : `${seg.libelle} : effectif insuffisant pour diffusion`}
-    </div>
+    </div>,
+    document.body
   );
 }

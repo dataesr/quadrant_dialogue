@@ -1681,15 +1681,60 @@ body.exporting .source-attribution {
 .modale-asp-insuffisant { margin: 1.25rem; }
 
 /* Corps scrollable, sections empilées */
-.modale-asp-corps {
-  overflow-y: auto;
-  padding: 1rem 1.25rem 1.25rem;
-}
-.modale-asp-corps > section { margin-bottom: 1.5rem; }
-.modale-asp-corps h3 {
+.modale-asp h3 {
   font-size: 1rem;
   color: #161616;
   margin: 0 0 0.75rem;
+}
+
+/* Onglets DSFR (Phase 14.2) — pilotés en React (pas le JS DSFR). Le
+   conteneur fr-tabs occupe la hauteur restante de la modale, seul le
+   panneau actif scrolle (l'en-tête de tableau reste donc sticky par
+   rapport au panneau). On NEUTRALISE le « slider » DSFR : par défaut les
+   panneaux sont superposés (left:-100%; margin-right:-100%) et déplacés
+   par transform via le JS — sans le JS, le panneau actif partirait
+   hors écran. On repasse donc les panneaux en flux normal. */
+.modale-asp-tabs.fr-tabs {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 0 1.25rem 0.5rem;
+  box-shadow: none;
+  border-bottom: none;
+  overflow: hidden;
+}
+.modale-asp-tabs .fr-tabs__list { flex: 0 0 auto; }
+.modale-asp-tabs .fr-tabs__panel {
+  display: none;
+  position: static;
+  left: auto;
+  margin-right: 0;
+  order: initial;
+  transform: none;
+  transition: none;
+  padding: 1rem 0 0;
+}
+.modale-asp-tabs .fr-tabs__panel--selected {
+  display: block;
+  visibility: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Onglet « Parcours » — placeholder centré */
+.placeholder-parcours {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 2rem;
 }
 
 /* ---- Barres de répartition (intégrées au tableau, Phase 14.1) ---- */
@@ -1722,12 +1767,25 @@ body.exporting .source-attribution {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Modalité claire (couleur translucide) : texte sombre pour le contraste */
+.repartition-segment--clair { color: #333; }
 /* Segment sous le seuil : gris hachuré */
 .repartition-segment--masque {
   background: repeating-linear-gradient(
     45deg, #cfcfcf, #cfcfcf 4px, #e2e2e2 4px, #e2e2e2 8px
   );
   color: #555;
+}
+
+/* Pastille de couleur dans le tooltip de segment (rappel de la couleur
+   du critère). */
+.quadrant-tooltip .tooltip-pastille {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 /* ---- Section 2 : tableau d'écarts ---- */
@@ -1744,7 +1802,10 @@ body.exporting .source-attribution {
   font-weight: 500;
 }
 .tableau-ecarts-toggle { margin: 0.25rem 0 0.5rem; }
-.tableau-ecarts-scroll { overflow-x: auto; }
+/* overflow visible : la table reste dans le contexte de scroll du
+   panneau d'onglet, condition pour que le thead sticky se cale sur le
+   haut du panneau (Phase 14.2). */
+.tableau-ecarts-scroll { overflow: visible; }
 .tableau-ecarts-table {
   width: 100%;
   border-collapse: collapse;
@@ -1757,6 +1818,12 @@ body.exporting .source-attribution {
   border-bottom: 2px solid #ddd;
   padding: 0.4rem 0.5rem;
   vertical-align: bottom;
+  /* En-tête persistant au scroll du panneau */
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  box-shadow: 0 1px 0 #ddd;
 }
 .tableau-ecarts-table th[scope="row"] {
   text-align: left;

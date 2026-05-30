@@ -26,6 +26,12 @@ const VITESSES = {
   rapide:  { tickMs:  500, transitionMs:  400, libelle: 'Rapide' },
 };
 
+const ONGLETS = [
+  { id: 'comparaison', libelle: 'Comparaison' },
+  { id: 'quadrant',    libelle: 'Quadrant' },
+  { id: 'parcours',    libelle: 'Parcours' },
+];
+
 export default function ModaleAnalyseSousPopulations({
   open,
   onClose,
@@ -54,6 +60,14 @@ export default function ModaleAnalyseSousPopulations({
   const [vitesse, setVitesse] = useState('moyenne');
   const tickMs       = VITESSES[vitesse].tickMs;
   const transitionMs = VITESSES[vitesse].transitionMs;
+
+  // Onglet actif (Phase 14.2). Quitter l'onglet « Quadrant » met
+  // l'animation en pause (les bulles ne défilent pas hors écran).
+  const [ongletActif, setOngletActif] = useState('comparaison');
+  function changerOnglet(id) {
+    if (id !== 'quadrant') setEnLecture(false);
+    setOngletActif(id);
+  }
 
   // -------------------- Fetch à l'ouverture --------------------
   useEffect(() => {
@@ -187,6 +201,13 @@ export default function ModaleAnalyseSousPopulations({
   const iCourant = durees.indexOf(dureeCourante);
 
   const refN = data?.donnees_par_duree?.[String(durees[0])]?.reference?.nb_etudiants;
+  // Total des inscrits en année terminale (ensemble/ensemble/ensemble/ensemble)
+  // + pourcentage de la référence. nb_total_inscrits peut être absent
+  // (mentions à données partielles) → on retombe sur l'affichage sans total.
+  const nTotal = data?.contexte?.nb_total_inscrits;
+  const pctRef = (nTotal && nTotal > 0 && refN != null)
+    ? Math.round((refN / nTotal) * 100)
+    : null;
 
   return (
     <div
@@ -209,10 +230,18 @@ export default function ModaleAnalyseSousPopulations({
               {mentionLabel ? <>{' · '}{mentionLabel}</> : null}
             </p>
             {donneesUtilisables && (
-              <p className="modale-asp-reference">
-                Étudiants inscrits en année terminale en {millesime} — Référence : diplômés français
-                {refN != null ? ` (N = ${refN.toLocaleString('fr-FR')})` : ''}
-              </p>
+              <>
+                <p className="modale-asp-reference">
+                  Étudiants inscrits en année terminale en {millesime}
+                  {nTotal != null ? ` (N = ${nTotal.toLocaleString('fr-FR')})` : ''}
+                </p>
+                <p className="modale-asp-reference">
+                  Référence : diplômés français
+                  {refN != null
+                    ? ` (N = ${refN.toLocaleString('fr-FR')}${pctRef != null ? `, soit ${pctRef} %` : ''})`
+                    : ''}
+                </p>
+              </>
             )}
           </div>
           <button
@@ -247,100 +276,161 @@ export default function ModaleAnalyseSousPopulations({
         )}
 
         {!loading && !error && donneesUtilisables && (
-          <div className="modale-asp-corps">
-            <TableauEcarts
-              bloc={blocCourant}
-              dureeCourante={dureeCourante}
-              seuil={data.contexte?.seuil_applique}
-            />
-
-            <section className="modale-asp-trajectoires">
-              <h3>Trajectoires d&apos;insertion</h3>
-              <MiniQuadrantSousPop
-                donneesParDuree={data.donnees_par_duree}
-                dureesDisponibles={durees}
-                dureeCourante={dureeCourante}
-                phaseAnim={phaseAnim}
-                dureeTransitionMs={transitionMs}
-                enLecture={enLecture}
-              />
-
-              {animationDispo && (
-                <>
-                  <div className="modale-asp-controls">
+          <>
+            <div className="modale-asp-tabs fr-tabs">
+              <ul className="fr-tabs__list" role="tablist" aria-label="Sections de l'analyse">
+                {ONGLETS.map((o) => (
+                  <li key={o.id} role="presentation">
                     <button
-                      type="button"
-                      className="fr-btn fr-btn--sm fr-btn--tertiary"
-                      onClick={handlePrev}
-                      disabled={iCourant <= 0}
-                      aria-label="Durée précédente"
-                    >⏮</button>
-                    <button
-                      type="button"
-                      className="fr-btn fr-btn--sm"
-                      onClick={handlePlayPause}
-                      aria-label={enLecture ? 'Pause' : 'Lecture'}
-                    >{enLecture ? '⏸ Pause' : '▶ Lecture'}</button>
-                    <button
-                      type="button"
-                      className="fr-btn fr-btn--sm fr-btn--tertiary"
-                      onClick={handleNext}
-                      disabled={iCourant >= durees.length - 1}
-                      aria-label="Durée suivante"
-                    >⏭</button>
+                      id={`tab-${o.id}`}
+                      className="fr-tabs__tab"
+                      tabIndex={ongletActif === o.id ? 0 : -1}
+                      role="tab"
+                      aria-selected={ongletActif === o.id}
+                      aria-controls={`tabpanel-${o.id}`}
+                      onClick={() => changerOnglet(o.id)}
+                    >
+                      {o.libelle}
+                    </button>
+                  </li>
+                ))}
+              </ul>
 
-                    <input
-                      type="range"
-                      className="modale-asp-slider"
-                      min={durees[0]}
-                      max={durees[durees.length - 1]}
-                      step={1}
-                      value={dureeCourante ?? durees[0]}
-                      onChange={handleSlider}
-                      aria-label="Durée d'observation"
-                    />
+              <div
+                id="tabpanel-comparaison"
+                className={'fr-tabs__panel' + (ongletActif === 'comparaison' ? ' fr-tabs__panel--selected' : '')}
+                role="tabpanel"
+                aria-labelledby="tab-comparaison"
+                tabIndex={0}
+              >
+                <TableauEcarts
+                  bloc={blocCourant}
+                  dureeCourante={dureeCourante}
+                  seuil={data.contexte?.seuil_applique}
+                />
+              </div>
 
-                    <div className="modale-asp-ticks">
-                      {durees.map((d) => (
-                        <span
-                          key={d}
-                          className={'tick' + (d === dureeCourante ? ' actif' : '')}
-                        >{d}</span>
-                      ))}
+              <div
+                id="tabpanel-quadrant"
+                className={'fr-tabs__panel' + (ongletActif === 'quadrant' ? ' fr-tabs__panel--selected' : '')}
+                role="tabpanel"
+                aria-labelledby="tab-quadrant"
+                tabIndex={0}
+              >
+                <MiniQuadrantSousPop
+                  donneesParDuree={data.donnees_par_duree}
+                  dureesDisponibles={durees}
+                  dureeCourante={dureeCourante}
+                  phaseAnim={phaseAnim}
+                  dureeTransitionMs={transitionMs}
+                  enLecture={enLecture}
+                />
+
+                {animationDispo && (
+                  <>
+                    <div className="modale-asp-controls">
+                      <button
+                        type="button"
+                        className="fr-btn fr-btn--sm fr-btn--tertiary"
+                        onClick={handlePrev}
+                        disabled={iCourant <= 0}
+                        aria-label="Durée précédente"
+                      >⏮</button>
+                      <button
+                        type="button"
+                        className="fr-btn fr-btn--sm"
+                        onClick={handlePlayPause}
+                        aria-label={enLecture ? 'Pause' : 'Lecture'}
+                      >{enLecture ? '⏸ Pause' : '▶ Lecture'}</button>
+                      <button
+                        type="button"
+                        className="fr-btn fr-btn--sm fr-btn--tertiary"
+                        onClick={handleNext}
+                        disabled={iCourant >= durees.length - 1}
+                        aria-label="Durée suivante"
+                      >⏭</button>
+
+                      <input
+                        type="range"
+                        className="modale-asp-slider"
+                        min={durees[0]}
+                        max={durees[durees.length - 1]}
+                        step={1}
+                        value={dureeCourante ?? durees[0]}
+                        onChange={handleSlider}
+                        aria-label="Durée d'observation"
+                      />
+
+                      <div className="modale-asp-ticks">
+                        {durees.map((d) => (
+                          <span
+                            key={d}
+                            className={'tick' + (d === dureeCourante ? ' actif' : '')}
+                          >{d}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  <fieldset className="fr-segmented fr-segmented--sm modale-asp-vitesse">
-                    <legend className="fr-segmented__legend">Vitesse</legend>
-                    <div className="fr-segmented__elements">
-                      {Object.entries(VITESSES).map(([code, conf]) => {
-                        const id = `modale-asp-vitesse-${code}`;
-                        return (
-                          <div key={code} className="fr-segmented__element">
-                            <input
-                              type="radio"
-                              id={id}
-                              name="modale-asp-vitesse"
-                              value={code}
-                              checked={vitesse === code}
-                              onChange={() => setVitesse(code)}
-                            />
-                            <label className="fr-label" htmlFor={id}>{conf.libelle}</label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                </>
-              )}
-            </section>
+                    <fieldset className="fr-segmented fr-segmented--sm modale-asp-vitesse">
+                      <legend className="fr-segmented__legend">Vitesse</legend>
+                      <div className="fr-segmented__elements">
+                        {Object.entries(VITESSES).map(([code, conf]) => {
+                          const id = `modale-asp-vitesse-${code}`;
+                          return (
+                            <div key={code} className="fr-segmented__element">
+                              <input
+                                type="radio"
+                                id={id}
+                                name="modale-asp-vitesse"
+                                value={code}
+                                checked={vitesse === code}
+                                onChange={() => setVitesse(code)}
+                              />
+                              <label className="fr-label" htmlFor={id}>{conf.libelle}</label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  </>
+                )}
+              </div>
+
+              <div
+                id="tabpanel-parcours"
+                className={'fr-tabs__panel' + (ongletActif === 'parcours' ? ' fr-tabs__panel--selected' : '')}
+                role="tabpanel"
+                aria-labelledby="tab-parcours"
+                tabIndex={0}
+              >
+                <PlaceholderParcours />
+              </div>
+            </div>
 
             <p className="modale-asp-source">
               {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
             </p>
-          </div>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Onglet « Parcours » — placeholder en attendant le sankey du devenir de
+// la promotion (phase ultérieure).
+function PlaceholderParcours() {
+  return (
+    <div className="placeholder-parcours">
+      <p className="fr-text--lg">
+        Visualisation du parcours de la promotion en cours de développement.
+      </p>
+      <p className="fr-text--sm fr-mt-2w" style={{ color: '#666' }}>
+        Cette section présentera prochainement le devenir des étudiants sous
+        forme de diagramme de flux (sankey) : de l&apos;inscription en année
+        terminale jusqu&apos;à leur situation d&apos;emploi à 6, 12, 18, 24 et
+        30 mois.
+      </p>
     </div>
   );
 }
