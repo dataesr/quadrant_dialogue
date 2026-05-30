@@ -1710,8 +1710,9 @@ body.exporting .source-attribution {
   flex-wrap: nowrap;
   margin: 0;
   /* Pas de padding horizontal ici : il est posé sur la liste ET le
-     panneau pour un alignement cohérent (cf. ci-dessous). */
-  padding: 0 0 0.5rem;
+     panneau pour un alignement cohérent (cf. ci-dessous). Petite marge
+     en haut pour aérer entre le cartouche et les onglets. */
+  padding: 0.6rem 0 0.5rem;
   box-shadow: none;
   border-bottom: none;
   overflow: hidden;
