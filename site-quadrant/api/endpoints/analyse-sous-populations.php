@@ -44,6 +44,7 @@
 require_once __DIR__ . '/../lib/Database.php';
 require_once __DIR__ . '/../lib/Response.php';
 require_once __DIR__ . '/../lib/Session.php';
+require_once __DIR__ . '/../lib/SousPopulations.php';
 
 Response::cors();
 
@@ -62,16 +63,22 @@ $contexteId = $session->getContexteId();
 // 2. Paramètres + validation
 // =============================================================================
 
+// Deux modes (Phase 14.8) :
+//   - mention       : ?id_paysage&diplom&millesime  (vue Mentions — historique)
+//   - établissement : ?id_paysage&formation&millesime [+ dom/discipli/secteur/master]
+//                     (vue Positionnement) — agrège toutes les mentions filtrées
+//                     du cursus de l'établissement.
+// `diplom` présent ⇒ mode mention ; absent ⇒ mode établissement (formation requise).
 $idPaysage = $_GET['id_paysage'] ?? '';
 $diplom    = $_GET['diplom']     ?? '';
+$formation = $_GET['formation']  ?? '';
 $millesime = $_GET['millesime']  ?? '';
 $dateInser = $_GET['date_inser'] ?? '';
 
+$modeEtab = ($diplom === '');
+
 if (!preg_match('/^[A-Za-z0-9]{5}$/', $idPaysage)) {
     Response::error('invalid_id_paysage', 'Paramètre id_paysage invalide (5 caractères alphanumériques attendus).');
-}
-if (!preg_match('/^[A-Za-z0-9]{1,20}$/', $diplom)) {
-    Response::error('invalid_diplom', 'Paramètre diplom invalide (1-20 caractères alphanumériques attendus).');
 }
 if (!preg_match('/^\d{4}$/', $millesime)) {
     Response::error('invalid_millesime', 'Paramètre millesime invalide.');
@@ -79,6 +86,24 @@ if (!preg_match('/^\d{4}$/', $millesime)) {
 $delaisAutorises = ['6', '12', '18', '24', '30'];
 if ($dateInser !== '' && !in_array($dateInser, $delaisAutorises, true)) {
     Response::error('invalid_date_inser', 'Paramètre date_inser invalide (6/12/18/24/30 attendu).');
+}
+if (!$modeEtab) {
+    if (!preg_match('/^[A-Za-z0-9]{1,20}$/', $diplom)) {
+        Response::error('invalid_diplom', 'Paramètre diplom invalide (1-20 caractères alphanumériques attendus).');
+    }
+} else {
+    $formationsAutorisees = [
+        'Licence générale',
+        'Licence professionnelle',
+        'Bachelor universitaire de technologie',
+        'Master',
+    ];
+    if (!in_array($formation, $formationsAutorisees, true)) {
+        Response::error(
+            'invalid_mode',
+            'Fournir soit diplom (mode mention) soit formation valide (mode établissement).'
+        );
+    }
 }
 
 // =============================================================================
@@ -108,61 +133,136 @@ $seuil = (int)$seuilCfg;
 $pdo           = Database::get();
 $motifContexte = '%;' . $contexteId . ';%';
 
-$sql = "
-    SELECT
-        date_inser,
-        obtention_diplome,
-        genre,
-        nationalite,
-        regime_inscription,
-        formation,
-        population,
-        nb_etudiants,
-        nb_poursuivants,
-        nb_sortants,
-        nb_sortants_emploi_sal_fr,
-        nb_sortants_emploi_non_sal,
-        nb_sortants_emploi_stable
-    FROM stats_sous_populations
-    WHERE id_paysage = :id_paysage
-      AND diplom = :diplom
-      AND millesime = :millesime
-      AND filtre_perimetre LIKE :motif
+$colonnesEffectifs = "
+    nb_etudiants,
+    nb_poursuivants,
+    nb_sortants,
+    nb_sortants_emploi_sal_fr,
+    nb_sortants_emploi_non_sal,
+    nb_sortants_emploi_stable
 ";
-$params = [
-    ':id_paysage' => $idPaysage,
-    ':diplom'     => $diplom,
-    ':millesime'  => $millesime,
-    ':motif'      => $motifContexte,
-];
-if ($dateInser !== '') {
-    $sql .= " AND date_inser = :date_inser";
-    $params[':date_inser'] = $dateInser;
-}
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$rows = $stmt->fetchAll();
+$mentionsAgregees = [];   // mode établissement : [{diplom, libelle_intitule}, ...]
 
-if (empty($rows)) {
-    // Soit hors périmètre, soit mention sans données sous-population.
-    // On vérifie l'existence hors périmètre pour distinguer 403 / 404
-    // tout en restant non-énumérant : si la mention existe pour
-    // d'autres contextes, c'est un refus d'accès (403) ; sinon 404.
-    $check = $pdo->prepare("
-        SELECT 1 FROM stats_sous_populations
-        WHERE id_paysage = :id_paysage AND diplom = :diplom AND millesime = :millesime
-        LIMIT 1
-    ");
-    $check->execute([
+if (!$modeEtab) {
+    // -------------------- Mode mention (historique) --------------------
+    $sql = "
+        SELECT date_inser, obtention_diplome, genre, nationalite, regime_inscription,
+               formation, population,
+               $colonnesEffectifs
+        FROM stats_sous_populations
+        WHERE id_paysage = :id_paysage
+          AND diplom = :diplom
+          AND millesime = :millesime
+          AND filtre_perimetre LIKE :motif
+    ";
+    $params = [
         ':id_paysage' => $idPaysage,
         ':diplom'     => $diplom,
         ':millesime'  => $millesime,
-    ]);
-    if ($check->fetchColumn()) {
-        Response::error('forbidden', "Vous n'êtes pas autorisé à consulter l'analyse de cette mention.", 403);
+        ':motif'      => $motifContexte,
+    ];
+    if ($dateInser !== '') {
+        $sql .= " AND date_inser = :date_inser";
+        $params[':date_inser'] = $dateInser;
     }
-    Response::error('no_data', "Aucune donnée de sous-population pour cette mention.", 404);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    if (empty($rows)) {
+        // Hors périmètre OU mention sans données. On distingue 403 / 404
+        // sans énumérer : si la mention existe pour d'autres contextes →
+        // refus d'accès (403) ; sinon 404.
+        $check = $pdo->prepare("
+            SELECT 1 FROM stats_sous_populations
+            WHERE id_paysage = :id_paysage AND diplom = :diplom AND millesime = :millesime
+            LIMIT 1
+        ");
+        $check->execute([
+            ':id_paysage' => $idPaysage,
+            ':diplom'     => $diplom,
+            ':millesime'  => $millesime,
+        ]);
+        if ($check->fetchColumn()) {
+            Response::error('forbidden', "Vous n'êtes pas autorisé à consulter l'analyse de cette mention.", 403);
+        }
+        Response::error('no_data', "Aucune donnée de sous-population pour cette mention.", 404);
+    }
+} else {
+    // -------------------- Mode établissement (agrégat) --------------------
+    // Résolution de la liste des mentions filtrées (mêmes filtres que
+    // /quadrant), puis agrégation SUM par (durée, critères). Cohérent avec
+    // la bulle établissement de /quadrant, qui somme les mêmes mentions.
+    $filtres = [
+        'dom'      => $_GET['dom']      ?? '',
+        'discipli' => $_GET['discipli'] ?? '',
+        'secteur'  => $_GET['secteur']  ?? '',
+        'master'   => $_GET['master']   ?? '',
+    ];
+    $mentionsAgregees = SousPopulations::resoudreMentionsFiltrees(
+        $pdo, $idPaysage, $formation, $millesime, $filtres, $motifContexte
+    );
+    $diploms = array_column($mentionsAgregees, 'diplom');
+
+    if (empty($diploms)) {
+        if (!SousPopulations::etablissementDansPerimetre($pdo, $idPaysage, $motifContexte)) {
+            Response::error('forbidden', "Vous n'êtes pas autorisé à consulter l'analyse de cet établissement.", 403);
+        }
+        Response::error('no_data', "Aucune mention ne correspond aux filtres pour cet établissement.", 404);
+    }
+
+    [$inClause, $inParams] = SousPopulations::clauseInDiploms($diploms);
+
+    $sql = "
+        SELECT date_inser, obtention_diplome, genre, nationalite, regime_inscription,
+               formation, MAX(population) AS population,
+               SUM(nb_etudiants)              AS nb_etudiants,
+               SUM(nb_poursuivants)           AS nb_poursuivants,
+               SUM(nb_sortants)               AS nb_sortants,
+               SUM(nb_sortants_emploi_sal_fr) AS nb_sortants_emploi_sal_fr,
+               SUM(nb_sortants_emploi_non_sal) AS nb_sortants_emploi_non_sal,
+               SUM(nb_sortants_emploi_stable) AS nb_sortants_emploi_stable
+        FROM stats_sous_populations
+        WHERE id_paysage = :id_paysage
+          AND millesime = :millesime
+          AND $inClause
+          AND filtre_perimetre LIKE :motif
+    ";
+    $params = array_merge(
+        [':id_paysage' => $idPaysage, ':millesime' => $millesime, ':motif' => $motifContexte],
+        $inParams
+    );
+    if ($dateInser !== '') {
+        $sql .= " AND date_inser = :date_inser";
+        $params[':date_inser'] = $dateInser;
+    }
+    $sql .= " GROUP BY date_inser, obtention_diplome, genre, nationalite, regime_inscription, formation";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+
+    if (empty($rows)) {
+        Response::error('no_data', "Aucune donnée de sous-population pour les mentions filtrées.", 404);
+    }
+
+    // Restreindre mentions_agregees aux mentions RÉELLEMENT présentes en
+    // sous-population (certaines mentions de stats_quadrant n'y figurent pas).
+    $present = $pdo->prepare("
+        SELECT DISTINCT diplom FROM stats_sous_populations
+        WHERE id_paysage = :id_paysage AND millesime = :millesime
+          AND $inClause AND filtre_perimetre LIKE :motif
+    ");
+    $present->execute(array_merge(
+        [':id_paysage' => $idPaysage, ':millesime' => $millesime, ':motif' => $motifContexte],
+        $inParams
+    ));
+    $diplomsPresents = array_fill_keys($present->fetchAll(PDO::FETCH_COLUMN), true);
+    $mentionsAgregees = array_values(array_filter(
+        $mentionsAgregees,
+        static fn($m) => isset($diplomsPresents[$m['diplom']])
+    ));
 }
 
 // =============================================================================
@@ -311,10 +411,21 @@ foreach ($dureesDisponibles as $d) {
 $repartitions = construireRepartitions($parDuree[$dureesDisponibles[0]], $seuil);
 
 // =============================================================================
-// 9. Identité de la mention (libellés depuis stats_quadrant)
+// 9. Identité (libellés depuis stats_quadrant)
 // =============================================================================
 
-$identite = chargerIdentiteMention($pdo, $idPaysage, $diplom, $millesime);
+if (!$modeEtab) {
+    $identite        = chargerIdentiteMention($pdo, $idPaysage, $diplom, $millesime);
+    $uoLib           = $identite['uo_lib'];
+    $libelleIntitule = $identite['libelle_intitule'];
+} else {
+    $uoLib = chargerUoLib($pdo, $idPaysage);
+    // Cas limite : les filtres aboutissent à UNE seule mention → on expose
+    // son libellé pour que le cartouche bascule sur l'affichage « mention ».
+    $libelleIntitule = (count($mentionsAgregees) === 1)
+        ? $mentionsAgregees[0]['libelle_intitule']
+        : null;
+}
 
 // Total des inscrits en année terminale (ensemble/ensemble/ensemble/ensemble) :
 // toutes obtentions, tous genres, toutes nationalités, tous régimes. Sert au
@@ -330,15 +441,19 @@ $nbTotalInscrits = $rowTotal && $rowTotal['nb_etudiants'] !== null ? (int)$rowTo
 
 Response::json([
     'contexte' => [
-        'id_paysage'        => $idPaysage,
-        'diplom'            => $diplom,
-        'formation'         => $formation,
-        'libelle_intitule'  => $identite['libelle_intitule'],
-        'uo_lib'            => $identite['uo_lib'],
-        'millesime'         => $millesime,
-        'population'        => $population,
-        'seuil_applique'    => $seuil,
-        'nb_total_inscrits' => $nbTotalInscrits,
+        'id_paysage'           => $idPaysage,
+        'diplom'               => $modeEtab ? null : $diplom,
+        'formation'            => $formation,
+        'libelle_intitule'     => $libelleIntitule,
+        'uo_lib'               => $uoLib,
+        'millesime'            => $millesime,
+        'population'           => $population,
+        'mode'                 => $modeEtab ? 'etablissement' : 'mention',
+        'diploms_agreges'      => $modeEtab ? array_column($mentionsAgregees, 'diplom') : null,
+        'nb_mentions_agregees' => $modeEtab ? count($mentionsAgregees) : null,
+        'mentions_agregees'    => $modeEtab ? $mentionsAgregees : null,
+        'seuil_applique'       => $seuil,
+        'nb_total_inscrits'    => $nbTotalInscrits,
     ],
     'durees_disponibles' => $dureesDisponibles,
     'donnees_par_duree'  => $donneesParDuree,
@@ -698,4 +813,19 @@ function chargerIdentiteMention(PDO $pdo, string $idPaysage, string $diplom, str
         'libelle_intitule' => $row && $row['libelle_intitule'] !== null ? (string)$row['libelle_intitule'] : '',
         'uo_lib'           => $row && $row['uo_lib'] !== null ? (string)$row['uo_lib'] : '',
     ];
+}
+
+/**
+ * Libellé de l'établissement (uo_lib) seul — mode établissement, où il n'y
+ * a pas de mention unique. Lu dans stats_quadrant par id_paysage.
+ */
+function chargerUoLib(PDO $pdo, string $idPaysage): string
+{
+    $stmt = $pdo->prepare("
+        SELECT uo_lib FROM stats_quadrant
+        WHERE id_paysage = :id LIMIT 1
+    ");
+    $stmt->execute([':id' => $idPaysage]);
+    $v = $stmt->fetchColumn();
+    return ($v !== false && $v !== null) ? (string)$v : '';
 }

@@ -1691,6 +1691,26 @@ body.exporting .source-attribution {
   margin: 0 0 0.75rem;
 }
 
+/* Onglet « Mentions agrégées » (Phase 14.8) — liste informative, multi-
+   colonnes pour limiter le défilement quand l'établissement a beaucoup
+   de mentions. */
+.onglet-mentions-agregees .liste-mentions-agregees {
+  list-style: disc;
+  columns: 2;
+  column-gap: 2.5rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.onglet-mentions-agregees .liste-mentions-agregees li {
+  break-inside: avoid;
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+  color: #333;
+}
+@media (max-width: 700px) {
+  .onglet-mentions-agregees .liste-mentions-agregees { columns: 1; }
+}
+
 /* Onglets DSFR (Phase 14.2) — pilotés en React (pas le JS DSFR). Le
    conteneur fr-tabs occupe la hauteur restante de la modale, seul le
    panneau actif scrolle (l'en-tête de tableau reste donc sticky par

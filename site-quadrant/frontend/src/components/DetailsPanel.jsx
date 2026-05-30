@@ -103,6 +103,9 @@ export default function DetailsPanel() {
     targetId: detailsCible?.targetId,
     etabContexte,
     mention: detailsCible?.mention || (vue === 'etablissements' ? mention : undefined),
+    // Filtres disciplinaires : la disponibilité de l'analyse fine AGRÉGÉE
+    // (vue Positionnement) dépend des mentions visibles (Phase 14.8).
+    dom: domaine, discipli: discipline, secteur, master: typeMaster,
   });
 
   // /quadrant en parallèle pour les population_x/y de la bulle ciblée.
@@ -280,6 +283,11 @@ export default function DetailsPanel() {
   const aspDiplom = vue === 'mentions'
     ? detailsCible.targetId
     : (detailsCible.mention || mention);
+  // Mode établissement (Phase 14.8) : vue Positionnement SANS filtre mention
+  // → l'analyse agrège toutes les mentions filtrées du cursus de l'étab.
+  // Sinon mode mention (vue Mentions, ou Positionnement avec mention filtrée).
+  const aspMode = (vue === 'etablissements' && !aspDiplom) ? 'etablissement' : 'mention';
+  const aspFiltres = { dom: domaine, discipli: discipline, secteur, master: typeMaster };
   const aspEtabLabel = vue === 'mentions'
     ? etabInfo?.libelle
     : (identite?.uo_lib || identite?.id_paysage || '');
@@ -406,8 +414,10 @@ export default function DetailsPanel() {
       <ModaleAnalyseSousPopulations
         open={modaleAnalyseOuverte}
         onClose={() => setModaleAnalyseOuverte(false)}
+        mode={aspMode}
         idPaysage={aspIdPaysage}
         diplom={aspDiplom}
+        filtres={aspFiltres}
         millesime={millesime}
         formation={cursus}
         etabLabel={aspEtabLabel}

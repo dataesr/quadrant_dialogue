@@ -40,6 +40,7 @@ require_once __DIR__ . '/../lib/Response.php';
 require_once __DIR__ . '/../lib/Session.php';
 require_once __DIR__ . '/../lib/Diffusion.php';
 require_once __DIR__ . '/../lib/RateLimit.php';
+require_once __DIR__ . '/../lib/SousPopulations.php';
 
 Response::cors();
 
@@ -284,24 +285,25 @@ if ($mention !== '') {
 // Le frontend active/désactive le bouton « Analyse de l'insertion par
 // sous-population » sans appel API supplémentaire grâce à ce drapeau.
 //
-// L'analyse porte sur une mention identifiée (id_paysage + diplom) :
-//   - vue=mentions               → (etab_contexte, target_id)
-//   - vue=etablissements+mention → (target_id, mention)
-//   - vue=etablissements sans mention → agrégat multi-mentions, non
-//     applicable (disponible=false).
+// L'analyse porte sur :
+//   - vue=mentions               → la mention (etab_contexte, target_id)
+//   - vue=etablissements+mention → la mention (target_id, mention)
+//   - vue=etablissements sans mention → AGRÉGAT des mentions filtrées du
+//     cursus de l'établissement (Phase 14.8). On résout la liste avec les
+//     MÊMES filtres que /quadrant (dom/discipli/secteur/master) puis on
+//     somme la référence — cohérent avec la modale, qui résout pareil.
 //
 // nb_etudiants_reference = effectif de la RÉFÉRENCE de la modale
-// (diplômé / ensemble / français / ensemble) lu directement dans
-// stats_sous_populations. NB : on N'utilise PAS le dénominateur du
-// « Taux de poursuivants » de stats_quadrant — empiriquement ~5× plus
-// élevé (populations comptées différemment entre les deux tables). Le
-// drapeau doit refléter EXACTEMENT la référence qu'affichera la modale,
-// sinon un bouton actif ouvrirait une modale « effectifs insuffisants ».
-// nb_etudiants étant constant entre durées, un LIMIT 1 suffit.
-$applicableAnalyse = ($vue === 'mentions') || ($vue === 'etablissements' && $mention !== '');
-
+// (diplômé / ensemble / français / ensemble) lu dans stats_sous_populations.
+// NB : on N'utilise PAS le dénominateur du « Taux de poursuivants » de
+// stats_quadrant — empiriquement ~5× plus élevé (populations comptées
+// différemment). Le drapeau doit refléter EXACTEMENT la référence
+// qu'affichera la modale, sinon un bouton actif ouvrirait une modale
+// « effectifs insuffisants ». nb_etudiants étant constant entre durées,
+// un LIMIT 1 (mention) ou un MAX par diplom puis SUM (agrégat) suffit.
 $nbEtudiantsReference = null;
-if ($applicableAnalyse) {
+
+if ($vue === 'mentions' || ($vue === 'etablissements' && $mention !== '')) {
     $aspIdPaysage = $vue === 'mentions' ? $etabContexte : $targetId;
     $aspDiplom    = $vue === 'mentions' ? $targetId     : $mention;
 
@@ -326,6 +328,21 @@ if ($applicableAnalyse) {
     if ($valRef !== false && $valRef !== null) {
         $nbEtudiantsReference = (int)$valRef;
     }
+} elseif ($vue === 'etablissements') {
+    // Agrégat établissement : mentions filtrées (mêmes filtres que /quadrant).
+    $filtresAnalyse = [
+        'dom'      => $_GET['dom']      ?? '',
+        'discipli' => $_GET['discipli'] ?? '',
+        'secteur'  => $_GET['secteur']  ?? '',
+        'master'   => $_GET['master']   ?? '',
+    ];
+    $mentionsAnalyse = SousPopulations::resoudreMentionsFiltrees(
+        $pdo, $targetId, $formation, $millesime, $filtresAnalyse, $motifContexte
+    );
+    $diplomsAnalyse = array_column($mentionsAnalyse, 'diplom');
+    $nbEtudiantsReference = SousPopulations::sommeReferenceAgregee(
+        $pdo, $targetId, $millesime, $diplomsAnalyse, $motifContexte
+    );
 }
 
 $seuilAnalyse = (function () {
@@ -333,8 +350,7 @@ $seuilAnalyse = (function () {
     return (int)($cfg['analyse_sous_populations']['seuil'] ?? 20);
 })();
 
-$analyseDisponible = $applicableAnalyse
-    && $nbEtudiantsReference !== null
+$analyseDisponible = $nbEtudiantsReference !== null
     && $nbEtudiantsReference >= $seuilAnalyse;
 
 Response::json([

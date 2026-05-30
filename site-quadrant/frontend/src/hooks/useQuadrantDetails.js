@@ -53,6 +53,11 @@ export function useQuadrantDetails({
   targetId,
   etabContexte,
   mention,
+  // Filtres disciplinaires actifs (Phase 14.8) : transmis uniquement en
+  // vue=etablissements pour que /quadrant/details calcule la disponibilité
+  // de l'analyse fine AGRÉGÉE (mêmes filtres que /quadrant). Ignorés
+  // serveur en vue=mentions.
+  dom, discipli, secteur, master,
 }) {
   const [state, setState] = useState({ loading: false, data: null, error: null });
 
@@ -76,6 +81,12 @@ export function useQuadrantDetails({
     };
     if (etabContexte) params.etab_contexte = etabContexte;
     if (mention)      params.mention       = mention;
+    if (vue === 'etablissements') {
+      if (dom)      params.dom      = dom;
+      if (discipli) params.discipli = discipli;
+      if (secteur)  params.secteur  = secteur;
+      if (master)   params.master   = master;
+    }
 
     const cle = cleCache(params);
     const cached = cache.get(cle);
@@ -101,7 +112,7 @@ export function useQuadrantDetails({
     return () => {
       cancelled = true;
     };
-  }, [ready, vue, formation, millesime, targetId, etabContexte, mention]);
+  }, [ready, vue, formation, millesime, targetId, etabContexte, mention, dom, discipli, secteur, master]);
 
   return state;
 }

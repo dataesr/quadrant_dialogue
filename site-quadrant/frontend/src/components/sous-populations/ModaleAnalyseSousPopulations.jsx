@@ -7,6 +7,7 @@ import LoaderBarre from '../LoaderBarre.jsx';
 import TableauEcarts from './TableauEcarts.jsx';
 import MiniQuadrantSousPop from './MiniQuadrantSousPop.jsx';
 import SankeyParcoursSousPop from './SankeyParcoursSousPop.jsx';
+import OngletMentionsAgregees from './OngletMentionsAgregees.jsx';
 import SliderDuree from './SliderDuree.jsx';
 
 // Modale large « Analyse de l'insertion par sous-population » (Phase 14).
@@ -28,17 +29,27 @@ const VITESSES = {
   rapide:  { tickMs:  500, transitionMs:  400, libelle: 'Rapide' },
 };
 
-const ONGLETS = [
+const ONGLETS_BASE = [
   { id: 'comparaison', libelle: 'Comparaison' },
   { id: 'quadrant',    libelle: 'Quadrant' },
   { id: 'parcours',    libelle: 'Parcours' },
 ];
 
+// Libellé court du cursus pour le cartouche « X mentions de <cursus> agrégées ».
+const LIBELLE_CURSUS = {
+  'Bachelor universitaire de technologie': 'BUT',
+};
+function libelleCursus(formation) {
+  return LIBELLE_CURSUS[formation] || formation;
+}
+
 export default function ModaleAnalyseSousPopulations({
   open,
   onClose,
+  mode = 'mention',
   idPaysage,
   diplom,
+  filtres,
   millesime,
   formation,
   etabLabel,
@@ -46,6 +57,14 @@ export default function ModaleAnalyseSousPopulations({
   initialDateInser,
 }) {
   const fermerRef = useRef(null);
+
+  // Filtres disciplinaires (mode établissement) — destructurés en primitifs
+  // pour des deps d'effet stables (l'objet `filtres` change de référence à
+  // chaque rendu du parent).
+  const fDom      = filtres?.dom      || '';
+  const fDiscipli = filtres?.discipli || '';
+  const fSecteur  = filtres?.secteur  || '';
+  const fMaster   = filtres?.master   || '';
 
   // -------------------- État fetch --------------------
   const [loading, setLoading] = useState(false);
@@ -73,7 +92,11 @@ export default function ModaleAnalyseSousPopulations({
 
   // -------------------- Fetch à l'ouverture --------------------
   useEffect(() => {
-    if (!open || !idPaysage || !diplom || !millesime) return;
+    // Mode mention : id_paysage + diplom. Mode établissement : id_paysage +
+    // formation + filtres (le backend résout la liste des mentions filtrées).
+    const pret = open && idPaysage && millesime &&
+      (mode === 'etablissement' ? !!formation : !!diplom);
+    if (!pret) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -81,7 +104,19 @@ export default function ModaleAnalyseSousPopulations({
     setEnLecture(false);
     setPhaseAnim('normal');
 
-    getAnalyseSousPopulations({ id_paysage: idPaysage, diplom, millesime })
+    const params = mode === 'etablissement'
+      ? {
+          id_paysage: idPaysage,
+          formation,
+          millesime,
+          ...(fDom ? { dom: fDom } : {}),
+          ...(fDiscipli ? { discipli: fDiscipli } : {}),
+          ...(fSecteur ? { secteur: fSecteur } : {}),
+          ...(fMaster ? { master: fMaster } : {}),
+        }
+      : { id_paysage: idPaysage, diplom, millesime };
+
+    getAnalyseSousPopulations(params)
       .then((res) => {
         if (cancelled) return;
         setData(res);
@@ -103,7 +138,7 @@ export default function ModaleAnalyseSousPopulations({
       });
 
     return () => { cancelled = true; };
-  }, [open, idPaysage, diplom, millesime, initialDateInser]);
+  }, [open, mode, idPaysage, diplom, formation, millesime, fDom, fDiscipli, fSecteur, fMaster, initialDateInser]);
 
   // -------------------- Lecture auto --------------------
   useEffect(() => {
@@ -205,6 +240,23 @@ export default function ModaleAnalyseSousPopulations({
     ? Math.round((refN / nTotal) * 100)
     : null;
 
+  // -------------------- Mode + onglets dynamiques (Phase 14.8) --------------------
+  const modeReponse     = data?.contexte?.mode || 'mention';
+  const nbMentions      = data?.contexte?.nb_mentions_agregees ?? null;
+  const mentionsAgregees = data?.contexte?.mentions_agregees || [];
+  // Cartouche établissement avec ≥2 mentions : « X mentions de <cursus> agrégées ».
+  // Sinon (mention, ou établissement à 1 mention) : « <cursus> · <libellé mention> ».
+  const estAgregatMulti = modeReponse === 'etablissement' && (nbMentions || 0) >= 2;
+  const libelleMentionUnique = mentionLabel
+    || (modeReponse === 'etablissement' ? mentionsAgregees[0]?.libelle_intitule : null);
+
+  const onglets = estAgregatMulti
+    ? [...ONGLETS_BASE, { id: 'mentions', libelle: 'Mentions agrégées' }]
+    : ONGLETS_BASE;
+  // Onglet effectif : si l'onglet courant n'existe plus (ex. mention ⇄ étab),
+  // on retombe sur Comparaison.
+  const ongletEffectif = onglets.some((o) => o.id === ongletActif) ? ongletActif : 'comparaison';
+
   return (
     <div
       className="modale-asp-overlay"
@@ -233,8 +285,14 @@ export default function ModaleAnalyseSousPopulations({
         <div className="modale-asp-cartouche">
           <p className="modale-asp-contexte">
             <strong>{etabLabel}</strong>
-            {' · '}{formation}
-            {mentionLabel ? <>{' · '}{mentionLabel}</> : null}
+            {estAgregatMulti ? (
+              <>{' · '}{nbMentions} mentions de {libelleCursus(formation)} agrégées</>
+            ) : (
+              <>
+                {' · '}{formation}
+                {libelleMentionUnique ? <>{' · '}{libelleMentionUnique}</> : null}
+              </>
+            )}
           </p>
           {donneesUtilisables && (
             <>
@@ -278,14 +336,14 @@ export default function ModaleAnalyseSousPopulations({
           <>
             <div className="modale-asp-tabs fr-tabs">
               <ul className="fr-tabs__list" role="tablist" aria-label="Sections de l'analyse">
-                {ONGLETS.map((o) => (
+                {onglets.map((o) => (
                   <li key={o.id} role="presentation">
                     <button
                       id={`tab-${o.id}`}
                       className="fr-tabs__tab"
-                      tabIndex={ongletActif === o.id ? 0 : -1}
+                      tabIndex={ongletEffectif === o.id ? 0 : -1}
                       role="tab"
-                      aria-selected={ongletActif === o.id}
+                      aria-selected={ongletEffectif === o.id}
                       aria-controls={`tabpanel-${o.id}`}
                       onClick={() => changerOnglet(o.id)}
                     >
@@ -314,7 +372,7 @@ export default function ModaleAnalyseSousPopulations({
 
               <div
                 id="tabpanel-comparaison"
-                className={'fr-tabs__panel' + (ongletActif === 'comparaison' ? ' fr-tabs__panel--selected' : '')}
+                className={'fr-tabs__panel' + (ongletEffectif === 'comparaison' ? ' fr-tabs__panel--selected' : '')}
                 role="tabpanel"
                 aria-labelledby="tab-comparaison"
                 tabIndex={0}
@@ -327,7 +385,7 @@ export default function ModaleAnalyseSousPopulations({
 
               <div
                 id="tabpanel-quadrant"
-                className={'fr-tabs__panel' + (ongletActif === 'quadrant' ? ' fr-tabs__panel--selected' : '')}
+                className={'fr-tabs__panel' + (ongletEffectif === 'quadrant' ? ' fr-tabs__panel--selected' : '')}
                 role="tabpanel"
                 aria-labelledby="tab-quadrant"
                 tabIndex={0}
@@ -396,7 +454,7 @@ export default function ModaleAnalyseSousPopulations({
 
               <div
                 id="tabpanel-parcours"
-                className={'fr-tabs__panel' + (ongletActif === 'parcours' ? ' fr-tabs__panel--selected' : '')}
+                className={'fr-tabs__panel' + (ongletEffectif === 'parcours' ? ' fr-tabs__panel--selected' : '')}
                 role="tabpanel"
                 aria-labelledby="tab-parcours"
                 tabIndex={0}
@@ -407,6 +465,19 @@ export default function ModaleAnalyseSousPopulations({
                   seuilDiffusion={data.contexte?.seuil_applique}
                 />
               </div>
+
+              {/* Onglet « Mentions agrégées » — mode établissement, ≥2 mentions */}
+              {estAgregatMulti && (
+                <div
+                  id="tabpanel-mentions"
+                  className={'fr-tabs__panel' + (ongletEffectif === 'mentions' ? ' fr-tabs__panel--selected' : '')}
+                  role="tabpanel"
+                  aria-labelledby="tab-mentions"
+                  tabIndex={0}
+                >
+                  <OngletMentionsAgregees mentions={mentionsAgregees} />
+                </div>
+              )}
             </div>
 
             <p className="modale-asp-source">
