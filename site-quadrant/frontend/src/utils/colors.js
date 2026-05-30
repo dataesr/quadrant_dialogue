@@ -45,6 +45,29 @@ export const LIBELLES_CATEGORIES_ETAB = {
   autres:                      'Autre établissement',
 };
 
+// Couleurs par critère de sous-population (Phase 14 — modale d'analyse
+// fine de l'insertion). Une bulle du mini-quadrant est colorée selon le
+// critère de la sous-population qu'elle représente. La référence
+// (diplômés français) est en gris neutre.
+export const COULEUR_CRITERE_SOUS_POP = {
+  reference:     '#888780', // gris neutre
+  genre:         '#534AB7', // violet (femmes / hommes)
+  regime:        '#D85A30', // orange (apprentis)
+  'genre+regime': '#8B6FB0', // violet adouci (croisement genre × régime)
+  diplomation:   '#1D9E75', // vert (effet diplomation : ensemble)
+  nationalite:   '#185FA5', // bleu (effet nationalité : tous)
+};
+
+// Libellés courts des critères pour la légende du mini-quadrant.
+export const LIBELLE_CRITERE_SOUS_POP = {
+  reference:     'Référence (diplômés français)',
+  genre:         'Genre',
+  regime:        'Régime (apprentissage)',
+  'genre+regime': 'Genre × régime',
+  diplomation:   'Effet diplomation',
+  nationalite:   'Effet nationalité',
+};
+
 // Ordre canonique des catégories — du plus spécifique (étab de
 // contexte) au plus générique (autres). Sert au rendu de la légende
 // dans Quadrant.jsx (filtrage des catégories réellement présentes

@@ -235,3 +235,7 @@ export function getEtablissementsVisibles(params) {
 export function getFrontendConfig() {
   return request('/frontend-config');
 }
+
+export function getAnalyseSousPopulations(params) {
+  return request('/analyse-sous-populations', params);
+}

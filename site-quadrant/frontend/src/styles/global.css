@@ -1611,3 +1611,293 @@ body.exporting .source-attribution {
     transform: none;
   }
 }
+
+/* =========================================================================
+   Phase 14 — Modale « Analyse de l'insertion par sous-population »
+   ========================================================================= */
+
+/* Bouton d'ouverture dans le panneau de détails */
+.bouton-analyse-sp {
+  margin-top: 0.75rem;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Modale large (~90 % du viewport), scrollable */
+.modale-asp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 30, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+.modale-asp {
+  background: white;
+  width: 92vw;
+  max-width: 1100px;
+  max-height: 92vh;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modale-asp header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e5e5;
+  background: #f6f6f6;
+}
+.modale-asp-titre-zone { flex: 1; }
+.modale-asp header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.15rem;
+  color: #161616;
+}
+.modale-asp-contexte {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #333;
+}
+.modale-asp-reference {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: #666;
+}
+.modale-asp header .bouton-fermer {
+  background: transparent;
+  border: none;
+  color: #161616;
+  cursor: pointer;
+  font-size: 1.5rem;
+  padding: 0.25rem;
+}
+.modale-asp-loading { padding: 1.5rem; }
+.modale-asp-insuffisant { margin: 1.25rem; }
+
+/* Corps scrollable, sections empilées */
+.modale-asp-corps {
+  overflow-y: auto;
+  padding: 1rem 1.25rem 1.25rem;
+}
+.modale-asp-corps > section { margin-bottom: 1.5rem; }
+.modale-asp-corps h3 {
+  font-size: 1rem;
+  color: #161616;
+  margin: 0 0 0.75rem;
+}
+
+/* ---- Section 1 : répartitions (barres empilées 100 %) ---- */
+.repartitions-promo-barres {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.repartition-ligne {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.repartition-label {
+  width: 180px;
+  flex: 0 0 180px;
+  font-size: 0.82rem;
+  color: #444;
+}
+.repartition-barre {
+  flex: 1;
+  display: flex;
+  height: 26px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+.repartition-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 0.72rem;
+}
+.repartition-segment-texte {
+  padding: 0 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Segment sous le seuil : gris hachuré */
+.repartition-segment--masque {
+  background: repeating-linear-gradient(
+    45deg, #cfcfcf, #cfcfcf 4px, #e2e2e2 4px, #e2e2e2 8px
+  );
+  color: #555;
+}
+
+/* ---- Section 2 : tableau d'écarts ---- */
+.tableau-ecarts-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.tableau-ecarts-duree {
+  font-size: 0.82rem;
+  color: #000091;
+  font-weight: 500;
+}
+.tableau-ecarts-toggle { margin: 0.25rem 0 0.5rem; }
+.tableau-ecarts-scroll { overflow-x: auto; }
+.tableau-ecarts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.tableau-ecarts-table th[scope="col"] {
+  text-align: left;
+  font-size: 0.76rem;
+  color: #555;
+  border-bottom: 2px solid #ddd;
+  padding: 0.4rem 0.5rem;
+  vertical-align: bottom;
+}
+.tableau-ecarts-table th[scope="row"] {
+  text-align: left;
+  font-weight: 500;
+  color: #222;
+  padding: 0.4rem 0.5rem;
+}
+.tableau-ecarts-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+.tableau-ecarts-table tr.ligne-reference {
+  background: #f6f6f6;
+}
+.tableau-ecarts-table tr.ligne-reference th[scope="row"] { color: #555; }
+.tableau-ecarts-table tr.ligne-croisement th[scope="row"] {
+  padding-left: 1.25rem;
+  font-weight: 400;
+  color: #555;
+}
+.cellule-effectif { text-align: right; font-variant-numeric: tabular-nums; }
+.cellule-taux { white-space: nowrap; }
+.cellule-taux-valeur { font-variant-numeric: tabular-nums; }
+.cellule-ns { color: #999; font-style: italic; }
+.cellule-reference { color: #555; font-variant-numeric: tabular-nums; }
+
+/* Écart coloré : texte + barre proportionnelle */
+.cellule-ecart {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.cellule-ecart-barre {
+  display: inline-block;
+  height: 4px;
+  border-radius: 2px;
+  max-width: 40px;
+}
+.cellule-ecart--vert-fonce  { color: #18753c; }
+.cellule-ecart--vert-fonce  .cellule-ecart-barre { background: #18753c; }
+.cellule-ecart--vert-clair  { color: #4e9a6b; }
+.cellule-ecart--vert-clair  .cellule-ecart-barre { background: #8bd1a4; }
+.cellule-ecart--neutre      { color: #888; }
+.cellule-ecart--rouge-clair { color: #c9706b; }
+.cellule-ecart--rouge-clair .cellule-ecart-barre { background: #f3aaa5; }
+.cellule-ecart--rouge-fonce { color: #b91f1f; }
+.cellule-ecart--rouge-fonce .cellule-ecart-barre { background: #b91f1f; }
+
+/* ---- Section 3 : mini-quadrant animé ---- */
+.modale-asp-trajectoires { display: flex; flex-direction: column; }
+.mini-quadrant-sp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.mini-quadrant-sp-svg {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  display: block;
+}
+.mini-quadrant-sp-svg .mini-quadrant-sp-duree,
+.mini-quadrant-sp-svg .mini-quadrant-sp-traces {
+  pointer-events: none;
+  user-select: none;
+}
+.mini-quadrant-sp-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+  font-size: 0.76rem;
+  color: #555;
+}
+.mini-quadrant-sp-legende-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.mini-quadrant-sp-legende-item .puce {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mini-quadrant-sp-legende-taille { color: #888; font-style: italic; }
+
+/* Contrôles d'animation (mêmes patterns que la modale temporelle) */
+.modale-asp-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+.modale-asp-slider { flex: 1; min-width: 180px; }
+.modale-asp-ticks {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: #666;
+  flex: 1;
+  justify-content: space-between;
+  padding: 0 0.5rem;
+}
+.modale-asp-ticks .tick.actif { color: #000091; font-weight: 600; }
+.modale-asp-vitesse.fr-segmented {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 0;
+  padding: 0;
+}
+.modale-asp-vitesse .fr-segmented__legend {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+  padding: 0;
+  margin: 0;
+}
+.modale-asp-source {
+  font-size: 0.75rem;
+  color: #777;
+  margin: 0.5rem 0 0;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 0.5rem;
+}
+
+/* Respect de prefers-reduced-motion : pas de transitions sur les bulles */
+@media (prefers-reduced-motion: reduce) {
+  .mini-quadrant-sp-bulles g { transition: none !important; }
+}
