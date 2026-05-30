@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { sankey, sankeyLeft, sankeyLinkHorizontal } from 'd3-sankey';
 import { COULEUR_MODALITE_SOUS_POP } from '../../utils/colors.js';
-import SliderDuree from './SliderDuree.jsx';
 
 // Onglet « Parcours » de la modale d'analyse fine (Phase 14.5).
 //
@@ -252,8 +251,6 @@ function construireGraphe(pops) {
 export default function SankeyParcoursSousPop({
   data,
   dureeCourante,
-  durees_disponibles = [],
-  onChangerDuree,
   seuilDiffusion = 20,
 }) {
   // Choix utilisateur explicite (null tant qu'aucun clic). Le critère
@@ -278,17 +275,6 @@ export default function SankeyParcoursSousPop({
     () => (pops && pops.length === 2 ? construireGraphe(pops) : null),
     [pops]
   );
-
-  // Slider de durée (mécanique identique à l'onglet Comparaison) : snap sur
-  // la durée disponible la plus proche, état partagé via onChangerDuree.
-  const choisirDuree = useCallback((cible) => {
-    if (!onChangerDuree || durees_disponibles.length === 0) return;
-    const proche = durees_disponibles.reduce(
-      (a, b) => (Math.abs(b - cible) < Math.abs(a - cible) ? b : a),
-      durees_disponibles[0]
-    );
-    onChangerDuree(proche);
-  }, [onChangerDuree, durees_disponibles]);
 
   const handleHoverLink = useCallback((lien, event) => {
     setHovered({ kind: 'link', lien, x: event.clientX, y: event.clientY });
@@ -326,17 +312,6 @@ export default function SankeyParcoursSousPop({
             );
           })}
         </div>
-
-        {durees_disponibles.length > 1 && (
-          <div className="sankey-duree">
-            <SliderDuree
-              durees={durees_disponibles}
-              valeur={dureeCourante}
-              onChanger={choisirDuree}
-              idBase="sankey-duree"
-            />
-          </div>
-        )}
       </div>
 
       {aucunDispo && (

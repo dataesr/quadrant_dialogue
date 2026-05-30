@@ -295,6 +295,23 @@ export default function ModaleAnalyseSousPopulations({
                 ))}
               </ul>
 
+              {/* Slider de durée COMMUN aux 3 onglets (Phase 14.6) : posé
+                  sous la barre d'onglets, au-dessus du contenu. Pilote
+                  l'état partagé `dureeCourante` ; un déplacement manuel met
+                  l'animation en pause (handleChoisirDuree). */}
+              {animationDispo && (
+                <div className="modale-asp-slider-commun">
+                  <SliderDuree
+                    valeurs={durees}
+                    valeur={dureeCourante}
+                    onChanger={handleChoisirDuree}
+                    idBase="asp-duree"
+                    libelle="Observation à"
+                    suffixe=" mois"
+                  />
+                </div>
+              )}
+
               <div
                 id="tabpanel-comparaison"
                 className={'fr-tabs__panel' + (ongletActif === 'comparaison' ? ' fr-tabs__panel--selected' : '')}
@@ -304,9 +321,6 @@ export default function ModaleAnalyseSousPopulations({
               >
                 <TableauEcarts
                   bloc={blocCourant}
-                  dureeCourante={dureeCourante}
-                  durees={durees}
-                  onChangerDuree={setDureeCourante}
                   seuil={data.contexte?.seuil_applique}
                 />
               </div>
@@ -350,13 +364,6 @@ export default function ModaleAnalyseSousPopulations({
                         disabled={iCourant >= durees.length - 1}
                         aria-label="Durée suivante"
                       >⏭</button>
-
-                      <SliderDuree
-                        durees={durees}
-                        valeur={dureeCourante}
-                        onChanger={handleChoisirDuree}
-                        idBase="quadrant-duree"
-                      />
                     </div>
 
                     <fieldset className="fr-segmented fr-segmented--sm modale-asp-vitesse">
@@ -394,8 +401,6 @@ export default function ModaleAnalyseSousPopulations({
                 <SankeyParcoursSousPop
                   data={blocCourant?.sankey}
                   dureeCourante={dureeCourante}
-                  durees_disponibles={durees}
-                  onChangerDuree={setDureeCourante}
                   seuilDiffusion={data.contexte?.seuil_applique}
                 />
               </div>

@@ -6,6 +6,7 @@ import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { formatLibelleAxe } from '../utils/libelleAxe.js';
 import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
 import LoaderBarre from './LoaderBarre.jsx';
+import SliderDuree from './sous-populations/SliderDuree.jsx';
 import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 
 // Modale d'animation temporelle (Phase 11b — MVP + v2).
@@ -323,18 +324,12 @@ export default function ModaleAnimation({ open, onClose }) {
     const i = ms.indexOf(millesimeCourant);
     if (i < ms.length - 1) setMillesimeCourant(ms[i + 1]);
   }
-  function handleSlider(e) {
+  // Changement de millésime via le curseur DSFR (déjà snappé sur un
+  // millésime disponible par SliderDuree). Déplacement manuel → pause.
+  function handleChoisirMillesime(m) {
     if (comparerEnCours) return;
     setEnLecture(false);
-    const target = parseInt(e.target.value, 10);
-    const arr = data?.millesimes_disponibles || [];
-    let plusProche = arr[0];
-    let dMin = Math.abs(target - arr[0]);
-    for (const m of arr) {
-      const d = Math.abs(target - m);
-      if (d < dMin) { plusProche = m; dMin = d; }
-    }
-    setMillesimeCourant(plusProche);
+    setMillesimeCourant(m);
   }
 
   // -------------------- Mode Comparer (v2) --------------------
@@ -473,6 +468,19 @@ export default function ModaleAnimation({ open, onClose }) {
 
         {!loading && !error && animationDispo && (
           <>
+            {/* Curseur de millésime DSFR — au-dessus du quadrant (Phase 14.6) */}
+            <div className="modale-animation-slider-commun">
+              <SliderDuree
+                valeurs={ms}
+                valeur={millesimeCourant}
+                onChanger={handleChoisirMillesime}
+                idBase="anim-millesime"
+                libelle="Millésime"
+                suffixe=""
+                disabled={comparerEnCours}
+              />
+            </div>
+
             <div className="modale-animation-quadrant">
               <QuadrantAnime
                 bulles={bullesCourantes}
@@ -490,57 +498,38 @@ export default function ModaleAnimation({ open, onClose }) {
               />
             </div>
 
+            {/* Contrôles de lecture + vitesse — SOUS le quadrant (Phase 14.6).
+                Lecture à gauche, vitesse à droite ; wrap sur 2 lignes si
+                l'espace manque. */}
             <div className="modale-animation-controls">
-              <button
-                type="button"
-                className="fr-btn fr-btn--sm fr-btn--tertiary"
-                onClick={handlePrev}
-                disabled={iCourant <= 0 || comparerEnCours}
-                aria-label="Millésime précédent"
-              >⏮</button>
-              <button
-                type="button"
-                className="fr-btn fr-btn--sm"
-                onClick={handlePlayPause}
-                disabled={comparerEnCours}
-                aria-label={enLecture ? 'Pause' : 'Lecture'}
-              >{enLecture ? '⏸ Pause' : '▶ Lecture'}</button>
-              <button
-                type="button"
-                className="fr-btn fr-btn--sm fr-btn--tertiary"
-                onClick={handleNext}
-                disabled={iCourant >= ms.length - 1 || comparerEnCours}
-                aria-label="Millésime suivant"
-              >⏭</button>
-
-              <input
-                type="range"
-                className="modale-animation-slider"
-                min={ms[0]}
-                max={ms[ms.length - 1]}
-                step={1}
-                value={millesimeCourant}
-                onChange={handleSlider}
-                disabled={comparerEnCours}
-                aria-label="Millésime"
-              />
-
-              <div className="modale-animation-millesimes-ticks">
-                {ms.map((m) => (
-                  <span
-                    key={m}
-                    className={'tick' + (m === millesimeCourant ? ' actif' : '')}
-                  >{m}</span>
-                ))}
+              <div className="modale-animation-controls-lecture">
+                <button
+                  type="button"
+                  className="fr-btn fr-btn--sm fr-btn--tertiary"
+                  onClick={handlePrev}
+                  disabled={iCourant <= 0 || comparerEnCours}
+                  aria-label="Millésime précédent"
+                >⏮</button>
+                <button
+                  type="button"
+                  className="fr-btn fr-btn--sm"
+                  onClick={handlePlayPause}
+                  disabled={comparerEnCours}
+                  aria-label={enLecture ? 'Pause' : 'Lecture'}
+                >{enLecture ? '⏸ Pause' : '▶ Lecture'}</button>
+                <button
+                  type="button"
+                  className="fr-btn fr-btn--sm fr-btn--tertiary"
+                  onClick={handleNext}
+                  disabled={iCourant >= ms.length - 1 || comparerEnCours}
+                  aria-label="Millésime suivant"
+                >⏭</button>
               </div>
-            </div>
 
-            <div className="modale-animation-options">
               {/* Sélecteur de vitesse — composant DSFR `fr-segmented`
                   en taille `--sm` (boutons inline plus esthétiques que
                   les radios verticaux pour des libellés courts comme
-                  Lente / Moyenne / Rapide). Cohérent avec
-                  AffichageSelector qui utilise déjà ce pattern. */}
+                  Lente / Moyenne / Rapide). */}
               <fieldset
                 className="fr-segmented fr-segmented--sm"
                 disabled={comparerEnCours}
@@ -565,7 +554,9 @@ export default function ModaleAnimation({ open, onClose }) {
                   })}
                 </div>
               </fieldset>
+            </div>
 
+            <div className="modale-animation-options">
               <button
                 type="button"
                 className="fr-btn fr-btn--sm fr-btn--tertiary modale-animation-comparer"

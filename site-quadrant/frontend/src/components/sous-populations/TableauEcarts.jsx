@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 import { COULEUR_SEGMENT_SOUS_POP } from '../../utils/colors.js';
-import SliderDuree from './SliderDuree.jsx';
 
 // Section « Comparaison » (Phase 14.1/14.2) : tableau des sous-populations
 // vs la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
@@ -152,9 +151,6 @@ function LigneSousPop({ sp }) {
 
 export default function TableauEcarts({
   bloc,
-  dureeCourante,
-  durees = [],
-  onChangerDuree,
   seuil = 20,
 }) {
   const [croisementsSimples, setCroisementsSimples] = useState(false);
@@ -167,17 +163,6 @@ export default function TableauEcarts({
     setHoveredSeg({ seg, couleur, x: event.clientX, y: event.clientY });
   }, []);
   const handleLeaveSeg = useCallback(() => setHoveredSeg(null), []);
-
-  // Slider de durée (Phase 14.3) : snap sur la durée disponible la plus
-  // proche. État partagé avec le mini-quadrant via onChangerDuree.
-  const choisirDuree = useCallback((cible) => {
-    if (!onChangerDuree || durees.length === 0) return;
-    const proche = durees.reduce(
-      (a, b) => (Math.abs(b - cible) < Math.abs(a - cible) ? b : a),
-      durees[0]
-    );
-    onChangerDuree(proche);
-  }, [onChangerDuree, durees]);
 
   if (!bloc) return null;
   const reference = bloc.reference;
@@ -200,21 +185,6 @@ export default function TableauEcarts({
           <label className="fr-label" htmlFor="tableau-ecarts-simples">
             Afficher uniquement les croisements simples
           </label>
-        </div>
-
-        <div className="tableau-ecarts-duree-select">
-          {durees.length > 1 ? (
-            <SliderDuree
-              durees={durees}
-              valeur={dureeCourante}
-              onChanger={choisirDuree}
-              idBase="comparaison-duree"
-            />
-          ) : (
-            <span className="tableau-ecarts-duree-label">
-              Observation à : {dureeCourante} mois
-            </span>
-          )}
         </div>
       </div>
 

@@ -1023,30 +1023,28 @@
   height: auto;
   display: block;
 }
+/* Curseur de millésime DSFR — au-dessus du quadrant (Phase 14.6). */
+.modale-animation-slider-commun {
+  padding: 0.6rem 1.25rem 0.2rem;
+}
+.modale-animation-slider-commun .slider-duree.fr-range-group {
+  min-width: 100%;
+}
+/* Contrôles de lecture + vitesse — sous le quadrant (Phase 14.6) :
+   lecture à gauche, vitesse à droite, wrap si l'espace manque. */
 .modale-animation-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
   flex-wrap: wrap;
   padding: 0.5rem 1.25rem;
   border-top: 1px solid #e5e5e5;
 }
-.modale-animation-slider {
-  flex: 1;
-  min-width: 200px;
-}
-.modale-animation-millesimes-ticks {
+.modale-animation-controls-lecture {
   display: flex;
-  gap: 1rem;
-  font-size: 0.78rem;
-  color: #666;
-  flex: 1;
-  justify-content: space-between;
-  padding: 0 0.5rem;
-}
-.modale-animation-millesimes-ticks .tick.actif {
-  color: #000091;
-  font-weight: 600;
+  align-items: center;
+  gap: 0.5rem;
 }
 /* Options (vitesse + bouton Comparer) — bandeau entre les contrôles
    et le sélecteur de référence (Phase 11b v2). Vitesse aligné à
@@ -1726,9 +1724,19 @@ body.exporting .source-attribution {
   order: 0;
   padding: 4px 1.25rem;
 }
+/* Slider de durée COMMUN aux 3 onglets (Phase 14.6) : entre la barre
+   d'onglets (order 0) et le panneau actif (order 2). */
+.modale-asp-slider-commun {
+  flex: 0 0 auto;
+  order: 1;
+  padding: 0.5rem 1.25rem 0.1rem;
+}
+.modale-asp-slider-commun .slider-duree.fr-range-group {
+  min-width: 100%;
+}
 .modale-asp-tabs .fr-tabs__panel {
   display: none;
-  order: 1;
+  order: 2;
   position: static;
   left: auto;
   margin-right: 0;
@@ -1795,11 +1803,6 @@ body.exporting .source-attribution {
   cursor: not-allowed;
 }
 /* Sélecteur de durée : aligné sur le slider de l'onglet Comparaison */
-.sankey-duree {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
 .sankey-message { margin: 1rem 0; }
 .sankey-svg { display: block; }
 .sankey-noeud-label {
@@ -1876,13 +1879,6 @@ body.exporting .source-attribution {
 /* La glissière reste glissable entre les crans (les boutons sont fins). */
 .slider-duree-tick:focus { outline: none; }
 
-/* Contexte Quadrant : le curseur occupe l'espace restant de la ligne de
-   contrôles (boutons lecture à gauche). */
-.modale-asp-controls .slider-duree.fr-range-group {
-  flex: 1 1 auto;
-  min-width: 200px;
-}
-
 /* ---- Barres de répartition (intégrées au tableau, Phase 14.1) ---- */
 .repartition-barre {
   flex: 1;
@@ -1958,19 +1954,6 @@ body.exporting .source-attribution {
   margin: 0.25rem 0 0.6rem;
 }
 .tableau-ecarts-toggle { margin: 0; }
-.tableau-ecarts-duree-select {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  flex-wrap: wrap;
-}
-.tableau-ecarts-duree-label {
-  font-size: 0.82rem;
-  color: #000091;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.tableau-ecarts-duree-range { width: 160px; min-width: 120px; }
 .tableau-ecarts-scroll { overflow: visible; }
 .tableau-ecarts-table {
   width: 100%;
