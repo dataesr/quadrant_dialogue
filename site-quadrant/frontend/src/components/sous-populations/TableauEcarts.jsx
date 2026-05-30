@@ -116,10 +116,10 @@ export default function TableauEcarts({ bloc, dureeCourante }) {
             <tr>
               <th scope="col">Sous-population</th>
               <th scope="col">Effectif</th>
-              <th scope="col">Taux de poursuivants</th>
               {COLONNES_EMPLOI.map((c) => (
                 <th key={c.cle} scope="col">{c.libelle}</th>
               ))}
+              <th scope="col">Taux de poursuivants</th>
             </tr>
           </thead>
           <tbody>
@@ -128,10 +128,10 @@ export default function TableauEcarts({ bloc, dureeCourante }) {
               <tr className="ligne-reference">
                 <th scope="row">Diplômés français (référence)</th>
                 <CelluleEffectif nb={reference.nb_etudiants} present />
-                <CelluleTaux taux={reference.taux_poursuivants} estReference />
                 {COLONNES_EMPLOI.map((c) => (
                   <CelluleTaux key={c.cle} taux={reference[c.cle]} estReference />
                 ))}
+                <CelluleTaux taux={reference.taux_poursuivants} estReference />
               </tr>
             )}
 
@@ -139,10 +139,6 @@ export default function TableauEcarts({ bloc, dureeCourante }) {
               <tr key={sp.id} className={sp.croisement ? 'ligne-croisement' : undefined}>
                 <th scope="row">{sp.libelle}</th>
                 <CelluleEffectif nb={sp.nb_etudiants} present={sp.present} />
-                <CelluleTaux
-                  taux={sp.taux_poursuivants}
-                  ecart={sp.ecart_taux_poursuivants}
-                />
                 {COLONNES_EMPLOI.map((c) => (
                   <CelluleTaux
                     key={c.cle}
@@ -150,6 +146,10 @@ export default function TableauEcarts({ bloc, dureeCourante }) {
                     ecart={sp[c.ecart]}
                   />
                 ))}
+                <CelluleTaux
+                  taux={sp.taux_poursuivants}
+                  ecart={sp.ecart_taux_poursuivants}
+                />
               </tr>
             ))}
           </tbody>
