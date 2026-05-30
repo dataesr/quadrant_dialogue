@@ -118,4 +118,21 @@ return [
     'anonymization' => [
         'secret' => 'CHANGE_ME_BEFORE_DEPLOY',
     ],
+
+    // Phase 14 — Analyse de l'insertion par sous-population.
+    //
+    // `seuil` : effectif minimum en dessous duquel une valeur est
+    // masquée (« n.s. » côté UI). Appliqué sur `nb_etudiants` pour les
+    // indicateurs centrés entrants (Taux de poursuivants) et sur
+    // `nb_sortants` pour les indicateurs centrés sortants (Taux emploi
+    // salarié FR / non salarié / stable). 20 par défaut, cohérent avec
+    // le seuil d'export.
+    //
+    // L'endpoint /api/analyse-sous-populations REFUSE de répondre (500
+    // explicite) si cette clé est absente — même garde-fou que le
+    // secret d'anonymisation (Phase 11), pour éviter un déploiement où
+    // le seuil de masquage serait silencieusement à 0.
+    'analyse_sous_populations' => [
+        'seuil' => 20,
+    ],
 ];
