@@ -1744,16 +1744,93 @@ body.exporting .source-attribution {
   overflow: auto;
 }
 
-/* Onglet « Parcours » — placeholder centré */
-.placeholder-parcours {
+/* ---- Onglet « Parcours » : sankey comparatif (Phase 14.5) ---- */
+.sankey-parcours {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  text-align: center;
-  padding: 2rem;
+  gap: 0.75rem;
 }
+.sankey-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.sankey-criteres {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.sankey-criteres-label {
+  font-size: 0.85rem;
+  color: #333;
+  margin-right: 0.15rem;
+}
+/* Boutons « pilule » du sélecteur de critère */
+.sankey-critere-btn {
+  border: 1px solid #929292;
+  background: #fff;
+  color: #161616;
+  border-radius: 999px;
+  padding: 0.25rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.sankey-critere-btn:hover:not(:disabled):not(.sankey-critere-btn--actif) {
+  border-color: #000091;
+  color: #000091;
+}
+.sankey-critere-btn--actif {
+  background: #000091;
+  border-color: #000091;
+  color: #fff;
+}
+.sankey-critere-btn:disabled {
+  color: #b0b0b0;
+  border-color: #e0e0e0;
+  background: #f6f6f6;
+  cursor: not-allowed;
+}
+/* Sélecteur de durée : aligné sur le slider de l'onglet Comparaison */
+.sankey-duree {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sankey-message { margin: 1rem 0; }
+.sankey-svg { display: block; }
+.sankey-noeud-label {
+  font-size: 11px;
+  fill: #161616;
+}
+.sankey-noeud-n {
+  fill: #6a6a6a;
+  font-weight: 600;
+}
+.sankey-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  font-size: 0.82rem;
+  color: #333;
+  padding-top: 0.25rem;
+}
+.sankey-legende-item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.sankey-legende-item .puce {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.sankey-tooltip-detail {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+.sankey-tooltip-detail > div { display: flex; align-items: center; }
 
 /* ---- Barres de répartition (intégrées au tableau, Phase 14.1) ---- */
 .repartition-barre {

@@ -295,6 +295,7 @@ foreach ($dureesDisponibles as $d) {
     $donneesParDuree[$d] = [
         'reference'        => $reference,
         'sous_populations' => $sousPopulations,
+        'sankey'           => construireSankey($index, $seuil),
     ];
 }
 
@@ -500,6 +501,176 @@ function construireRepartitions(array $index, int $seuil): array
             'sortants_non_diplomes'     => $part($sortNonDip, $basePromo),
         ],
         '_sous_seuil' => $sousSeuil,
+    ];
+}
+
+/**
+ * Données du sankey « Parcours » (Phase 14.5) pour une durée donnée.
+ *
+ * Pour chacun des 4 critères de comparaison, fournit les 2 sous-populations
+ * opposées et leur décomposition du devenir (poursuivants / sortants ×
+ * salarié FR / non salarié / autres). Les sous-populations dérivées sont
+ * calculées par soustraction ligne à ligne (cf. sankeyPop).
+ *
+ * Un critère est `disponible` si ses 2 sous-populations existent ET ont
+ * chacune nb_sortants >= seuil. Sinon `disponible=false` avec une
+ * `raison_indisponibilite` exploitable par le frontend pour le tooltip
+ * du sélecteur grisé :
+ *   - 'sous_population_absente'           : une ligne source manque
+ *   - 'effectif_<slug>_sous_seuil'        : une modalité a nb_sortants < seuil
+ *     (<slug> ∈ femmes/hommes/apprentis/non_apprentis/diplomes/non_diplomes/
+ *      francais/etrangers — le frontend en dérive le libellé).
+ */
+function construireSankey(array $index, int $seuil): array
+{
+    // Pour chaque critère : [sous-pop de référence, sous-pop opposée].
+    // 'cle' = lecture directe ; 'diff' = [base, à soustraire] (dérivée).
+    $criteres = [
+        'genre' => [
+            ['modalite' => 'femme', 'libelle' => 'Femmes diplômées françaises',
+             'cle' => ['diplômé', 'femme', 'français', 'ensemble']],
+            ['modalite' => 'homme', 'libelle' => 'Hommes diplômés français',
+             'cle' => ['diplômé', 'homme', 'français', 'ensemble']],
+        ],
+        'apprentissage' => [
+            ['modalite' => 'apprentissage', 'libelle' => 'Apprentis diplômés français',
+             'cle' => ['diplômé', 'ensemble', 'français', 'apprentissage']],
+            ['modalite' => 'non_apprentissage', 'libelle' => 'Non-apprentis diplômés français',
+             'diff' => [['diplômé', 'ensemble', 'français', 'ensemble'],
+                        ['diplômé', 'ensemble', 'français', 'apprentissage']]],
+        ],
+        'diplomation' => [
+            ['modalite' => 'diplome', 'libelle' => 'Diplômés français',
+             'cle' => ['diplômé', 'ensemble', 'français', 'ensemble']],
+            ['modalite' => 'non_diplome', 'libelle' => 'Non-diplômés français',
+             'diff' => [['ensemble', 'ensemble', 'français', 'ensemble'],
+                        ['diplômé', 'ensemble', 'français', 'ensemble']]],
+        ],
+        'nationalite' => [
+            ['modalite' => 'francais', 'libelle' => 'Diplômés français',
+             'cle' => ['diplômé', 'ensemble', 'français', 'ensemble']],
+            ['modalite' => 'etranger', 'libelle' => 'Diplômés étrangers',
+             'diff' => [['diplômé', 'ensemble', 'ensemble', 'ensemble'],
+                        ['diplômé', 'ensemble', 'français', 'ensemble']]],
+        ],
+    ];
+
+    // Slug lisible pour la raison d'indisponibilité (sert au tooltip front).
+    $slug = [
+        'femme' => 'femmes', 'homme' => 'hommes',
+        'apprentissage' => 'apprentis', 'non_apprentissage' => 'non_apprentis',
+        'diplome' => 'diplomes', 'non_diplome' => 'non_diplomes',
+        'francais' => 'francais', 'etranger' => 'etrangers',
+    ];
+
+    $out = [];
+    foreach ($criteres as $crit => $defs) {
+        $pops    = [];
+        $absente = false;
+        foreach ($defs as $def) {
+            $pop = sankeyPop($index, $def);
+            if ($pop === null) { $absente = true; break; }
+            $pops[] = $pop;
+        }
+
+        if ($absente || count($pops) < 2) {
+            $out[$crit] = [
+                'disponible'             => false,
+                'raison_indisponibilite' => 'sous_population_absente',
+                'sous_populations'       => [],
+            ];
+            continue;
+        }
+
+        // Les 2 sous-populations doivent avoir nb_sortants >= seuil. On
+        // reporte la première qui échoue (ordre référence → opposée).
+        $raison = null;
+        foreach ($pops as $p) {
+            if ($p['nb_sortants'] < $seuil) {
+                $raison = 'effectif_' . $slug[$p['modalite']] . '_sous_seuil';
+                break;
+            }
+        }
+        if ($raison !== null) {
+            $out[$crit] = [
+                'disponible'             => false,
+                'raison_indisponibilite' => $raison,
+                'sous_populations'       => [],
+            ];
+            continue;
+        }
+
+        $out[$crit] = [
+            'disponible'             => true,
+            'raison_indisponibilite' => null,
+            'sous_populations'       => $pops,
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * Construit la décomposition d'une sous-population du sankey à partir de
+ * l'index d'une durée. Renvoie null si la sous-population est absente
+ * (ligne source manquante, ou — pour une dérivée — base < à soustraire,
+ * cas d'incohérence source traité comme « absente », cf. brief 14.5).
+ *
+ * nb_sortants_autres = nb_sortants − sal_fr − non_sal (complément à 100 %
+ * des sortants : chômage, inactivité, etc.).
+ */
+function sankeyPop(array $index, array $def): ?array
+{
+    $champs = [
+        'nb_etudiants', 'nb_poursuivants', 'nb_sortants',
+        'nb_sortants_emploi_sal_fr', 'nb_sortants_emploi_non_sal',
+    ];
+
+    if (isset($def['cle'])) {
+        $row = $index[cleSousPopulation(...$def['cle'])] ?? null;
+        if ($row === null) {
+            return null;
+        }
+        $vals = [];
+        foreach ($champs as $c) {
+            $vals[$c] = $row[$c] !== null ? (int)$row[$c] : 0;
+        }
+    } else {
+        [$baseK, $subK] = $def['diff'];
+        $baseRow = $index[cleSousPopulation(...$baseK)] ?? null;
+        $subRow  = $index[cleSousPopulation(...$subK)] ?? null;
+        if ($baseRow === null || $subRow === null) {
+            return null;
+        }
+        $baseEt = $baseRow['nb_etudiants'] !== null ? (int)$baseRow['nb_etudiants'] : 0;
+        $subEt  = $subRow['nb_etudiants']  !== null ? (int)$subRow['nb_etudiants']  : 0;
+        // Incohérence source (base < à soustraire) → effectif négatif
+        // impossible : on traite la dérivée comme absente.
+        if ($baseEt < $subEt) {
+            return null;
+        }
+        $vals = [];
+        foreach ($champs as $c) {
+            $b = $baseRow[$c] !== null ? (int)$baseRow[$c] : 0;
+            $s = $subRow[$c]  !== null ? (int)$subRow[$c]  : 0;
+            $vals[$c] = max(0, $b - $s);
+        }
+    }
+
+    $autres = max(
+        0,
+        $vals['nb_sortants'] - $vals['nb_sortants_emploi_sal_fr'] - $vals['nb_sortants_emploi_non_sal']
+    );
+
+    return [
+        'libelle'                    => $def['libelle'],
+        'modalite'                   => $def['modalite'],
+        'nb_etudiants'               => $vals['nb_etudiants'],
+        'nb_poursuivants'            => $vals['nb_poursuivants'],
+        'nb_sortants'                => $vals['nb_sortants'],
+        'nb_sortants_emploi_sal_fr'  => $vals['nb_sortants_emploi_sal_fr'],
+        'nb_sortants_emploi_non_sal' => $vals['nb_sortants_emploi_non_sal'],
+        'nb_sortants_autres'         => $autres,
     ];
 }
 

@@ -6,6 +6,7 @@ import { useDelayedLoading } from '../../hooks/useDelayedLoading.js';
 import LoaderBarre from '../LoaderBarre.jsx';
 import TableauEcarts from './TableauEcarts.jsx';
 import MiniQuadrantSousPop from './MiniQuadrantSousPop.jsx';
+import SankeyParcoursSousPop from './SankeyParcoursSousPop.jsx';
 
 // Modale large « Analyse de l'insertion par sous-population » (Phase 14).
 //
@@ -408,7 +409,13 @@ export default function ModaleAnalyseSousPopulations({
                 aria-labelledby="tab-parcours"
                 tabIndex={0}
               >
-                <PlaceholderParcours />
+                <SankeyParcoursSousPop
+                  data={blocCourant?.sankey}
+                  dureeCourante={dureeCourante}
+                  durees_disponibles={durees}
+                  onChangerDuree={setDureeCourante}
+                  seuilDiffusion={data.contexte?.seuil_applique}
+                />
               </div>
             </div>
 
@@ -418,24 +425,6 @@ export default function ModaleAnalyseSousPopulations({
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-// Onglet « Parcours » — placeholder en attendant le sankey du devenir de
-// la promotion (phase ultérieure).
-function PlaceholderParcours() {
-  return (
-    <div className="placeholder-parcours">
-      <p className="fr-text--lg">
-        Visualisation du parcours de la promotion en cours de développement.
-      </p>
-      <p className="fr-text--sm fr-mt-2w" style={{ color: '#666' }}>
-        Cette section présentera prochainement le devenir des étudiants sous
-        forme de diagramme de flux (sankey) : de l&apos;inscription en année
-        terminale jusqu&apos;à leur situation d&apos;emploi à 6, 12, 18, 24 et
-        30 mois.
-      </p>
     </div>
   );
 }
