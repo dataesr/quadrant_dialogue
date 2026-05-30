@@ -1709,21 +1709,31 @@ body.exporting .source-attribution {
   flex-direction: column;
   flex-wrap: nowrap;
   margin: 0;
-  padding: 0 1.25rem 0.5rem;
+  /* Pas de padding horizontal ici : il est posé sur la liste ET le
+     panneau pour un alignement cohérent (cf. ci-dessous). */
+  padding: 0 0 0.5rem;
   box-shadow: none;
   border-bottom: none;
   overflow: hidden;
 }
-.modale-asp-tabs .fr-tabs__list { flex: 0 0 auto; }
+/* order EXPLICITE : la liste d'onglets AVANT le panneau. DSFR pose
+   list:order(1) / panel:order(3) ; en 14.2 le panneau avait été remis à
+   order:initial (=0), ce qui le faisait passer AVANT la liste → onglets
+   en bas. On force list:0 / panel:1. */
+.modale-asp-tabs .fr-tabs__list {
+  flex: 0 0 auto;
+  order: 0;
+  padding: 4px 1.25rem;
+}
 .modale-asp-tabs .fr-tabs__panel {
   display: none;
+  order: 1;
   position: static;
   left: auto;
   margin-right: 0;
-  order: initial;
   transform: none;
   transition: none;
-  padding: 1rem 0 0;
+  padding: 1rem 1.25rem 0.75rem;
 }
 .modale-asp-tabs .fr-tabs__panel--selected {
   display: block;

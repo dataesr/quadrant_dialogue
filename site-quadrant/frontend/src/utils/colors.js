@@ -68,6 +68,55 @@ export const LIBELLE_CRITERE_SOUS_POP = {
   nationalite:   'Effet nationalité',
 };
 
+// Phase 14.4 — couleurs par MODALITÉ (et non plus par critère), pour
+// garantir qu'une même modalité ait EXACTEMENT la même couleur dans le
+// mini-quadrant (bulles) et dans les barres de répartition (segments).
+// Deux nuances parentes par critère : modalité « foncée » de référence /
+// modalité « claire » complémentaire.
+export const COULEUR_MODALITE_SOUS_POP = {
+  // Genre
+  femme:             '#7A6FBE', // violet clair
+  homme:             '#534AB7', // violet foncé
+  // Régime
+  apprentissage:     '#D85A30', // orange
+  non_apprentissage: '#E8987A', // orange clair
+  // Diplomation
+  diplome:           '#1D9E75', // vert
+  non_diplome:       '#7AC1A4', // vert clair
+  // Nationalité
+  francais:          '#185FA5', // bleu
+  etranger:          '#5A93C5', // bleu clair
+};
+
+const GRIS_REFERENCE = '#888780';
+const CROISEMENT     = '#8B6FB0'; // genre × régime — identité visuelle dédiée
+
+// Couleur d'une BULLE du mini-quadrant, par id de sous-population. Les
+// unions (ensemble_diplomation, tous_nationalite) prennent la couleur de
+// la modalité qui les DISTINGUE de la référence (non-diplômés / étrangers).
+export const COULEUR_BULLE_SOUS_POP = {
+  reference:            GRIS_REFERENCE,
+  femmes:               COULEUR_MODALITE_SOUS_POP.femme,
+  hommes:               COULEUR_MODALITE_SOUS_POP.homme,
+  apprentis:            COULEUR_MODALITE_SOUS_POP.apprentissage,
+  femmes_apprenties:    CROISEMENT,
+  hommes_apprentis:     CROISEMENT,
+  ensemble_diplomation: COULEUR_MODALITE_SOUS_POP.non_diplome,
+  tous_nationalite:     COULEUR_MODALITE_SOUS_POP.etranger,
+};
+
+// Couleur d'un SEGMENT de barre de répartition, par clé de modalité.
+export const COULEUR_SEGMENT_SOUS_POP = {
+  femmes:        COULEUR_MODALITE_SOUS_POP.femme,
+  hommes:        COULEUR_MODALITE_SOUS_POP.homme,
+  apprentis:     COULEUR_MODALITE_SOUS_POP.apprentissage,
+  non_apprentis: COULEUR_MODALITE_SOUS_POP.non_apprentissage,
+  diplomes:      COULEUR_MODALITE_SOUS_POP.diplome,
+  non_diplomes:  COULEUR_MODALITE_SOUS_POP.non_diplome,
+  francais:      COULEUR_MODALITE_SOUS_POP.francais,
+  etrangers:     COULEUR_MODALITE_SOUS_POP.etranger,
+};
+
 // Ordre canonique des catégories — du plus spécifique (étab de
 // contexte) au plus générique (autres). Sert au rendu de la légende
 // dans Quadrant.jsx (filtrage des catégories réellement présentes

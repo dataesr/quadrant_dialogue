@@ -8,7 +8,7 @@ import {
   xScaleBase, yScaleBase, toPercent, rayonBulle,
 } from '../quadrant/geometry.js';
 import {
-  COULEUR_CRITERE_SOUS_POP, LIBELLE_CRITERE_SOUS_POP,
+  COULEUR_BULLE_SOUS_POP,
 } from '../../utils/colors.js';
 
 // Mini-quadrant animé de la modale d'analyse fine (Phase 14, étendu 14.1).
@@ -74,8 +74,10 @@ function pointsPourDuree(donneesParDuree, duree) {
   return out;
 }
 
-function couleurCritere(critere) {
-  return COULEUR_CRITERE_SOUS_POP[critere] || '#888';
+// Couleur d'une bulle par MODALITÉ (id de sous-population) — partagée
+// avec les segments de barre du tableau pour la cohérence visuelle.
+function couleurBulle(id) {
+  return COULEUR_BULLE_SOUS_POP[id] || '#888';
 }
 
 function formaterPct(taux) {
@@ -294,14 +296,6 @@ export default function MiniQuadrantSousPop({
     return present ? 1 : 0;
   }
 
-  const criteresPresents = useMemo(() => {
-    const seen = new Set();
-    for (const p of idsAffiches) {
-      if (!p.estReference) seen.add(p.critere);
-    }
-    return Array.from(seen);
-  }, [idsAffiches]);
-
   return (
     <div className="mini-quadrant-sp">
       <div className="mini-quadrant-sp-plot" ref={plotRef}>
@@ -382,7 +376,7 @@ export default function MiniQuadrantSousPop({
               {Array.from(tracesTaux.entries()).map(([id, positions]) => {
                 if (!positions || positions.length < 2) return null;
                 const p = idsAffiches.find((q) => q.id === id);
-                const couleur = couleurCritere(p?.critere);
+                const couleur = couleurBulle(id);
                 const points = positions
                   .map((pt) => `${xScale(toPercent(pt.x))},${yScale(toPercent(pt.y))}`)
                   .join(' ');
@@ -407,7 +401,7 @@ export default function MiniQuadrantSousPop({
                 const p = courant || meta;
                 const cx = xScale(toPercent(p.x));
                 const cy = yScale(toPercent(p.y));
-                const couleur = couleurCritere(meta.critere);
+                const couleur = couleurBulle(meta.id);
                 const r = meta.estReference
                   ? Math.max(rayonBulle(meta.nb_etudiants, 'sqrt', allNb), 14)
                   : rayonBulle(meta.nb_etudiants, 'sqrt', allNb);
@@ -488,15 +482,13 @@ export default function MiniQuadrantSousPop({
         </button>
       </div>
 
+      {/* Légende par bulle (modalité) — mêmes couleurs que les segments
+          des barres de répartition de l'onglet Comparaison. */}
       <div className="mini-quadrant-sp-legende">
-        <span className="mini-quadrant-sp-legende-item">
-          <span className="puce" style={{ background: COULEUR_CRITERE_SOUS_POP.reference }} />
-          {LIBELLE_CRITERE_SOUS_POP.reference}
-        </span>
-        {criteresPresents.map((c) => (
-          <span key={c} className="mini-quadrant-sp-legende-item">
-            <span className="puce" style={{ background: couleurCritere(c) }} />
-            {LIBELLE_CRITERE_SOUS_POP[c] || c}
+        {idsAffiches.map((p) => (
+          <span key={p.id} className="mini-quadrant-sp-legende-item">
+            <span className="puce" style={{ background: couleurBulle(p.id) }} />
+            {p.estReference ? 'Référence' : (LIBELLE_COURT[p.id] || p.libelle)}
           </span>
         ))}
         <span className="mini-quadrant-sp-legende-taille">

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
-import { COULEUR_CRITERE_SOUS_POP } from '../../utils/colors.js';
+import { COULEUR_SEGMENT_SOUS_POP } from '../../utils/colors.js';
 
 // Section « Comparaison » (Phase 14.1/14.2) : tableau des sous-populations
 // vs la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
@@ -9,10 +9,10 @@ import { COULEUR_CRITERE_SOUS_POP } from '../../utils/colors.js';
 // la promo sur ce critère), suivie des sous-populations.
 //
 // Les barres sont dérivées des effectifs présents dans `bloc`
-// (nb_etudiants exposés même sous le seuil). Les couleurs reprennent
-// celles des bulles du mini-quadrant (COULEUR_CRITERE_SOUS_POP) pour la
-// cohérence visuelle entre onglets : modalité de référence en couleur
-// saturée, modalité complémentaire en version claire.
+// (nb_etudiants exposés même sous le seuil). Chaque segment prend la
+// couleur de SA modalité (COULEUR_SEGMENT_SOUS_POP) — identique à la
+// couleur de la bulle correspondante dans le mini-quadrant (Phase 14.4),
+// pour la cohérence visuelle entre les deux onglets.
 
 const COLONNES_EMPLOI = [
   { cle: 'taux_emploi_sal_fr',  ecart: 'ecart_taux_emploi_sal_fr',  libelle: 'Taux emploi sal. FR' },
@@ -39,21 +39,21 @@ const GROUPES = [
   { key: 'nationalite', critere: 'nationalite', titre: 'Impact de la nationalité',  sousPops: ['tous_nationalite'] },
 ];
 
-// Nuance de chaque modalité : « fonce » = couleur saturée (modalité de
-// référence / standard de comparaison), « clair » = version translucide.
-const NUANCE = {
-  femmes: 'clair', hommes: 'fonce',
-  apprentis: 'fonce', non_apprentis: 'clair',
-  diplomes: 'fonce', non_diplomes: 'clair',
-  francais: 'fonce', etrangers: 'clair',
-};
+// Couleur d'un segment de barre par MODALITÉ (Phase 14.4) — identique à
+// la couleur de la bulle correspondante dans le mini-quadrant.
+function couleurSegment(cle) {
+  return COULEUR_SEGMENT_SOUS_POP[cle] || '#888';
+}
 
-function hexToRgba(hex, a) {
+// Texte clair ou sombre selon la luminance du fond (les nuances claires
+// type #E8987A demandent un texte sombre pour rester lisibles).
+function texteContraste(hex) {
   const m = hex.replace('#', '');
   const r = parseInt(m.slice(0, 2), 16);
   const g = parseInt(m.slice(2, 4), 16);
   const b = parseInt(m.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.62 ? '#222' : '#fff';
 }
 
 function formatPct(taux) {
@@ -109,7 +109,6 @@ function construireBarre(groupeKey, bloc, seuil) {
     ...s,
     part: base > 0 ? s.n / base : 0,
     diffusable: s.n >= seuil,
-    nuance: NUANCE[s.cle] || 'fonce',
   }));
 }
 
@@ -265,7 +264,6 @@ export default function TableauEcarts({
                 <ImpactGroupe
                   key={groupe.key}
                   titre={groupe.titre}
-                  couleur={COULEUR_CRITERE_SOUS_POP[groupe.critere] || '#888'}
                   segments={segments}
                   sousPops={sousPops}
                   onHoverSeg={handleHoverSeg}
@@ -296,7 +294,7 @@ function LigneRappelEntete() {
   );
 }
 
-function ImpactGroupe({ titre, couleur, segments, sousPops, onHoverSeg, onLeaveSeg }) {
+function ImpactGroupe({ titre, segments, sousPops, onHoverSeg, onLeaveSeg }) {
   return (
     <>
       <tr className="ligne-impact">
@@ -309,14 +307,15 @@ function ImpactGroupe({ titre, couleur, segments, sousPops, onHoverSeg, onLeaveS
               if (seg.part <= 0 && seg.n <= 0) return null;
               const masque = !seg.diffusable;
               const pct = Math.round(seg.part * 100);
-              const bg = masque ? undefined : (seg.nuance === 'fonce' ? couleur : hexToRgba(couleur, 0.5));
-              const cls = 'repartition-segment'
-                + (masque ? ' repartition-segment--masque' : (seg.nuance === 'clair' ? ' repartition-segment--clair' : ''));
+              const couleur = couleurSegment(seg.cle);
+              const bg = masque ? undefined : couleur;
+              const textColor = masque ? undefined : texteContraste(couleur);
+              const cls = 'repartition-segment' + (masque ? ' repartition-segment--masque' : '');
               return (
                 <span
                   key={seg.cle}
                   className={cls}
-                  style={{ width: `${seg.part * 100}%`, background: bg }}
+                  style={{ width: `${seg.part * 100}%`, background: bg, color: textColor }}
                   onMouseMove={(e) => onHoverSeg(seg, couleur, e)}
                   onMouseEnter={(e) => onHoverSeg(seg, couleur, e)}
                   onMouseLeave={onLeaveSeg}
