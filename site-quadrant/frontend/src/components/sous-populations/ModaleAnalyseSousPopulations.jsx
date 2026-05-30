@@ -7,6 +7,7 @@ import LoaderBarre from '../LoaderBarre.jsx';
 import TableauEcarts from './TableauEcarts.jsx';
 import MiniQuadrantSousPop from './MiniQuadrantSousPop.jsx';
 import SankeyParcoursSousPop from './SankeyParcoursSousPop.jsx';
+import SliderDuree from './SliderDuree.jsx';
 
 // Modale large « Analyse de l'insertion par sous-population » (Phase 14).
 //
@@ -175,17 +176,11 @@ export default function ModaleAnalyseSousPopulations({
     const i = durees.indexOf(dureeCourante);
     if (i < durees.length - 1) setDureeCourante(durees[i + 1]);
   }
-  function handleSlider(e) {
+  // Changement de durée via le curseur (clic/glissement) → met en pause et
+  // applique la durée (déjà snappée sur une durée disponible par SliderDuree).
+  function handleChoisirDuree(d) {
     setEnLecture(false);
-    const target = parseInt(e.target.value, 10);
-    const durees = data?.durees_disponibles || [];
-    let plusProche = durees[0];
-    let dMin = Math.abs(target - durees[0]);
-    for (const d of durees) {
-      const dd = Math.abs(target - d);
-      if (dd < dMin) { plusProche = d; dMin = dd; }
-    }
-    setDureeCourante(plusProche);
+    setDureeCourante(d);
   }
 
   const showLoader = useDelayedLoading(loading);
@@ -356,25 +351,12 @@ export default function ModaleAnalyseSousPopulations({
                         aria-label="Durée suivante"
                       >⏭</button>
 
-                      <input
-                        type="range"
-                        className="modale-asp-slider"
-                        min={durees[0]}
-                        max={durees[durees.length - 1]}
-                        step={1}
-                        value={dureeCourante ?? durees[0]}
-                        onChange={handleSlider}
-                        aria-label="Durée d'observation"
+                      <SliderDuree
+                        durees={durees}
+                        valeur={dureeCourante}
+                        onChanger={handleChoisirDuree}
+                        idBase="quadrant-duree"
                       />
-
-                      <div className="modale-asp-ticks">
-                        {durees.map((d) => (
-                          <span
-                            key={d}
-                            className={'tick' + (d === dureeCourante ? ' actif' : '')}
-                          >{d}</span>
-                        ))}
-                      </div>
                     </div>
 
                     <fieldset className="fr-segmented fr-segmented--sm modale-asp-vitesse">

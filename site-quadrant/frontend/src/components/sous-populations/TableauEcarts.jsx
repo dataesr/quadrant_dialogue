@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 import { COULEUR_SEGMENT_SOUS_POP } from '../../utils/colors.js';
+import SliderDuree from './SliderDuree.jsx';
 
 // Section « Comparaison » (Phase 14.1/14.2) : tableau des sous-populations
 // vs la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
@@ -202,32 +203,17 @@ export default function TableauEcarts({
         </div>
 
         <div className="tableau-ecarts-duree-select">
-          <span className="tableau-ecarts-duree-label">
-            Observation à : {dureeCourante} mois
-          </span>
-          {durees.length > 1 && (
-            <>
-              <input
-                type="range"
-                className="modale-asp-slider tableau-ecarts-duree-range"
-                min={durees[0]}
-                max={durees[durees.length - 1]}
-                step={1}
-                value={dureeCourante ?? durees[0]}
-                onChange={(e) => choisirDuree(parseInt(e.target.value, 10))}
-                aria-label="Durée d'observation"
-              />
-              <div className="modale-asp-ticks">
-                {durees.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className={'tick' + (d === dureeCourante ? ' actif' : '')}
-                    onClick={() => choisirDuree(d)}
-                  >{d}</button>
-                ))}
-              </div>
-            </>
+          {durees.length > 1 ? (
+            <SliderDuree
+              durees={durees}
+              valeur={dureeCourante}
+              onChanger={choisirDuree}
+              idBase="comparaison-duree"
+            />
+          ) : (
+            <span className="tableau-ecarts-duree-label">
+              Observation à : {dureeCourante} mois
+            </span>
           )}
         </div>
       </div>

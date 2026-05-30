@@ -1832,6 +1832,57 @@ body.exporting .source-attribution {
 }
 .sankey-tooltip-detail > div { display: flex; align-items: center; }
 
+/* ---- Curseur de durée DSFR (fr-range) — Phase 14.5.1 ---- */
+/* Composant partagé SliderDuree : structure DSFR fr-range, piloté React.
+   On compacte le groupe pour les contextes denses (toolbar Comparaison,
+   contrôles Quadrant, en-tête Parcours) et on superpose des crans
+   cliquables invisibles (fr-range--step ne les rend pas cliquables). */
+.slider-duree.fr-range-group {
+  margin: 0;
+  min-width: 220px;
+}
+.slider-duree .fr-label {
+  font-size: 0.82rem;
+  color: #000091;
+  font-weight: 500;
+  margin-bottom: 0.1rem;
+}
+/* Ancre des crans cliquables : on rend la glissière positionnée. */
+.slider-duree .fr-range { position: relative; }
+.slider-duree-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1.5rem;            /* sous l'ergot/output (md) */
+  height: 1.5rem;
+  pointer-events: none;
+}
+.slider-duree--sm .slider-duree-ticks {
+  top: 1rem;              /* output plus compact en --sm */
+  height: 1rem;
+}
+.slider-duree-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  transform: translateX(-50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+/* La glissière reste glissable entre les crans (les boutons sont fins). */
+.slider-duree-tick:focus { outline: none; }
+
+/* Contexte Quadrant : le curseur occupe l'espace restant de la ligne de
+   contrôles (boutons lecture à gauche). */
+.modale-asp-controls .slider-duree.fr-range-group {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
 /* ---- Barres de répartition (intégrées au tableau, Phase 14.1) ---- */
 .repartition-barre {
   flex: 1;
