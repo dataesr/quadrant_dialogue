@@ -228,12 +228,17 @@ $DEFINITIONS = [
         'od' => 'diplômé', 'genre' => 'homme', 'nat' => 'français', 'reg' => 'apprentissage',
     ],
     [
-        'id' => 'ensemble_diplomation', 'libelle' => 'Ensemble (effet diplomation)', 'critere' => 'diplomation',
+        // obtention_diplome='ensemble' = diplômés + non-diplômés ;
+        // nationalité=français. Vs la référence (diplômés seuls), c'est
+        // l'effet de la diplomation à nationalité constante.
+        'id' => 'ensemble_diplomation', 'libelle' => 'Diplômés et non diplômés français', 'critere' => 'diplomation',
         'croisement' => false,
         'od' => 'ensemble', 'genre' => 'ensemble', 'nat' => 'français', 'reg' => 'ensemble',
     ],
     [
-        'id' => 'tous_nationalite', 'libelle' => 'Tous diplômés (effet nationalité)', 'critere' => 'nationalite',
+        // nationalité='ensemble' = français + étrangers ; diplômés.
+        // Vs la référence (français seuls), c'est l'effet nationalité.
+        'id' => 'tous_nationalite', 'libelle' => 'Diplômés français et étrangers', 'critere' => 'nationalite',
         'croisement' => false,
         'od' => 'diplômé', 'genre' => 'ensemble', 'nat' => 'ensemble', 'reg' => 'ensemble',
     ],
