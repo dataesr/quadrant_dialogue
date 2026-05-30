@@ -1026,9 +1026,8 @@
 /* Curseur de millésime DSFR — au-dessus du quadrant (Phase 14.6). */
 .modale-animation-slider-commun {
   padding: 0.6rem 1.25rem 0.2rem;
-}
-.modale-animation-slider-commun .slider-duree.fr-range-group {
-  min-width: 100%;
+  display: flex;
+  justify-content: flex-end;
 }
 /* Contrôles de lecture + vitesse — sous le quadrant (Phase 14.6) :
    lecture à gauche, vitesse à droite, wrap si l'espace manque. */
@@ -1729,10 +1728,10 @@ body.exporting .source-attribution {
 .modale-asp-slider-commun {
   flex: 0 0 auto;
   order: 1;
+  width: 100%;                 /* sinon le conteneur se réduit au slider */
   padding: 0.5rem 1.25rem 0.1rem;
-}
-.modale-asp-slider-commun .slider-duree.fr-range-group {
-  min-width: 100%;
+  display: flex;
+  justify-content: flex-end;
 }
 .modale-asp-tabs .fr-tabs__panel {
   display: none;
@@ -1840,9 +1839,13 @@ body.exporting .source-attribution {
    On compacte le groupe pour les contextes denses (toolbar Comparaison,
    contrôles Quadrant, en-tête Parcours) et on superpose des crans
    cliquables invisibles (fr-range--step ne les rend pas cliquables). */
+/* Largeur fixe commune à TOUS les sliders (analyse fine + animations
+   quadrant), alignés à droite dans leur conteneur (Phase 14.7). max-width
+   100 % pour ne pas déborder les modales étroites. */
 .slider-duree.fr-range-group {
   margin: 0;
-  min-width: 220px;
+  width: 400px;
+  max-width: 100%;
 }
 .slider-duree .fr-label {
   font-size: 0.82rem;
@@ -2106,44 +2109,29 @@ body.exporting .source-attribution {
 }
 
 /* Contrôles d'animation (mêmes patterns que la modale temporelle) */
+/* Contrôles de l'onglet Quadrant — sur UNE ligne (Phase 14.7) : lecture
+   à gauche, vitesse à droite (même structure que la modale d'animation
+   temporelle). Wrap conservé en repli pour les très faibles largeurs. */
 .modale-asp-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
   flex-wrap: wrap;
   padding: 0.5rem 0;
 }
-.modale-asp-slider { flex: 1; min-width: 180px; }
-.modale-asp-ticks {
+.modale-asp-controls-lecture {
   display: flex;
-  gap: 1rem;
-  font-size: 0.78rem;
-  color: #666;
-  flex: 1;
-  justify-content: space-between;
-  padding: 0 0.5rem;
+  align-items: center;
+  gap: 0.5rem;
 }
-.modale-asp-ticks .tick.actif { color: #000091; font-weight: 600; }
-/* Ticks cliquables (slider de durée onglet Comparaison) : reset du
-   style bouton natif pour rester cohérent avec les ticks du quadrant. */
-.modale-asp-ticks button.tick {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: #666;
-  cursor: pointer;
-}
-.modale-asp-ticks button.tick.actif { color: #000091; font-weight: 600; }
-.modale-asp-ticks button.tick:hover { color: #000091; }
 .modale-asp-vitesse.fr-segmented {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.5rem 0.75rem;
   flex-wrap: wrap;
-  margin: 0.25rem 0 0;
+  margin: 0;
   padding: 0;
 }
 .modale-asp-vitesse .fr-segmented__legend {

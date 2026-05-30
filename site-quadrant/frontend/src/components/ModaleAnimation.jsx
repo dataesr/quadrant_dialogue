@@ -556,17 +556,9 @@ export default function ModaleAnimation({ open, onClose }) {
               </fieldset>
             </div>
 
-            <div className="modale-animation-options">
-              <button
-                type="button"
-                className="fr-btn fr-btn--sm fr-btn--tertiary modale-animation-comparer"
-                onClick={handleComparer}
-                disabled={iCourant <= 0 || comparerEnCours}
-                title={iCourant <= 0 ? 'Pas de millésime antérieur disponible' : undefined}
-              >
-                Comparer avec millésime précédent
-              </button>
-            </div>
+            {/* Bouton « Comparer » retiré en Phase 14.7 — fonctionnalité
+                conservée pour usage futur (état comparerEnCours, handleComparer,
+                trace pointillée et styles afférents restent en place). */}
 
             {/* Référence des axes — même composant `fr-segmented--sm`,
                 cohérent avec le sélecteur de vitesse au-dessus. Pour

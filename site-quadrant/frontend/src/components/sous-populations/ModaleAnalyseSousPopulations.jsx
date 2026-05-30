@@ -342,8 +342,11 @@ export default function ModaleAnalyseSousPopulations({
                 />
 
                 {animationDispo && (
-                  <>
-                    <div className="modale-asp-controls">
+                  /* Contrôles sur UNE ligne (Phase 14.7) : lecture à gauche,
+                     vitesse à droite — même structure que la modale d'animation
+                     temporelle (Mentions/Positionnement). */
+                  <div className="modale-asp-controls">
+                    <div className="modale-asp-controls-lecture">
                       <button
                         type="button"
                         className="fr-btn fr-btn--sm fr-btn--tertiary"
@@ -387,7 +390,7 @@ export default function ModaleAnalyseSousPopulations({
                         })}
                       </div>
                     </fieldset>
-                  </>
+                  </div>
                 )}
               </div>
 
