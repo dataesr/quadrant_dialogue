@@ -277,12 +277,76 @@ if ($mention !== '') {
     $filtresActifs['mention_filtre'] = $mention;
 }
 
+// =============================================================================
+// 8 bis. Disponibilité de l'analyse fine par sous-population (Phase 14)
+// =============================================================================
+//
+// Le frontend active/désactive le bouton « Analyse de l'insertion par
+// sous-population » sans appel API supplémentaire grâce à ce drapeau.
+//
+// L'analyse porte sur une mention identifiée (id_paysage + diplom) :
+//   - vue=mentions               → (etab_contexte, target_id)
+//   - vue=etablissements+mention → (target_id, mention)
+//   - vue=etablissements sans mention → agrégat multi-mentions, non
+//     applicable (disponible=false).
+//
+// nb_etudiants_reference = effectif de la RÉFÉRENCE de la modale
+// (diplômé / ensemble / français / ensemble) lu directement dans
+// stats_sous_populations. NB : on N'utilise PAS le dénominateur du
+// « Taux de poursuivants » de stats_quadrant — empiriquement ~5× plus
+// élevé (populations comptées différemment entre les deux tables). Le
+// drapeau doit refléter EXACTEMENT la référence qu'affichera la modale,
+// sinon un bouton actif ouvrirait une modale « effectifs insuffisants ».
+// nb_etudiants étant constant entre durées, un LIMIT 1 suffit.
+$applicableAnalyse = ($vue === 'mentions') || ($vue === 'etablissements' && $mention !== '');
+
+$nbEtudiantsReference = null;
+if ($applicableAnalyse) {
+    $aspIdPaysage = $vue === 'mentions' ? $etabContexte : $targetId;
+    $aspDiplom    = $vue === 'mentions' ? $targetId     : $mention;
+
+    $stmtRef = $pdo->prepare("
+        SELECT nb_etudiants
+        FROM stats_sous_populations
+        WHERE id_paysage = :id_paysage
+          AND diplom = :diplom
+          AND millesime = :millesime
+          AND obtention_diplome = 'diplômé'
+          AND genre = 'ensemble'
+          AND nationalite = 'français'
+          AND regime_inscription = 'ensemble'
+        LIMIT 1
+    ");
+    $stmtRef->execute([
+        ':id_paysage' => $aspIdPaysage,
+        ':diplom'     => $aspDiplom,
+        ':millesime'  => $millesime,
+    ]);
+    $valRef = $stmtRef->fetchColumn();
+    if ($valRef !== false && $valRef !== null) {
+        $nbEtudiantsReference = (int)$valRef;
+    }
+}
+
+$seuilAnalyse = (function () {
+    $cfg = require __DIR__ . '/../config/config.php';
+    return (int)($cfg['analyse_sous_populations']['seuil'] ?? 20);
+})();
+
+$analyseDisponible = $applicableAnalyse
+    && $nbEtudiantsReference !== null
+    && $nbEtudiantsReference >= $seuilAnalyse;
+
 Response::json([
     'type'              => $vue === 'mentions' ? 'mention' : 'etablissement',
     'identite'          => $identite,
     'filtres_actifs'    => $filtresActifs,
     'donnees_courantes' => $donneesCourantes,
     'historique'        => $historique,
+    'analyse_sous_populations' => [
+        'disponible'             => $analyseDisponible,
+        'nb_etudiants_reference' => $nbEtudiantsReference,
+    ],
 ]);
 
 
