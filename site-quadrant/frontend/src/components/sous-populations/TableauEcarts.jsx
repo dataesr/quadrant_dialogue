@@ -20,13 +20,14 @@ const COLONNES_EMPLOI = [
   { cle: 'taux_emploi_stable',  ecart: 'ecart_taux_emploi_stable',  libelle: 'Taux emploi stable' },
 ];
 
-const NB_COLONNES = 2 + COLONNES_EMPLOI.length + 1;
+// Colonnes : Sous-population + Effectif + Sortants + 3 taux emploi + Taux poursuivants.
+const NB_COLONNES = 3 + COLONNES_EMPLOI.length + 1;
 
 // Intitulés de colonnes, réutilisés pour le rappel d'en-tête au début de
 // chaque rubrique d'impact (Phase 14.3 — remplace le thead sticky, peu
 // robuste en iframe).
 const ENTETE_COLONNES = [
-  'Sous-population', 'Effectif',
+  'Sous-population', 'Effectif', 'Sortants',
   ...COLONNES_EMPLOI.map((c) => c.libelle),
   'Taux de poursuivants',
 ];
@@ -141,6 +142,7 @@ function LigneSousPop({ sp }) {
     <tr className={sp.croisement ? 'ligne-croisement' : undefined}>
       <th scope="row">{sp.libelle}</th>
       <CelluleEffectif nb={sp.nb_etudiants} present={sp.present} />
+      <CelluleEffectif nb={sp.nb_sortants} present={sp.present} />
       {COLONNES_EMPLOI.map((c) => (
         <CelluleTaux key={c.cle} taux={sp[c.cle]} ecart={sp[c.ecart]} />
       ))}
@@ -194,6 +196,7 @@ export default function TableauEcarts({
             <tr>
               <th scope="col">Sous-population</th>
               <th scope="col">Effectif</th>
+              <th scope="col">Sortants</th>
               {COLONNES_EMPLOI.map((c) => (
                 <th key={c.cle} scope="col">{c.libelle}</th>
               ))}
@@ -205,6 +208,7 @@ export default function TableauEcarts({
               <tr className="ligne-reference">
                 <th scope="row">Diplômés français (référence)</th>
                 <CelluleEffectif nb={reference.nb_etudiants} present />
+                <CelluleEffectif nb={reference.nb_sortants} present />
                 {COLONNES_EMPLOI.map((c) => (
                   <CelluleTaux key={c.cle} taux={reference[c.cle]} estReference />
                 ))}
