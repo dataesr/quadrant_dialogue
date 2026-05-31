@@ -26,7 +26,7 @@
  *  - 400 invalid_vue / invalid_formation / invalid_millesime / invalid_target_id
  *        / missing_etab_contexte / invalid_etab_contexte / invalid_mention
  *  - 403 forbidden            : la bulle n'est pas dans le périmètre du contexte
- *  - 429 rate_limited         : > 30 appels/min pour ce contexte_id sur cet endpoint
+ *  - 429 rate_limited         : dépassement du seuil rate_limit.seuil_sensible (15/min/contexte par défaut)
  *  - 500 cursus_incoherent    : matrice vide pour ce cursus dans dim_indicateur_cursus
  *
  * Diffusion : les indicateurs dont denom < 5 sont exposés (indicateur,
@@ -56,18 +56,12 @@ $session = new Session();
 $contexteId = $session->getContexteId();
 
 // =============================================================================
-// 2. Rate limiting (30 appels par minute, par contexte_id)
+// 2. Rate limiting (endpoint sensible — seuil rate_limit.seuil_sensible, 15/min/contexte)
 // =============================================================================
 
-$rl = RateLimit::check('quadrant_details:' . $contexteId, 30);
-if (!$rl['allowed']) {
-    header('Retry-After: ' . $rl['retry_after_seconds']);
-    Response::json([
-        'error'               => 'rate_limited',
-        'message'             => "Trop de requêtes sur /quadrant/details. Réessayez dans {$rl['retry_after_seconds']} seconde(s).",
-        'retry_after_seconds' => $rl['retry_after_seconds'],
-    ], 429);
-}
+// Endpoint sensible (Phase 14.11) : seuil config.rate_limit.seuil_sensible
+// (15/min/contexte par défaut). Auparavant 30/min en dur.
+RateLimit::enforce('quadrant_details:' . $contexteId);
 
 // =============================================================================
 // 3. Lecture et validation des paramètres

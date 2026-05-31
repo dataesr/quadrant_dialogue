@@ -45,6 +45,7 @@ require_once __DIR__ . '/../lib/Database.php';
 require_once __DIR__ . '/../lib/Response.php';
 require_once __DIR__ . '/../lib/Session.php';
 require_once __DIR__ . '/../lib/SousPopulations.php';
+require_once __DIR__ . '/../lib/RateLimit.php';
 
 Response::cors();
 
@@ -53,11 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 // =============================================================================
-// 1. Session
+// 1. Session + rate limit (endpoint sensible, Phase 14.11)
 // =============================================================================
 
 $session    = new Session();
 $contexteId = $session->getContexteId();
+
+// Endpoint le plus coûteux (agrégation par sous-population, jusqu'à des
+// centaines de lignes en mode établissement) et le plus sensible (données
+// fines). Seuil config.rate_limit.seuil_sensible (15/min/contexte par défaut).
+RateLimit::enforce('analyse_sous_populations:' . $contexteId);
 
 // =============================================================================
 // 2. Paramètres + validation

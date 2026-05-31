@@ -135,4 +135,12 @@ return [
     'analyse_sous_populations' => [
         'seuil' => 20,
     ],
+
+    // Rate limiting des endpoints SENSIBLES (Phase 14.11) : analyse fine,
+    // fiche détaillée, série temporelle. Seuil en requêtes/minute PAR
+    // contexte_id et PAR endpoint (compteurs distincts, cf. lib/RateLimit).
+    // Modifiable à chaud côté OVH (édition de config.php, sans redéploiement).
+    'rate_limit' => [
+        'seuil_sensible' => 15,
+    ],
 ];

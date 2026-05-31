@@ -76,4 +76,41 @@ class RateLimit
             'retry_after_seconds' => $allowed ? 0 : (60 - ($now % 60)),
         ];
     }
+
+    /**
+     * Applique le rate limit et, en cas de dépassement, répond 429 et TERMINE
+     * l'exécution (header Retry-After + JSON). Sucre « une ligne par endpoint »
+     * pour les endpoints sensibles (Phase 14.11) :
+     *
+     *   RateLimit::enforce('analyse_sous_populations:' . $contexteId);
+     *
+     * - $cle    : clé de comptage, convention "<endpoint>:<contexte_id>"
+     *             → compteur PAR endpoint et PAR contexte (clés distinctes,
+     *             pas de quota partagé entre endpoints).
+     * - $limite : seuil/min ; si null, lu dans config.rate_limit.seuil_sensible
+     *             (défaut 15) → modifiable par config.php sans redéploiement.
+     */
+    public static function enforce(string $cle, ?int $limite = null): void
+    {
+        if ($limite === null) {
+            $limite = self::seuilSensibleConfig();
+        }
+        $status = self::check($cle, $limite);
+        if (!$status['allowed']) {
+            require_once __DIR__ . '/Response.php';
+            header('Retry-After: ' . $status['retry_after_seconds']);
+            Response::json([
+                'error'               => 'rate_limited',
+                'message'             => 'Trop de requêtes en peu de temps. Réessayez plus tard.',
+                'retry_after_seconds' => $status['retry_after_seconds'],
+            ], 429); // Response::json() appelle exit.
+        }
+    }
+
+    /** Seuil des endpoints sensibles (config.rate_limit.seuil_sensible, défaut 15). */
+    private static function seuilSensibleConfig(): int
+    {
+        $cfg = require __DIR__ . '/../config/config.php';
+        return (int)($cfg['rate_limit']['seuil_sensible'] ?? 15);
+    }
 }

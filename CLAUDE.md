@@ -293,6 +293,22 @@ quadrant-projet/
 - **Endpoint `GET /etablissements/search?q=&limit=`** : une requête plate `SELECT … WHERE filtre_perimetre LIKE %;contexte_id;%` ramène les établissements autorisés (1 en contexte établissement, N en rectorat, ≤ 70 en national), puis **scoring pondéré côté PHP** (sigle 250/200/150 > uo_lib/nom_court 200/150/100 > uo_lib_officiel 180/135/90 > identifiants 100/50 > commune 60/30 > unité urbaine 50/25 > région 15 > champ_recherche 50). Fallback multi-mots (chaîne complète d'abord ; si < 3 résultats et espace, somme des mots × 0,7). Tri desc, `limit` premiers. ⚠ Le scoring se faisant en **PHP** (pas en SQL), la collation accent-insensitive de la table ne s'applique pas → repli des accents en PHP (`normaliser()` : `mb_strtolower` + `strtr` é→e, ç→c…) pour que « universite » matche « Université ». Réponse : `{ resultats:[{id_paysage, uo_lib, sigle, typologie, reg_nom, com_nom, score}], total_avant_limite, query_utilisee }`.
 - **Frontend** : `EtabSelector` remplace le filtrage client (sur `uo_lib`) par une recherche serveur **debouncée 250 ms** (`searchEtablissements`). `etabList` (via `/etablissements-visibles`) reste chargé pour la liste complète au focus (sans saisie) + la résolution du libellé courant + l'auto-sélection mode 'etab'. `Combobox` gagne `serverFiltered` (affiche les items API tels quels, sans refiltrer par libellé — sinon « UCBL » masquerait « Université Claude Bernard ») et `valueLabel` (libellé courant stable pendant la frappe). Affichage inchangé (ligne 1 nom usuel, ligne 2 région + typologie). La sélection appelle toujours `setEtabContexte(id)` → répercutée partout.
 
+**Phase 14.11 — Rate limiting ciblé des endpoints sensibles** :
+- **Mécanisme** (existant, `lib/RateLimit.php` + table `app_rate_limit`, migration 002) : fenêtre glissante d'**1 minute**, compteur atomique `INSERT … ON DUPLICATE KEY UPDATE`, purge en ligne. Clé = `"<endpoint>:<contexte_id>"` → comptage **par endpoint ET par contexte** (compteurs distincts : saturer un endpoint n'épuise PAS le quota d'un autre ; pas de comptage par IP). Dépassement → **429** + header `Retry-After` + body `{error:'rate_limited', message, retry_after_seconds}` (`retry_after` = secondes jusqu'à la minute pleine). `allowed = compteur <= limite` (le (limite+1)ᵉ appel de la minute est refusé).
+- **Sucre `RateLimit::enforce($cle, $limite=null)`** (Phase 14.11) : applique + répond 429 + `exit` en une ligne. `$limite` null → lu dans `config.rate_limit.seuil_sensible` (**15** par défaut) → **modifiable à chaud** côté OVH (édition `config.php`, sans redéploiement ; fallback 15 si la clé manque).
+- **Endpoints protégés à 15/min/contexte** (coûteux + données fines + susceptibles d'extraction massive par itération) :
+
+  | Endpoint | Rate limit | Justification |
+  |---|---|---|
+  | `/analyse-sous-populations` | **15/min** | Le plus lourd (agrégation par sous-population, ≤ centaines de lignes en mode établissement), données fines. |
+  | `/quadrant/details` | **15/min** (était 30) | Fiche riche (métadonnées + flags), extraction massive si itérée sur toutes les bulles. |
+  | `/quadrant/serie-temporelle` | **15/min** | Historique complet multi-millésimes (2 requêtes flat sur tous les millésimes). |
+  | `/quadrant` | — | Vue principale, filtrée par contexte, appelée à chaque changement de filtre (un seuil bas créerait des faux positifs). |
+  | `/etablissements/search`, `/etablissements-visibles`, `/referentiel/*` | — | Requêtes légères / référentiels, usage utilisateur normal. |
+  | `/health`, `/frontend-config`, `/diagnostic` (clé), `/auth/init` | — | Health/config/admin/auth — ne pas gêner les smoke-tests ni l'authentification. |
+
+  Critères de décision : (1) coût d'exécution, (2) richesse des données retournées, (3) susceptibilité à l'extraction massive par itération d'un paramètre. Usage normal de l'app (clic bulle → details caché côté client ; modale analyse fine = 1 fetch ; « Voir l'évolution » = 1 fetch) reste très en deçà de 15/min.
+
 **À faire (par ordre logique)** :
 1. Composants React un par un (sélecteurs, quadrant SVG, tooltip, mentions non représentées, export XLSX côté navigateur via SheetJS à partir des valeurs brutes renvoyées par `/quadrant` en vue Mentions — pas d'endpoint d'export côté PHP)
 2. Intégration complète et tests bout en bout

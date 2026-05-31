@@ -73,6 +73,7 @@ require_once __DIR__ . '/../lib/Response.php';
 require_once __DIR__ . '/../lib/Session.php';
 require_once __DIR__ . '/../lib/Diffusion.php';
 require_once __DIR__ . '/../lib/Anonymizer.php';
+require_once __DIR__ . '/../lib/RateLimit.php';
 
 Response::cors();
 
@@ -86,6 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $session    = new Session();
 $contexteId = $session->getContexteId();
+
+// Endpoint sensible (Phase 14.11) : historique complet multi-millésimes
+// (2 requêtes flat sur tous les millésimes). Seuil
+// config.rate_limit.seuil_sensible (15/min/contexte par défaut).
+RateLimit::enforce('quadrant_serie_temporelle:' . $contexteId);
 
 $formation        = $_GET['formation']        ?? '';
 $vue              = $_GET['vue']              ?? '';
