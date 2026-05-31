@@ -398,6 +398,7 @@ export default function ModaleAnalyseSousPopulations({
                 <TableauEcarts
                   bloc={blocCourant}
                   seuil={data.contexte?.seuil_applique}
+                  cursus={formation}
                 />
               </div>
 

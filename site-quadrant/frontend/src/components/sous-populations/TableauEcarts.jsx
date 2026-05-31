@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAutoPlacement } from '../../utils/useAutoPlacement.js';
 import { COULEUR_SEGMENT_SOUS_POP } from '../../utils/colors.js';
+import IndicateurTooltip from '../IndicateurTooltip.jsx';
 
 // Section « Comparaison » (Phase 14.1/14.2) : tableau des sous-populations
 // vs la référence (diplômés français), REGROUPÉ par impact. Chaque groupe
@@ -14,11 +15,15 @@ import { COULEUR_SEGMENT_SOUS_POP } from '../../utils/colors.js';
 // couleur de la bulle correspondante dans le mini-quadrant (Phase 14.4),
 // pour la cohérence visuelle entre les deux onglets.
 
+// `indicateur` = libellé API exact (clé de methodologie.json) pour le
+// tooltip de définition « ? » en en-tête (Phase 14.x). Le libellé court
+// reste affiché ; la définition complète est résolue via IndicateurTooltip.
 const COLONNES_EMPLOI = [
-  { cle: 'taux_emploi_sal_fr',  ecart: 'ecart_taux_emploi_sal_fr',  libelle: 'Taux emploi sal. FR' },
-  { cle: 'taux_emploi_non_sal', ecart: 'ecart_taux_emploi_non_sal', libelle: 'Taux emploi non sal.' },
-  { cle: 'taux_emploi_stable',  ecart: 'ecart_taux_emploi_stable',  libelle: 'Taux emploi stable' },
+  { cle: 'taux_emploi_sal_fr',  ecart: 'ecart_taux_emploi_sal_fr',  libelle: 'Taux emploi sal. FR',  indicateur: 'Taux sortants en emploi salarié en France' },
+  { cle: 'taux_emploi_non_sal', ecart: 'ecart_taux_emploi_non_sal', libelle: 'Taux emploi non sal.', indicateur: 'Taux sortants en emploi non salarié' },
+  { cle: 'taux_emploi_stable',  ecart: 'ecart_taux_emploi_stable',  libelle: 'Taux emploi stable',  indicateur: 'Taux sortants en emploi stable' },
 ];
+const INDICATEUR_POURSUIVANTS = 'Taux de poursuivants';
 
 // Colonnes : Sous-population + Effectif + Sortants + 3 taux emploi + Taux poursuivants.
 const NB_COLONNES = 3 + COLONNES_EMPLOI.length + 1;
@@ -154,6 +159,7 @@ function LigneSousPop({ sp }) {
 export default function TableauEcarts({
   bloc,
   seuil = 20,
+  cursus,
 }) {
   const [croisementsSimples, setCroisementsSimples] = useState(false);
   const [hoveredSeg, setHoveredSeg] = useState(null);
@@ -198,9 +204,15 @@ export default function TableauEcarts({
               <th scope="col">Effectif</th>
               <th scope="col">Sortants</th>
               {COLONNES_EMPLOI.map((c) => (
-                <th key={c.cle} scope="col">{c.libelle}</th>
+                <th key={c.cle} scope="col">
+                  {c.libelle}{' '}
+                  <IndicateurTooltip libelle={c.indicateur} cursus={cursus} mode="iconOnly" />
+                </th>
               ))}
-              <th scope="col">Taux de poursuivants</th>
+              <th scope="col">
+                Taux de poursuivants{' '}
+                <IndicateurTooltip libelle={INDICATEUR_POURSUIVANTS} cursus={cursus} mode="iconOnly" />
+              </th>
             </tr>
           </thead>
           <tbody>
