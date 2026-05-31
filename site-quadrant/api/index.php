@@ -66,6 +66,7 @@ $routes = [
     '/quadrant/mentions-non-representees'  => 'quadrant-mentions-non-representees.php',
     '/analyse-sous-populations'            => 'analyse-sous-populations.php',
     '/etablissements-visibles'             => 'etablissements-visibles.php',
+    '/etablissements/search'               => 'etablissements-search.php',
     '/referentiel/disciplinaire'           => 'referentiel-disciplinaire.php',
     '/referentiel/millesimes'              => 'referentiel-millesimes.php',
     '/referentiel/variables'               => 'referentiel-variables.php',

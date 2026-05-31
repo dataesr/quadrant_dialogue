@@ -232,6 +232,12 @@ export function getEtablissementsVisibles(params) {
   return request('/etablissements-visibles', params);
 }
 
+// Recherche intelligente d'établissement (scoring pondéré côté API,
+// Phase 14.10). { q, limit }.
+export function searchEtablissements(params) {
+  return request('/etablissements/search', params);
+}
+
 export function getFrontendConfig() {
   return request('/frontend-config');
 }

@@ -43,19 +43,32 @@ export default function Combobox({
   placeholder,
   items,
   value,
+  // Libellé de la valeur courante, fourni par le parent quand il ne peut
+  // pas être résolu depuis `items` (mode serverFiltered : les items
+  // changent à chaque recherche et peuvent ne pas contenir la sélection).
+  valueLabel = null,
   onSelect,
   onTextChange,
   disabled = false,
   maxSuggestions = MAX_SUGGESTIONS_DEFAULT,
   topItem = null,
+  // Mode « recherche serveur » (Phase 14.10) : les `items` sont DÉJÀ
+  // filtrés/ordonnés par l'API (scoring pondéré multi-champs). On NE
+  // refiltre PAS côté client par le libellé (sinon taper « UCBL » filtrerait
+  // « Université Claude Bernard » qui ne contient pas « ucbl ») et on
+  // préserve l'ordre fourni. Le parent fetch via onTextChange (debouncé).
+  serverFiltered = false,
 }) {
   const itemsSafe = Array.isArray(items) ? items : [];
 
-  // Libellé de l'item courant (si value pointe sur un item connu).
+  // Libellé de l'item courant. `valueLabel` (parent) prime — stable même
+  // quand `items` change pendant une recherche serveur. Fallback : lookup
+  // dans items, puis la value brute.
   const selectedLibelle = useMemo(() => {
+    if (valueLabel != null && valueLabel !== '') return valueLabel;
     const it = itemsSafe.find((x) => x.id === value);
     return it?.libelle ?? value ?? '';
-  }, [itemsSafe, value]);
+  }, [valueLabel, itemsSafe, value]);
 
   const [open, setOpen]           = useState(false);
   const [texte, setTexte]         = useState(selectedLibelle);
@@ -82,6 +95,11 @@ export default function Combobox({
   }, []);
 
   const suggestions = useMemo(() => {
+    if (serverFiltered) {
+      // Items déjà filtrés + ordonnés par l'API : on les affiche tels quels.
+      const base = itemsSafe.slice(0, maxSuggestions);
+      return topItem ? [topItem, ...base] : base;
+    }
     const t = texte.trim().toLowerCase();
     // Quand l'input contient pile le libellé sélectionné (ou rien), on
     // affiche la liste complète : on n'oblige pas l'utilisateur à effacer
@@ -97,7 +115,7 @@ export default function Combobox({
     // place quel que soit le texte de recherche (il n'est pas filtré
     // car il représente l'option « tout afficher »).
     return topItem ? [topItem, ...tries] : tries;
-  }, [texte, itemsSafe, selectedLibelle, maxSuggestions, topItem]);
+  }, [serverFiltered, texte, itemsSafe, selectedLibelle, maxSuggestions, topItem]);
 
   function selectionner(item) {
     setTexte(item.libelle);
