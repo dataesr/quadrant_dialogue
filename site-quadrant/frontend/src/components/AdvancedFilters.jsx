@@ -125,7 +125,12 @@ export default function AdvancedFilters() {
       <button
         type="button"
         className="fr-btn fr-btn--sm fr-btn--secondary fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
-        onClick={() => setModaleAnimOpen(true)}
+        onClick={() => {
+          trackEvent('Animation temporelle', 'ouverture_modale', null, {
+            etab: etabInfo?.libelle, vue, cursus, millesime,
+          });
+          setModaleAnimOpen(true);
+        }}
         disabled={!etabContexte}
       >
         Voir l&apos;évolution

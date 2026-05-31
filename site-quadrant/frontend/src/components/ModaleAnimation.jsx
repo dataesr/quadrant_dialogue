@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { getQuadrantSerieTemporelle } from '../services/api.js';
 import { messageErreur } from '../utils/errors.js';
+import { trackEvent } from '../utils/matomo.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { formatLibelleAxe } from '../utils/libelleAxe.js';
 import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
@@ -308,6 +309,14 @@ export default function ModaleAnimation({ open, onClose }) {
   // -------------------- Handlers de base --------------------
   function handlePlayPause() {
     if (comparerEnCours) return;
+    // Suivi Matomo : on ne trace que le passage en LECTURE (pas la pause).
+    // Hors de l'updater setState pour rester pur (StrictMode double-invoque
+    // les updaters en dev → sinon double comptage).
+    if (!enLecture) {
+      trackEvent('Animation temporelle', 'lecture', null, {
+        etab: etabInfo?.libelle, vue, cursus, millesime,
+      });
+    }
     setEnLecture((p) => !p);
   }
   function handlePrev() {
