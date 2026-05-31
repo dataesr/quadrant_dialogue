@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getAnalyseSousPopulations } from '../../services/api.js';
 import { messageErreur } from '../../utils/errors.js';
+import { trackEvent } from '../../utils/matomo.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../../utils/constants.js';
 import { useDelayedLoading } from '../../hooks/useDelayedLoading.js';
 import LoaderBarre from '../LoaderBarre.jsx';
@@ -105,6 +106,12 @@ export default function ModaleAnalyseSousPopulations({
   const [ongletActif, setOngletActif] = useState('comparaison');
   function changerOnglet(id) {
     if (id !== 'quadrant') setEnLecture(false);
+    if (id !== ongletActif) {
+      // Suivi Matomo des onglets explorés dans l'analyse fine.
+      trackEvent('Analyse fine', 'onglet', id, {
+        etab: etabLabel, cursus: formation, millesime,
+      });
+    }
     setOngletActif(id);
   }
 

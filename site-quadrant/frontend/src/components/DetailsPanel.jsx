@@ -409,7 +409,15 @@ export default function DetailsPanel() {
               title={!analyseDisponible
                 ? "Effectifs insuffisants pour l'analyse fine"
                 : undefined}
-              onClick={() => setModaleAnalyseOuverte(true)}
+              onClick={() => {
+                trackEvent(
+                  'Analyse fine',
+                  'ouverture_modale',
+                  `${aspMode}: ${aspMode === 'etablissement' ? aspEtabLabel : aspMentionLabel}`,
+                  { etab: etabInfo?.libelle, vue, cursus, millesime },
+                );
+                setModaleAnalyseOuverte(true);
+              }}
             >
               Analyse de l&apos;insertion par sous-population
             </button>
