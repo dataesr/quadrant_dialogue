@@ -88,6 +88,21 @@ export default function AdvancedFilters() {
   const disciData = referentiels.disciplinaire.data;
   const disciLoading = referentiels.disciplinaire.loading;
 
+  // Grisage par établissement de référence (Phase 14.9). `disponibles` =
+  // modalités présentes dans l'établissement du sélecteur global
+  // (etabContexte), renvoyé par /referentiel/disciplinaire. Appliqué dans
+  // LES DEUX vues : l'établissement de référence pilote le grisage partout
+  // (Quadrant = dialogue établissement par établissement). null tant qu'aucun
+  // établissement n'est sélectionné (rectorat/national sans choix) → toutes
+  // les modalités actives.
+  const disponibles = disciData?.disponibles || null;
+  const dispoDom      = disponibles ? new Set(disponibles.dom)      : null;
+  const dispoDiscipli = disponibles ? new Set(disponibles.discipli) : null;
+  const dispoSecteur  = disponibles ? new Set(disponibles.secteur)  : null;
+  const TITRE_ABSENT = "Aucune mention de cette modalité dans l'établissement de référence";
+  const titreSiAbsent = (set) =>
+    set ? (it) => (!set.has(it.code) ? TITRE_ABSENT : undefined) : null;
+
   // Renommage volontaire : « options » plutôt que « filtres ». Le panneau
   // inclut aussi des contrôles d'affichage (Ligne de référence,
   // Représentativité) qui ne sont pas des filtres au sens strict. L'accord
@@ -145,6 +160,10 @@ export default function AdvancedFilters() {
             onChange={setDomaine}
             disabled={disabled}
             loading={disciLoading}
+            /* Grisage par établissement de référence (vue Positionnement) :
+               domaines absents de l'établissement sélectionné. */
+            isItemDisabled={dispoDom ? (it) => !dispoDom.has(it.code) : null}
+            itemTitle={titreSiAbsent(dispoDom)}
           />
           <ReferentielSelect
             id="quadrant-discipline"
@@ -155,10 +174,16 @@ export default function AdvancedFilters() {
             onChange={setDiscipline}
             disabled={disabled}
             loading={disciLoading}
-            /* Filtrage en cascade : si un domaine est sélectionné, on
-               grise les disciplines qui n'en font pas partie. Items du
-               référentiel portent `dom_code`. */
-            isItemDisabled={domaine ? (it) => it.dom_code !== domaine : null}
+            /* Filtrage en cascade (Domaine → Discipline) combiné au grisage
+               par établissement de référence. Items portent `dom_code`. */
+            isItemDisabled={
+              (domaine || dispoDiscipli)
+                ? (it) =>
+                    (domaine && it.dom_code !== domaine) ||
+                    (dispoDiscipli && !dispoDiscipli.has(it.code))
+                : null
+            }
+            itemTitle={titreSiAbsent(dispoDiscipli)}
           />
           <ReferentielSelect
             id="quadrant-secteur"
@@ -169,17 +194,17 @@ export default function AdvancedFilters() {
             onChange={setSecteur}
             disabled={disabled}
             loading={disciLoading}
-            /* Cascade depuis Domaine ET Discipline. Items portent
-               `dom_code` + `discipli_code`. Un secteur est désactivé si
-               un upstream est sélectionné et que le secteur n'y
-               appartient pas. */
+            /* Cascade (Domaine + Discipline) combinée au grisage par
+               établissement de référence. */
             isItemDisabled={
-              (domaine || discipline)
+              (domaine || discipline || dispoSecteur)
                 ? (it) =>
                     (domaine    && it.dom_code      !== domaine) ||
-                    (discipline && it.discipli_code !== discipline)
+                    (discipline && it.discipli_code !== discipline) ||
+                    (dispoSecteur && !dispoSecteur.has(it.code))
                 : null
             }
+            itemTitle={titreSiAbsent(dispoSecteur)}
           />
           {/* Le filtre Mention (vue Positionnement) a été remonté
               hors d'AdvancedFilters dans le panneau principal — il
@@ -191,7 +216,7 @@ export default function AdvancedFilters() {
           {/* Options diverses. TypeMasterSelect gère lui-même sa
               désactivation hors cursus Master (libellé enrichi
               « (non disponible) ») pour rester visible et discoverable. */}
-          <TypeMasterSelect disabled={disabled} />
+          <TypeMasterSelect disabled={disabled} disponibles={disponibles?.master || null} />
 
           <div className="fr-checkbox-group">
             <input

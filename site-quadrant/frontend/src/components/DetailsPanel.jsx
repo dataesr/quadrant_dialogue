@@ -287,7 +287,19 @@ export default function DetailsPanel() {
   // → l'analyse agrège toutes les mentions filtrées du cursus de l'étab.
   // Sinon mode mention (vue Mentions, ou Positionnement avec mention filtrée).
   const aspMode = (vue === 'etablissements' && !aspDiplom) ? 'etablissement' : 'mention';
-  const aspFiltres = { dom: domaine, discipli: discipline, secteur, master: typeMaster };
+  // Libellé humain de la discipline filtrée (le code seul ne parle pas dans
+  // le cartouche) — résolu depuis le référentiel disciplinaire.
+  const aspDisciplineLib = discipline
+    ? (referentiels.disciplinaire.data?.disciplines || [])
+        .find((d) => d.code === discipline)?.libelle || discipline
+    : null;
+  const aspFiltres = {
+    dom: domaine,
+    discipli: discipline,
+    discipli_lib: aspDisciplineLib,
+    secteur,
+    master: typeMaster,
+  };
   const aspEtabLabel = vue === 'mentions'
     ? etabInfo?.libelle
     : (identite?.uo_lib || identite?.id_paysage || '');

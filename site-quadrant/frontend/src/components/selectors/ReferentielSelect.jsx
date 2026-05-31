@@ -32,6 +32,10 @@ export default function ReferentielSelect({
   disabled = false,
   loading = false,
   isItemDisabled = null,
+  // (item) => string|undefined — infobulle sur une option (ex. raison du
+  // grisage). Les <option> natives ne rendent pas toujours `title`, mais
+  // c'est une aide gracieuse là où le navigateur la supporte.
+  itemTitle = null,
 }) {
   const list = Array.isArray(items) ? items : [];
   const groupDisabled = disabled || loading;
@@ -55,6 +59,7 @@ export default function ReferentielSelect({
             key={item.code}
             value={item.code}
             disabled={typeof isItemDisabled === 'function' ? isItemDisabled(item) : false}
+            title={typeof itemTitle === 'function' ? (itemTitle(item) || undefined) : undefined}
           >
             {item.libelle || item.code}
           </option>

@@ -18,7 +18,7 @@ const OPTIONS = [
   { value: 'Master hors enseignement', label: 'Master hors enseignement' },
 ];
 
-export default function TypeMasterSelect({ disabled = false }) {
+export default function TypeMasterSelect({ disabled = false, disponibles = null }) {
   const { cursus, typeMaster, setTypeMaster } = useApp();
 
   const nonApplicable = cursus !== 'Master';
@@ -26,6 +26,11 @@ export default function TypeMasterSelect({ disabled = false }) {
   const labelText     = nonApplicable
     ? 'Type de Master (non disponible — cursus Master uniquement)'
     : 'Type de Master';
+
+  // Grisage par établissement de référence (Phase 14.9, vue Positionnement) :
+  // `disponibles` = Set des types de Master présents dans l'établissement.
+  const setDispo = disponibles ? new Set(disponibles) : null;
+  const TITRE_ABSENT = "Aucune mention de cette modalité dans l'établissement de référence";
 
   return (
     <div className={`fr-select-group${isDisabled ? ' fr-select-group--disabled' : ''}`}>
@@ -40,11 +45,19 @@ export default function TypeMasterSelect({ disabled = false }) {
         disabled={isDisabled}
       >
         <option value="">Tous</option>
-        {OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
+        {OPTIONS.map((opt) => {
+          const absent = setDispo ? !setDispo.has(opt.value) : false;
+          return (
+            <option
+              key={opt.value}
+              value={opt.value}
+              disabled={absent}
+              title={absent ? TITRE_ABSENT : undefined}
+            >
+              {opt.label}
+            </option>
+          );
+        })}
       </select>
     </div>
   );

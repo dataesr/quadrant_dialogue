@@ -61,6 +61,11 @@ $contexteId = $session->getContexteId();
 
 $formation = $_GET['formation'] ?? '';
 $millesime = $_GET['millesime'] ?? '';
+// Optionnel (Phase 14.9) : établissement de référence (sélecteur global).
+// Quand fourni, on renvoie en plus `disponibles` = modalités effectivement
+// présentes dans CET établissement, pour griser côté frontend (vue
+// Positionnement) les filtres absents de l'établissement de référence.
+$idPaysage = $_GET['id_paysage'] ?? '';
 
 $formationsAutorisees = [
     'Licence générale',
@@ -73,6 +78,9 @@ if (!in_array($formation, $formationsAutorisees, true)) {
 }
 if (!preg_match('/^\d{4}$/', $millesime)) {
     Response::error('invalid_millesime', 'Paramètre millesime invalide.');
+}
+if ($idPaysage !== '' && !preg_match('/^[A-Za-z0-9]{5}$/', $idPaysage)) {
+    Response::error('invalid_id_paysage', 'Paramètre id_paysage invalide (5 caractères alphanumériques attendus).');
 }
 
 // =============================================================================
@@ -107,6 +115,51 @@ $secteurs    = chargerSecteursAvecParents($pdo, $whereClause, $params);
 $mentions    = chargerMentions($pdo, $whereClause, $params);
 
 // =============================================================================
+// 4 bis. Modalités présentes dans l'établissement de référence (Phase 14.9)
+// =============================================================================
+//
+// Les listes ci-dessus restent à l'échelle du PÉRIMÈTRE (options affichées).
+// `disponibles` ajoute les codes effectivement présents dans l'établissement
+// de référence (sélecteur global) — une seule requête plate DISTINCT, le
+// frontend grise les options absentes. null si aucun établissement fourni.
+$disponibles = null;
+if ($idPaysage !== '') {
+    $stmtDisp = $pdo->prepare("
+        SELECT DISTINCT dom, discipli,
+               secteur_disciplinaire_quadrant AS secteur, master
+        FROM stats_quadrant
+        WHERE formation = :formation
+          AND millesime = :millesime
+          AND id_paysage = :id_paysage
+          AND filtre_perimetre LIKE :motif
+    ");
+    $stmtDisp->execute([
+        ':formation'  => $formation,
+        ':millesime'  => $millesime,
+        ':id_paysage' => $idPaysage,
+        ':motif'      => $params[':motif'],
+    ]);
+    // NB : on accumule des VALEURS (pas des clés) puis array_unique, pour
+    // éviter la coercition PHP des clés de tableau numériques (« 15 » →
+    // int 15) qui casserait la comparaison de chaînes côté frontend.
+    $sets = ['dom' => [], 'discipli' => [], 'secteur' => [], 'master' => []];
+    foreach ($stmtDisp->fetchAll() as $r) {
+        foreach ($sets as $cle => $_) {
+            $v = $r[$cle] ?? null;
+            if ($v !== null && $v !== '') {
+                $sets[$cle][] = (string)$v;
+            }
+        }
+    }
+    $disponibles = [
+        'dom'      => array_values(array_unique($sets['dom'])),
+        'discipli' => array_values(array_unique($sets['discipli'])),
+        'secteur'  => array_values(array_unique($sets['secteur'])),
+        'master'   => array_values(array_unique($sets['master'])),
+    ];
+}
+
+// =============================================================================
 // 5. Réponse JSON
 // =============================================================================
 
@@ -115,6 +168,7 @@ Response::json([
     'disciplines' => $disciplines,
     'secteurs'    => $secteurs,
     'mentions'    => $mentions,
+    'disponibles' => $disponibles,
 ]);
 
 

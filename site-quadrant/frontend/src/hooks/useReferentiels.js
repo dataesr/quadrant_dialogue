@@ -28,7 +28,7 @@ import { messageErreur } from '../utils/errors.js';
 
 const emptyState = () => ({ loading: false, data: null, error: null });
 
-export function useReferentiels({ formation, millesime }) {
+export function useReferentiels({ formation, millesime, idPaysage }) {
   const [millesimes,      setMillesimes]      = useState(emptyState());
   const [variables,       setVariables]       = useState(emptyState());
   const [disponibilites,  setDisponibilites]  = useState(emptyState());
@@ -122,7 +122,11 @@ export function useReferentiels({ formation, millesime }) {
     };
   }, [formation, millesime]);
 
-  // Disciplinaire : besoin de formation ET millesime.
+  // Disciplinaire : besoin de formation ET millesime. `idPaysage`
+  // (établissement de référence, sélecteur global) est optionnel : quand
+  // fourni, la réponse porte un bloc `disponibles` (modalités présentes
+  // dans cet établissement) pour le grisage des filtres en vue
+  // Positionnement (Phase 14.9). Inclus dans la clé de cache.
   useEffect(() => {
     if (!formation || !millesime) {
       setDisciplinaire(emptyState());
@@ -130,12 +134,16 @@ export function useReferentiels({ formation, millesime }) {
     }
 
     let cancelled = false;
-    const key = `${formation}|${millesime}`;
+    const key = `${formation}|${millesime}|${idPaysage || ''}`;
 
     loadCached(
       cacheDisciplinaire.current,
       key,
-      () => getReferentielDisciplinaire({ formation, millesime }),
+      () => getReferentielDisciplinaire({
+        formation,
+        millesime,
+        ...(idPaysage ? { id_paysage: idPaysage } : {}),
+      }),
       setDisciplinaire,
       () => cancelled,
     );
@@ -143,7 +151,7 @@ export function useReferentiels({ formation, millesime }) {
     return () => {
       cancelled = true;
     };
-  }, [formation, millesime]);
+  }, [formation, millesime, idPaysage]);
 
   return { millesimes, variables, disponibilites, populations, disciplinaire };
 }

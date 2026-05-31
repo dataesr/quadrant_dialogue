@@ -122,7 +122,7 @@ export function AppProvider({ children }) {
 
   // --- Référentiels (millesimes, variables, disciplinaire) ---
   // Le hook gère son propre cache par formation / (formation, millesime).
-  const referentiels = useReferentiels({ formation: cursus, millesime });
+  const referentiels = useReferentiels({ formation: cursus, millesime, idPaysage: etabContexte });
 
   // Configuration UI exposée par l'API (activation des boutons
   // d'export). Fetch unique au montage, fallback permissif si KO —

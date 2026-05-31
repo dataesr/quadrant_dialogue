@@ -35,12 +35,30 @@ const ONGLETS_BASE = [
   { id: 'parcours',    libelle: 'Parcours' },
 ];
 
-// Libellé court du cursus pour le cartouche « X mentions de <cursus> agrégées ».
-const LIBELLE_CURSUS = {
+// Cursus au pluriel pour le cartouche agrégé (« X mentions de <cursus> »
+// et « Tous les <cursus pluriel> »).
+const CURSUS_PLURIEL = {
+  'Master': 'Masters',
+  'Licence générale': 'Licences générales',
+  'Licence professionnelle': 'Licences professionnelles',
   'Bachelor universitaire de technologie': 'BUT',
 };
-function libelleCursus(formation) {
-  return LIBELLE_CURSUS[formation] || formation;
+function pluraliserCursus(formation) {
+  return CURSUS_PLURIEL[formation] || formation;
+}
+
+// Rappel des filtres actifs (mode établissement). Ordre hiérarchique :
+// cursus pluriel · domaine (code court STS/DEG…) · master enseignement ·
+// discipline (la plus précise) OU secteur. Sans filtre → « Tous les <cursus> ».
+function formaterLibelleFiltres(formation, filtres = {}) {
+  const cursusPluriel = pluraliserCursus(formation);
+  const segments = [cursusPluriel];
+  if (filtres.dom)    segments.push(filtres.dom);
+  if (filtres.master) segments.push(filtres.master);
+  // Discipline prime sur secteur quand les deux sont posés (plus précis).
+  if (filtres.discipli)     segments.push(filtres.discipli_lib || filtres.discipli);
+  else if (filtres.secteur) segments.push(filtres.secteur);
+  return segments.length === 1 ? `Tous les ${cursusPluriel}` : segments.join(' · ');
 }
 
 export default function ModaleAnalyseSousPopulations({
@@ -286,7 +304,7 @@ export default function ModaleAnalyseSousPopulations({
           <p className="modale-asp-contexte">
             <strong>{etabLabel}</strong>
             {estAgregatMulti ? (
-              <>{' · '}{nbMentions} mentions de {libelleCursus(formation)} agrégées</>
+              <>{' · '}{formaterLibelleFiltres(formation, filtres)} ({nbMentions} mentions agrégées)</>
             ) : (
               <>
                 {' · '}{formation}
