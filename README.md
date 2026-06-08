@@ -23,3 +23,5 @@ Voir `docs/cadrage-quadrant.md` pour la spécification complète du projet.
 ## Brief pour Claude Code
 
 Voir `CLAUDE.md` à la racine pour le contexte permanent du projet.
+
+## License — MIT
