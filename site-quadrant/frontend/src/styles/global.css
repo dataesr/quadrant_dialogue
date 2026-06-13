@@ -231,6 +231,73 @@
   border-color: #000091;
 }
 
+/* Sélecteur de référence des axes (Phase 15.1) — visible sous le
+   quadrant, style « pilule » cohérent avec les contrôles d'animation.
+   Mesure (exclusif) + Périmètre (multi). Les pilules de périmètre
+   actives reprennent la couleur de leur ligne sur le quadrant
+   (étab = bleu Marianne, national = gris). */
+.reference-axes-selecteur {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding: 0.6rem 0.25rem 0.1rem;
+  margin-top: 0.25rem;
+}
+.ref-axes-titre {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #161616;
+}
+.ref-axes-groupe {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.ref-axes-label {
+  font-size: 0.8rem;
+  color: #555;
+  font-weight: 500;
+}
+.ref-axes-pilule {
+  border: 1px solid #929292;
+  background: #fff;
+  color: #161616;
+  border-radius: 999px;
+  padding: 0.2rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ref-axes-pilule:hover:not(:disabled):not(.ref-axes-pilule--actif) {
+  border-color: #000091;
+  color: #000091;
+}
+.ref-axes-pilule--actif {
+  background: #000091;
+  border-color: #000091;
+  color: #fff;
+}
+/* Périmètre « National » actif : gris, rappel de la ligne nationale. */
+.ref-axes-pilule--national.ref-axes-pilule--actif {
+  background: #666666;
+  border-color: #666666;
+}
+.ref-axes-pilule--national:hover:not(:disabled):not(.ref-axes-pilule--actif) {
+  border-color: #666666;
+  color: #666666;
+}
+.ref-axes-pilule:disabled {
+  color: #b0b0b0;
+  border-color: #e0e0e0;
+  background: #f6f6f6;
+  cursor: not-allowed;
+}
+/* Masqué pendant l'export PNG (comme les contrôles de zoom). */
+body.exporting .reference-axes-selecteur {
+  display: none;
+}
+
 /* Légendes sous le quadrant (couleurs + tailles), affichées côte à côte
    sur deux lignes wrappées. */
 .legende-bloc {

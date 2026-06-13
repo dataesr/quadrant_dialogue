@@ -504,25 +504,41 @@ Bloc `exports` dans `config.php` :
 
 ### Référence des axes (vue Mentions)
 
-En vue Mentions, l'API expose plusieurs références pour les axes du quadrant (lignes pointillées + classification des cadrans dans le tableau). Le sélecteur frontend en présente un sous-ensemble (la refonte « mesure × périmètre » de la Phase 15.1 — médiane/moyenne × étab/national — arrive avec le volet frontend de la phase) :
+En vue Mentions, la référence des axes (lignes pointillées + classification des cadrans du tableau) se choisit via un **sélecteur enrichi « mesure × périmètre »** (Phase 15.1) :
 
-- **Médiane établissement** (défaut) — médiane des taux sur les mentions de l'établissement courant.
-- **Moyenne établissement** — moyenne pondérée `SUM(num)/SUM(denom)` sur les mentions de l'établissement (= « moyenne par tête », ne surreprésente pas les petites mentions).
-- **Moyenne nationale** — moyenne pondérée sur toutes les mentions France entière (filtres disciplinaires appliqués, sans filtre étab).
+- **Mesure** : Médiane *ou* Moyenne (exclusif, l'une toujours active, médiane par défaut).
+- **Périmètre** : Établissement *et/ou* National (multi-sélection — 0, 1 ou 2 actifs ; étab par défaut). 0 actif = mode « sans référence », aucune ligne tracée.
 
-- **Médiane nationale** (Phase 15.1) — médiane des taux par mention sur toutes les mentions France entière (filtres disciplinaires appliqués, sans filtre étab).
+Les 4 combinaisons mappent sur les clés du bloc `axes` :
 
-Calculé par `/quadrant` dans le bloc `axes` de la réponse (`mediane_etab_x/y`, `moyenne_etab_x/y`, `moyenne_nationale_x/y`, `mediane_nationale_x/y`). La moyenne nationale réutilise la même requête SQL que les bulles (avant filtrage par étab côté agrégation) — pas de requête supplémentaire. State frontend : `referenceAxes` dans AppContext (défaut `'mediane_etab'`).
+- **Médiane / Moyenne établissement** — médiane / moyenne pondérée `SUM(num)/SUM(denom)` (« par tête ») des taux sur les mentions de l'établissement courant.
+- **Médiane / Moyenne nationale** — médiane / moyenne pondérée des taux sur toutes les mentions France entière (filtres disciplinaires appliqués, sans filtre étab).
+
+Calculé par `/quadrant` dans le bloc `axes` de la réponse (`mediane_etab_x/y`, `moyenne_etab_x/y`, `moyenne_nationale_x/y`, `mediane_nationale_x/y`). La moyenne nationale réutilise la même requête SQL que les bulles (avant filtrage par étab côté agrégation) — pas de requête supplémentaire. State frontend (AppContext) : `mesureAxes` (`'mediane'` par défaut) + `perimetresAxes` (`['etab']` par défaut). Un `referenceAxes` **dérivé** (mode principal string — étab si présent, sinon national) est exposé pour les consommateurs mono-référence (classification des cadrans du tableau, exports PNG/XLSX, libellés) qui n'affichent qu'un repère.
 
 **Convention métier — seuil de la médiane nationale (Phase 15.1)** : la médiane nationale (`calculerMedianesNationales`) n'inclut que les mentions à `denom_x >= 20 ET denom_y >= 20` (`Diffusion::SEUIL_FIABILITE`). C'est une **asymétrie volontaire** avec la médiane établissement, qui inclut au contraire **toutes** les mentions à `denom > 0` (y compris les fragiles 1-19, via `pointsCalculables`). Rationale : la médiane établissement doit refléter fidèlement le positionnement de l'étab (micro-mentions comprises) ; un repère national, lui, doit être robuste et non tiré par le bruit des micro-mentions multipliées à l'échelle France entière. Même JOIN/périmètre que `calculerSommesNationales` (sans `filtre_perimetre`), mais récupère les lignes individuelles pour une médiane PHP (`mediane()`) au lieu d'une moyenne pondérée. Champ additif : strictement compatible ascendant, aucun champ existant retiré.
 
-Présenté côté UI comme un groupe de 3 boutons radio empilés verticalement (`fr-fieldset` + `fr-radio-group`) dans le panneau « Plus d'options ». Le segment control horizontal ne tenait pas la largeur du panneau latéral 280 px (libellés tronqués). Les libellés complets sont également reportés directement sur le quadrant : le label de la ligne de référence verticale est en bas (sous l'axe X, centré sur la ligne), celui de la ligne horizontale à gauche (dans la marge gauche, aligné sur la ligne). La marge gauche du SVG (`MARGIN.left` dans `geometry.js`) a été augmentée à 160 px pour accueillir « Moyenne établissement » (~145 px à fontSize 11).
+**UI du sélecteur (Phase 15.1)** : sorti du panneau « Plus d'options » et rendu **visible par défaut sous la visualisation** (`ReferenceAxesSelector.jsx`, monté dans `App.jsx` sous le quadrant/tableau). Style « pilule » (boutons arrondis) cohérent avec les contrôles d'animation — Mesure en 2 pilules exclusives, Périmètre en 2 toggles indépendants. Les pilules de périmètre actives reprennent la couleur de leur ligne (étab = bleu Marianne `#000091`, national = gris `#666`). N'entre plus dans le compteur de filtres actifs d'`AdvancedFilters` (ce n'est plus une option avancée).
 
-En vue Positionnement le sélecteur est masqué (les axes sont déjà calculés sur le bloc `data.reference` par l'API, défaut « médiane »). L'ancien sélecteur « Ligne de référence » (Médiane / Moyenne, paramètre `ligneReference`) a été retiré — l'API garde son paramètre `agregation` figé à `'mediane'` côté useQuadrant pour préserver le calcul de `data.reference`.
+**Affichage multiple des lignes (Phase 15.1)** : `LignesReference.jsx` reçoit un **tableau** de références (0, 1 ou 2) et trace une paire (verticale + horizontale) par référence active. Différenciation visuelle quand les deux périmètres sont affichés : établissement = bleu Marianne, pointillé court `4 4` ; national = gris, pointillé long `8 4`. Les libellés de ligne (« Médiane établissement : 41 % ») sont posés à l'**intérieur du plot** (marges du SVG inchangées, `MARGIN.left = 80`).
+
+En vue Positionnement, seule la **Mesure** est proposée (Médiane / Moyenne) — le périmètre est national par construction (pas de filtre étab), donc implicite et masqué. Pilote `referenceAxesPositionnement` → paramètre `agregation` de l'API → `data.reference` (ligne unique, style gris neutre `4 3`). L'ancien sélecteur « Ligne de référence » (paramètre `ligneReference`) reste retiré ; `agregation` est figé à `'mediane'` côté `useQuadrant` du quadrant principal pour préserver `data.axes`.
+
+**Note de régression** : la modale d'animation temporelle (`/quadrant/serie-temporelle`) garde son propre sélecteur 3 modes (`mediane_etab` / `moyenne_etab` / `moyenne_nationale`) — l'endpoint serie-temporelle ne calcule pas `mediane_nationale`. Son `refMode` initial est clampé sur un mode connu si le `referenceAxes` dérivé de l'app vaut `mediane_nationale`.
+
+### UX — Positionnement intelligent des libellés de référence (Phase 15.1)
+
+Chaque ligne pointillée porte un libellé « Mesure périmètre : valeur % » (ex. « Médiane nationale : 44 % »), coloré comme sa ligne. Placement dans `LignesReference.jsx` :
+
+- **1 seule référence** : emplacement habituel — libellé de la verticale en bas, libellé de l'horizontale à gauche.
+- **2 références (étab + national)** : emplacements **opposés** pour éviter le chevauchement. L'étab garde l'emplacement habituel (verticale → bas, horizontale → gauche), le national prend l'opposé (verticale → haut, horizontale → droite). Comme les deux labels d'un même axe sont alors à des extrémités opposées, ils ne se recouvrent pas même si les deux valeurs sont proches.
+- **Bascule anti-débordement selon la valeur** (indépendante du slot) :
+  - verticale (valeur X) : X < 30 % → texte à droite de la ligne (`textAnchor=start`, sinon il sortirait à gauche) ; X > 70 % → à gauche (`end`) ; entre les deux → à gauche par défaut.
+  - horizontale (valeur Y) : Y > 70 % (proche du haut) → texte **sous** la ligne (sinon il sortirait en haut) ; sinon au-dessus.
 
 ### UX — Reset automatique du zoom
 
-Le zoom du quadrant est automatiquement réinitialisé à chaque changement de paramètre structurel (vue, cursus, millésime, axes, filtres avancés, `referenceAxes`). Évite de rester zoomé sur une zone sans bulles après une bascule de filtre. Le clic sur une bulle ne change aucun de ces paramètres → le zoom est conservé pendant l'exploration interactive.
+Le zoom du quadrant est automatiquement réinitialisé à chaque changement de paramètre structurel (vue, cursus, millésime, axes, filtres avancés, `mesureAxes`/`perimetresAxes`). Évite de rester zoomé sur une zone sans bulles après une bascule de filtre. Le clic sur une bulle ne change aucun de ces paramètres → le zoom est conservé pendant l'exploration interactive.
 
 ---
 

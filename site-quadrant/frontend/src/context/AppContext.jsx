@@ -25,15 +25,25 @@ const AppContext = createContext(null);
 // Valeurs par défaut des filtres avancés. Resetables via resetAdvancedFilters.
 const DEFAULT_REPRESENTATIVITE = false;
 
-// Mode de référence des axes en vue Mentions (3 valeurs possibles).
-// 'mediane_etab' (défaut) : reproduit le comportement historique.
-// 'moyenne_etab'          : moyenne pondérée SUM(num)/SUM(denom) sur les
-//                           mentions de l'établissement courant.
-// 'moyenne_nationale'     : idem mais sur toutes les mentions France
-//                           entière (filtres disciplinaires appliqués,
-//                           sans filtre étab).
-// Cf. backend quadrant.php §7 bis pour le calcul.
-const DEFAULT_REFERENCE_AXES = 'mediane_etab';
+// Référence des axes en vue Mentions (Phase 15.1) : sélecteur enrichi
+// « mesure × périmètre » au lieu d'un mode unique.
+//   - mesureAxes      : 'mediane' (défaut) | 'moyenne' (exclusif).
+//   - perimetresAxes  : sous-ensemble de ['etab', 'national'] (multi-
+//                       sélection : 0, 1 ou 2 actifs). Vide = aucune
+//                       ligne de référence affichée.
+// Le couple (mesure, périmètre) mappe sur les clés du bloc `axes` de
+// /quadrant : etab → `${mesure}_etab`, national → `${mesure}_nationale`
+// (les 4 clés mediane_etab / moyenne_etab / mediane_nationale /
+// moyenne_nationale existent côté API). Cf. backend quadrant.php §7 bis.
+//
+// Un `referenceAxes` (string unique, mode « principal ») est DÉRIVÉ de
+// ces deux états pour les consommateurs qui n'affichent qu'une seule
+// référence (classification des cadrans du tableau, exports PNG/XLSX,
+// libellés). Périmètre principal = étab si présent, sinon national,
+// sinon étab par défaut (le tableau a toujours besoin d'un repère).
+const DEFAULT_MESURE_AXES     = 'mediane';
+const DEFAULT_PERIMETRES_AXES = ['etab'];
+const PERIMETRE_SUFFIXE_AXES  = { etab: 'etab', national: 'nationale' };
 
 // Mode de référence des axes en vue Positionnement (2 valeurs).
 // 'mediane' (défaut) : médiane des taux sur l'ensemble des bulles
@@ -79,9 +89,32 @@ export function AppProvider({ children }) {
   // typologie est lue côté backend (à partir d'etab_contexte) — pas
   // de duplication d'info côté state.
   const [memeTypologie, setMemeTypologie] = useState(false);
-  const [referenceAxes,     setReferenceAxes]     = useState(DEFAULT_REFERENCE_AXES);
+  // Référence des axes vue Mentions — sélecteur enrichi (cf. defaults ci-dessus).
+  const [mesureAxes,     setMesureAxes]     = useState(DEFAULT_MESURE_AXES);
+  const [perimetresAxes, setPerimetresAxes] = useState(DEFAULT_PERIMETRES_AXES);
   const [referenceAxesPositionnement, setReferenceAxesPositionnement] =
     useState(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
+
+  // Toggle d'un périmètre (étab / national) en multi-sélection. Ajoute
+  // s'il est absent, retire s'il est présent — 0, 1 ou 2 peuvent être
+  // actifs (0 = mode « sans référence », aucune ligne tracée).
+  const togglePerimetreAxes = useCallback((perimetre) => {
+    setPerimetresAxes((prev) =>
+      prev.includes(perimetre)
+        ? prev.filter((p) => p !== perimetre)
+        : [...prev, perimetre]
+    );
+  }, []);
+
+  // `referenceAxes` dérivé : mode « principal » (string unique) pour les
+  // consommateurs mono-référence (tableau, exports, libellés). Périmètre
+  // principal = étab si présent, sinon national, sinon étab par défaut.
+  const perimetrePrincipalAxes = perimetresAxes.includes('etab')
+    ? 'etab'
+    : perimetresAxes.includes('national')
+      ? 'national'
+      : 'etab';
+  const referenceAxes = `${mesureAxes}_${PERIMETRE_SUFFIXE_AXES[perimetrePrincipalAxes]}`;
 
   // --- Phase 4b : compléments quadrant ---
   // Mode d'échelle des bulles arrêté à 'sqrt' (racine carrée du
@@ -394,7 +427,8 @@ export function AppProvider({ children }) {
     setTypeMaster(null);
     setRepresentativite(DEFAULT_REPRESENTATIVITE);
     setMemeTypologie(false);
-    setReferenceAxes(DEFAULT_REFERENCE_AXES);
+    setMesureAxes(DEFAULT_MESURE_AXES);
+    setPerimetresAxes(DEFAULT_PERIMETRES_AXES);
     setReferenceAxesPositionnement(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
   }, []);
 
@@ -410,6 +444,10 @@ export function AppProvider({ children }) {
     typeMaster,
     representativite,
     memeTypologie,
+    // Référence des axes vue Mentions (Phase 15.1) : état enrichi +
+    // `referenceAxes` dérivé (mode principal, compat tableau/exports).
+    mesureAxes,
+    perimetresAxes,
     referenceAxes,
     referenceAxesPositionnement,
     // Phase 4b
@@ -440,7 +478,9 @@ export function AppProvider({ children }) {
     setTypeMaster,
     setRepresentativite,
     setMemeTypologie,
-    setReferenceAxes,
+    setMesureAxes,
+    setPerimetresAxes,
+    togglePerimetreAxes,
     setReferenceAxesPositionnement,
     resetAdvancedFilters,
     setRechercheMention,

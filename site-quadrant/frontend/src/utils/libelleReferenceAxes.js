@@ -15,6 +15,7 @@
 export const LIBELLES_REFERENCE_AXES_MENTIONS = {
   mediane_etab:      'Médiane établissement',
   moyenne_etab:      'Moyenne établissement',
+  mediane_nationale: 'Médiane nationale',
   moyenne_nationale: 'Moyenne nationale',
 };
 

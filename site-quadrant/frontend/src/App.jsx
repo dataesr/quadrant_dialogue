@@ -8,6 +8,7 @@ import AdvancedFilters from './components/AdvancedFilters.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import Quadrant from './components/Quadrant.jsx';
 import QuadrantTable from './components/QuadrantTable.jsx';
+import ReferenceAxesSelector from './components/ReferenceAxesSelector.jsx';
 import MentionSearch from './components/MentionSearch.jsx';
 import AffichageSelector from './components/AffichageSelector.jsx';
 import DetailsPanel from './components/DetailsPanel.jsx';
@@ -128,6 +129,11 @@ function AppShell() {
                     <Quadrant forExport={true} />
                   </div>
                   {affichage === 'tableau' && <QuadrantTable />}
+                  {/* Sélecteur de référence des axes (Phase 15.1) :
+                      visible par défaut sous la visualisation (sous le
+                      quadrant en mode graphique, sous le tableau en mode
+                      tableau) — sorti des « Plus d'options ». */}
+                  <ReferenceAxesSelector />
                   <DetailsPanel />
                 </>
               ) : (

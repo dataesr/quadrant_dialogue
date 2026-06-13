@@ -118,10 +118,19 @@ export default function ModaleAnimation({ open, onClose }) {
   //                (fade-in via la transition opacity 400 ms).
   const [phaseAnim, setPhaseAnim] = useState('normal');
 
-  // Mode de référence des axes (initialise sur celui de l'app)
-  const [refMode, setRefMode] = useState(
-    vue === 'mentions' ? referenceAxes : referenceAxesPositionnement
-  );
+  // Mode de référence des axes (initialise sur celui de l'app).
+  // L'endpoint serie-temporelle ne calcule que 3 modes en vue Mentions
+  // (mediane_etab / moyenne_etab / moyenne_nationale) — il n'a PAS
+  // mediane_nationale. Le `referenceAxes` dérivé de l'app pouvant
+  // désormais valoir 'mediane_nationale' (Phase 15.1), on clampe l'init
+  // sur un mode connu de la modale pour éviter un segmented sans option
+  // active et un fetch d'axe inexistant.
+  const [refMode, setRefMode] = useState(() => {
+    if (vue !== 'mentions') return referenceAxesPositionnement;
+    return MODES_AXES_MENTIONS.some((m) => m.code === referenceAxes)
+      ? referenceAxes
+      : 'mediane_etab';
+  });
 
   // -------------------- Fetch au montage --------------------
   useEffect(() => {

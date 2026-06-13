@@ -24,8 +24,6 @@ import ModaleAnimation from './ModaleAnimation.jsx';
 // le chargement (un filtre paraîtra actif alors qu'il est à son
 // défaut).
 const DEFAULT_REPRESENTATIVITE              = false;
-const DEFAULT_REFERENCE_AXES                = 'mediane_etab';
-const DEFAULT_REFERENCE_AXES_POSITIONNEMENT = 'mediane';
 
 export default function AdvancedFilters() {
   const {
@@ -35,8 +33,6 @@ export default function AdvancedFilters() {
     domaine, discipline, secteur, mention,
     typeMaster,
     representativite,
-    referenceAxes, setReferenceAxes,
-    referenceAxesPositionnement, setReferenceAxesPositionnement,
     setDomaine, setDiscipline, setSecteur,
     setRepresentativite,
     memeTypologie, setMemeTypologie,
@@ -60,9 +56,9 @@ export default function AdvancedFilters() {
   const disabled = !etabContexte;
 
   // Nombre de filtres avancés en écart par rapport à leur défaut.
-  // referenceAxes ne compte que sur vue=mentions, referenceAxesPositionnement
-  // sur vue=etablissements (les contrôles ne sont affichés que dans leur
-  // vue respective — l'autre reste à son défaut sans visibilité).
+  // La référence des axes ne compte PLUS ici : elle a été sortie du
+  // panneau « Plus d'options » (Phase 15.1) vers un sélecteur visible
+  // sous le quadrant (cf. ReferenceAxesSelector.jsx).
   const activeCount = useMemo(() => {
     let n = 0;
     if (domaine     !== null) n++;
@@ -72,12 +68,9 @@ export default function AdvancedFilters() {
     if (cursus === 'Master' && typeMaster !== null) n++;
     if (representativite !== DEFAULT_REPRESENTATIVITE) n++;
     if (vue === 'etablissements' && memeTypologie) n++;
-    if (vue === 'mentions' && referenceAxes !== DEFAULT_REFERENCE_AXES) n++;
-    if (vue === 'etablissements'
-        && referenceAxesPositionnement !== DEFAULT_REFERENCE_AXES_POSITIONNEMENT) n++;
     return n;
   }, [domaine, discipline, secteur, mention, cursus, typeMaster,
-      representativite, memeTypologie, vue, referenceAxes, referenceAxesPositionnement]);
+      representativite, memeTypologie, vue]);
 
   // Auto-dépli quand un filtre devient actif (au montage si l'utilisateur
   // recharge avec un état pré-positionné, ou en cours d'utilisation).
@@ -272,85 +265,9 @@ export default function AdvancedFilters() {
             </label>
           </div>
 
-          {/* Référence des axes — vue Mentions uniquement.
-              En vue Positionnement, les axes sont déjà calculés sur
-              l'ensemble France (cf. data.reference côté API), le
-              sélecteur n'a pas de sens et reste masqué.
-
-              Layout vertical via fr-radio-group plutôt que segment
-              control : les libellés complets (« Moyenne nationale »
-              etc.) débordent du panneau latéral 280 px en disposition
-              horizontale. */}
-          {vue === 'mentions' && (
-            <fieldset className="fr-fieldset" disabled={disabled}>
-              <legend className="fr-fieldset__legend">Référence des axes</legend>
-              {[
-                { value: 'mediane_etab',      label: 'Médiane établissement' },
-                { value: 'moyenne_etab',      label: 'Moyenne établissement' },
-                { value: 'moyenne_nationale', label: 'Moyenne nationale'     },
-              ].map((opt) => {
-                const inputId = `quadrant-reference-axes-${opt.value}`;
-                // Markup DSFR conforme : fr-fieldset__element wrappe
-                // chaque fr-radio-group. Sans cette structure, le CSS
-                // DSFR ne stylise pas les radios (apparence « lune »
-                // partiellement remplie au lieu du cercle plein
-                // attendu). Cf.
-                // https://www.systeme-de-design.gouv.fr/elements-d-interface/composants/case-a-cocher-et-bouton-radio/
-                return (
-                  <div key={opt.value} className="fr-fieldset__element">
-                    <div className="fr-radio-group">
-                      <input
-                        type="radio"
-                        id={inputId}
-                        name="quadrant-reference-axes"
-                        value={opt.value}
-                        checked={referenceAxes === opt.value}
-                        onChange={() => setReferenceAxes(opt.value)}
-                      />
-                      <label className="fr-label" htmlFor={inputId}>
-                        {opt.label}
-                      </label>
-                    </div>
-                  </div>
-                );
-              })}
-            </fieldset>
-          )}
-
-          {/* Vue Positionnement : 2 options (Médiane / Moyenne).
-              Pas de suffixe « nationale » dans les libellés — la vue
-              est nationale par construction (pas de filtre étab), donc
-              implicite. Distinct du sélecteur Mentions ci-dessus (3
-              modes) pour éviter toute confusion. Propagé au backend
-              via le paramètre `agregation` de /api/quadrant. */}
-          {vue === 'etablissements' && (
-            <fieldset className="fr-fieldset" disabled={disabled}>
-              <legend className="fr-fieldset__legend">Référence des axes</legend>
-              {[
-                { value: 'mediane', label: 'Médiane' },
-                { value: 'moyenne', label: 'Moyenne' },
-              ].map((opt) => {
-                const inputId = `quadrant-reference-axes-pos-${opt.value}`;
-                return (
-                  <div key={opt.value} className="fr-fieldset__element">
-                    <div className="fr-radio-group">
-                      <input
-                        type="radio"
-                        id={inputId}
-                        name="quadrant-reference-axes-positionnement"
-                        value={opt.value}
-                        checked={referenceAxesPositionnement === opt.value}
-                        onChange={() => setReferenceAxesPositionnement(opt.value)}
-                      />
-                      <label className="fr-label" htmlFor={inputId}>
-                        {opt.label}
-                      </label>
-                    </div>
-                  </div>
-                );
-              })}
-            </fieldset>
-          )}
+          {/* Le sélecteur « Référence des axes » a été déplacé hors de
+              ce panneau (Phase 15.1) — il est désormais visible par
+              défaut sous le quadrant. Cf. ReferenceAxesSelector.jsx. */}
 
           <button
             type="button"

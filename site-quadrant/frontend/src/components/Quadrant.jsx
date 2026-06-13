@@ -99,7 +99,8 @@ export default function Quadrant({ forExport = false } = {}) {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     memeTypologie,
-    referenceAxes,
+    mesureAxes,
+    perimetresAxes,
     referenceAxesPositionnement,
     scaleMode,
     rechercheMention,
@@ -247,7 +248,8 @@ export default function Quadrant({ forExport = false } = {}) {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     memeTypologie,
-    referenceAxes,
+    mesureAxes,
+    perimetresAxes,
     referenceAxesPositionnement,
   ]);
 
@@ -498,19 +500,34 @@ export default function Quadrant({ forExport = false } = {}) {
     );
   }
 
-  // Référence à tracer : en vue Positionnement on garde data.reference
-  // historique. En vue Mentions on lit data.axes[<mode>] selon le
-  // sélecteur « Référence des axes » d'AdvancedFilters. Fallback
-  // sur data.reference si data.axes est absent (compat avec une
-  // ancienne version du backend).
-  const referenceTracee = (() => {
-    if (vue !== 'mentions' || !data.axes) return data.reference;
-    const xKey = `${referenceAxes}_x`;
-    const yKey = `${referenceAxes}_y`;
-    const x = data.axes[xKey];
-    const y = data.axes[yKey];
-    if (x == null || y == null) return data.reference; // fallback
-    return { x, y, type: referenceAxes };
+  // Références à tracer (Phase 15.1) : tableau de 0, 1 ou 2 références.
+  //   - vue Positionnement : une seule référence (data.reference
+  //     historique, pilotée par `agregation` côté API). Périmètre
+  //     'positionnement' → style neutre.
+  //   - vue Mentions : une référence par périmètre actif (étab /
+  //     national), lue dans data.axes selon la mesure choisie
+  //     (médiane/moyenne). 0 périmètre actif → aucune ligne. Fallback
+  //     sur data.reference si data.axes est absent (backend ancien).
+  const referencesTracees = (() => {
+    if (vue !== 'mentions') {
+      return data.reference
+        ? [{ ...data.reference, perimetre: 'positionnement', mesure: referenceAxesPositionnement }]
+        : [];
+    }
+    if (!data.axes) {
+      return data.reference
+        ? [{ ...data.reference, perimetre: 'etab', mesure: mesureAxes }]
+        : [];
+    }
+    const suffixe = { etab: 'etab', national: 'nationale' };
+    const refs = [];
+    for (const perimetre of perimetresAxes) {
+      const x = data.axes[`${mesureAxes}_${suffixe[perimetre]}_x`];
+      const y = data.axes[`${mesureAxes}_${suffixe[perimetre]}_y`];
+      if (x == null || y == null) continue;
+      refs.push({ x, y, perimetre, mesure: mesureAxes });
+    }
+    return refs;
   })();
 
   return (
@@ -566,7 +583,7 @@ export default function Quadrant({ forExport = false } = {}) {
         <Axes xScale={xScale} yScale={yScale} libelleX={libelleX} libelleY={libelleY} />
 
         <g clipPath="url(#quadrant-clip-plot)">
-          <LignesReference reference={referenceTracee} xScale={xScale} yScale={yScale} />
+          <LignesReference references={referencesTracees} xScale={xScale} yScale={yScale} />
         </g>
 
         <g clipPath="url(#quadrant-clip-bulles)">

@@ -1,52 +1,54 @@
 import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
 
-// Lignes de référence : médiane ou moyenne. Type porté par
-// `reference.type` :
-//   - vue=mentions       : 'mediane_etab' | 'moyenne_etab' | 'moyenne_nationale'
-//                          (cf. AppContext.referenceAxes)
-//   - vue=etablissements : 'mediane' | 'moyenne' (cf.
-//                          AppContext.referenceAxesPositionnement —
-//                          propagé à l'API via le paramètre `agregation`).
+// Lignes de référence des axes (Phase 15.1 — affichage multiple).
 //
-// Positionnement des libellés (à l'INTÉRIEUR du plot, dans les
-// zones les MOINS denses) :
-//   - Label de la verticale (ref X) : posé en bas du plot, à gauche
-//     de la ligne pointillée, textAnchor="end" → texte aligné à
-//     droite, qui se termine contre la ligne. Zone bas-gauche du
-//     quadrant : peu de bulles habituellement (= mauvais sur les
-//     deux axes — rare).
-//   - Label de l'horizontale (ref Y) : posé à gauche du plot, juste
-//     AU-DESSUS de la ligne pointillée, textAnchor="start" → texte
-//     aligné à gauche depuis le bord gauche du plot. Zone gauche du
-//     quadrant : également moins fournie que la zone droite.
+// Reçoit un TABLEAU `references` (0, 1 ou 2 entrées). Chaque référence :
+//   { x, y, perimetre: 'etab' | 'national' | 'positionnement', mesure }
+//   - x / y : taux de référence (0..1) sur chaque axe.
+//   - perimetre : pilote la différenciation visuelle (couleur + pointillé)
+//     et le libellé.
+//   - mesure : 'mediane' | 'moyenne' (entre dans le libellé).
 //
-// Logique métier : les bulles « intéressantes » (taux élevés sur les
-// deux axes) sont en haut-droite. Les zones bas-gauche et gauche-
-// centrale étaient le précédent emplacement (haut-droite et haut-
-// gauche) systématiquement masquées par les clusters denses.
+// Différenciation visuelle (Tâche 3) : les deux références (étab +
+// national) doivent rester distinguables par COULEUR et par STYLE de
+// pointillé :
+//   - établissement   : bleu Marianne #000091, pointillé court 4 4.
+//   - national         : gris #666, pointillé long 8 4.
+//   - positionnement   : gris neutre #555, pointillé 4 3 (référence
+//     unique de la vue Positionnement — pas de notion étab/national).
 //
-// Apparence discrète : fontSize 11, fill #666. Le but est informatif —
-// si une bulle recouvre brièvement le libellé, c'est acceptable (le
-// zoom permet de lever l'ambiguïté).
-//
-// Style des lignes : trait pointillé gris foncé (cf. cadrage §11),
-// épaisseur 1px. Les scales sont passées en props : le zoom les
-// transforme côté orchestrateur (Quadrant.jsx).
+// Positionnement des libellés (Tâche 4) :
+//   - 1 seule référence → emplacement « habituel » : label de la
+//     verticale en bas, label de l'horizontale à gauche.
+//   - 2 références → emplacements OPPOSÉS pour éviter le chevauchement :
+//     verticales = un label en haut / un en bas ; horizontales = un à
+//     gauche / un à droite. L'étab garde l'emplacement habituel
+//     (bas / gauche), le national prend l'opposé (haut / droite).
+//   - Bascule « anti-débordement » selon la valeur, indépendante du
+//     slot : si la ligne est proche d'un bord, le texte bascule du côté
+//     opposé pour ne pas sortir du plot.
+//     · verticale (valeur X) : X < 30 % → texte à droite de la ligne
+//       (textAnchor=start) ; X > 70 % → à gauche (end) ; sinon à gauche.
+//     · horizontale (valeur Y) : Y > 70 % (proche du haut) → texte
+//       SOUS la ligne ; sinon au-dessus.
 
-const LABEL = {
-  // Vue Mentions (3 modes du nouveau sélecteur)
-  mediane_etab:      'Médiane établissement',
-  moyenne_etab:      'Moyenne établissement',
-  moyenne_nationale: 'Moyenne nationale',
-  // Vue Positionnement (référence pilotée par agregation côté API,
-  // libellés courts puisque la vue est nationale par construction)
-  mediane: 'Médiane',
-  moyenne: 'Moyenne',
+const STYLE_PERIMETRE = {
+  etab:           { stroke: '#000091', dash: '4 4' },
+  national:       { stroke: '#666666', dash: '8 4' },
+  positionnement: { stroke: '#555555', dash: '4 3' },
 };
 
-// Format d'une valeur de taux (0..1) en pourcentage français : une
-// décimale, virgule, espace insécable avant le %. Cohérent avec
-// QuadrantAnime (formaterPourcentage). « 0,755 » → « 75,5 % ».
+const NOM_MESURE = { mediane: 'Médiane', moyenne: 'Moyenne' };
+
+function libelleReference(ref) {
+  const m = NOM_MESURE[ref.mesure] || 'Médiane';
+  if (ref.perimetre === 'etab')     return `${m} établissement`;
+  if (ref.perimetre === 'national') return `${m} nationale`;
+  return m; // positionnement (vue nationale par construction)
+}
+
+// Format d'un taux (0..1) en pourcentage français : une décimale,
+// virgule, espace insécable avant le %. « 0,755 » → « 75,5 % ».
 function formaterPourcentage(taux) {
   const v = (taux ?? 0) * 100;
   return v.toLocaleString('fr-FR', {
@@ -55,76 +57,93 @@ function formaterPourcentage(taux) {
   }) + ' %';
 }
 
-export default function LignesReference({ reference, xScale, yScale }) {
-  if (!reference) return null;
+export default function LignesReference({ references, xScale, yScale }) {
+  // Compat ascendante : ancienne prop `reference` (objet unique).
+  const liste = Array.isArray(references)
+    ? references
+    : (references ? [references] : []);
+  if (liste.length === 0) return null;
 
-  const x = xScale(toPercent(reference.x));
-  const y = yScale(toPercent(reference.y));
-  const label = LABEL[reference.type] || '';
-  // La valeur de référence est différente sur chaque axe : sur la
-  // verticale on lit reference.x (position horizontale de la ligne),
-  // sur l'horizontale reference.y. Format « Libellé : 75,5 % ».
-  const labelX = label ? `${label} : ${formaterPourcentage(reference.x)}` : '';
-  const labelY = label ? `${label} : ${formaterPourcentage(reference.y)}` : '';
-
-  // Bornes du plot (utiles pour le positionnement des labels).
   const plotTop    = MARGIN.top;
   const plotBottom = MARGIN.top + PLOT_HEIGHT;
   const plotLeft   = MARGIN.left;
   const plotRight  = MARGIN.left + PLOT_WIDTH;
 
+  const aDeux = liste.length === 2;
+
   return (
     <g className="quadrant-reference">
-      {/* Ligne verticale (x = référence) */}
-      <line
-        x1={x} x2={x}
-        y1={plotTop} y2={MARGIN.top + PLOT_HEIGHT}
-        stroke="#555"
-        strokeWidth={1}
-        strokeDasharray="4 3"
-      />
-      {/* Ligne horizontale (y = référence) */}
-      <line
-        x1={MARGIN.left} x2={plotRight}
-        y1={y} y2={y}
-        stroke="#555"
-        strokeWidth={1}
-        strokeDasharray="4 3"
-      />
+      {liste.map((ref, i) => {
+        const style = STYLE_PERIMETRE[ref.perimetre] || STYLE_PERIMETRE.positionnement;
+        const x = xScale(toPercent(ref.x));
+        const y = yScale(toPercent(ref.y));
+        const label = libelleReference(ref);
+        const labelX = `${label} : ${formaterPourcentage(ref.x)}`;
+        const labelY = `${label} : ${formaterPourcentage(ref.y)}`;
 
-      {/* Label de la verticale : intérieur du plot, EN BAS, juste à
-          gauche de la pointillée. textAnchor=end → texte aligné à
-          droite contre x-5. Zone bas-gauche du quadrant : peu
-          fournie en bulles d'habitude. */}
-      {label && (
-        <text
-          x={x - 5}
-          y={plotBottom - 8}
-          fontSize={11}
-          fill="#666"
-          textAnchor="end"
-        >
-          {labelX}
-        </text>
-      )}
+        // Slot opposé pour la 2ᵉ référence (le national passe en
+        // haut / droite ; l'étab — ou la référence unique — reste en
+        // bas / gauche).
+        const secondaire = aDeux && ref.perimetre === 'national';
 
-      {/* Label de l'horizontale : intérieur du plot, À GAUCHE, juste
-          au-dessus de la pointillée. textAnchor=start → texte aligné
-          à gauche depuis plotLeft+5. Zone gauche-centrale : moins
-          dense que la zone droite (« haut-droite » = bulles les
-          mieux placées sur les deux axes, où les clusters se
-          concentrent). */}
-      {label && (
-        <text
-          x={plotLeft + 5}
-          y={y - 5}
-          fontSize={11}
-          fill="#666"
-          textAnchor="start"
-        >
-          {labelY}
-        </text>
-      )}
+        // --- Label de la VERTICALE (position X) ---
+        // Slot vertical : bas (défaut) ou haut (secondaire).
+        const vLabelY = secondaire ? plotTop + 14 : plotBottom - 8;
+        // Bascule horizontale anti-débordement selon la valeur X.
+        let vAnchor = 'end';
+        let vLabelX = x - 5;
+        if (ref.x < 0.30) { vAnchor = 'start'; vLabelX = x + 5; }
+        else if (ref.x > 0.70) { vAnchor = 'end'; vLabelX = x - 5; }
+
+        // --- Label de l'HORIZONTALE (position Y) ---
+        // Slot horizontal : gauche (défaut) ou droite (secondaire).
+        const hAnchor = secondaire ? 'end' : 'start';
+        const hLabelX = secondaire ? plotRight - 5 : plotLeft + 5;
+        // Bascule verticale anti-débordement selon la valeur Y : proche
+        // du haut → texte sous la ligne ; sinon au-dessus.
+        const hLabelY = ref.y > 0.70 ? y + 14 : y - 5;
+
+        return (
+          <g key={`${ref.perimetre}-${i}`}>
+            {/* Ligne verticale (x = référence) */}
+            <line
+              x1={x} x2={x}
+              y1={plotTop} y2={plotBottom}
+              stroke={style.stroke}
+              strokeWidth={1}
+              strokeDasharray={style.dash}
+            />
+            {/* Ligne horizontale (y = référence) */}
+            <line
+              x1={plotLeft} x2={plotRight}
+              y1={y} y2={y}
+              stroke={style.stroke}
+              strokeWidth={1}
+              strokeDasharray={style.dash}
+            />
+            {/* Label de la verticale */}
+            <text
+              x={vLabelX}
+              y={vLabelY}
+              fontSize={11}
+              fill={style.stroke}
+              textAnchor={vAnchor}
+            >
+              {labelX}
+            </text>
+            {/* Label de l'horizontale */}
+            <text
+              x={hLabelX}
+              y={hLabelY}
+              fontSize={11}
+              fill={style.stroke}
+              textAnchor={hAnchor}
+            >
+              {labelY}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
