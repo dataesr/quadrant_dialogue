@@ -506,6 +506,14 @@ export default function ModaleAnimation({ open, onClose }) {
               />
             </div>
 
+            {/* Référence des axes — sélecteur enrichi COMMUN (Phase 15.2),
+                identique à la vue principale et branché sur le même état
+                partagé (mesureAxes + perimetresAxes). Placé AU-DESSUS des
+                contrôles de lecture/vitesse (Phase 15.3). */}
+            <div className="modale-animation-ref-axes-bandeau">
+              <ReferenceAxesSelector />
+            </div>
+
             {/* Contrôles de lecture + vitesse — SOUS le quadrant (Phase 14.6).
                 Lecture à gauche, vitesse à droite ; wrap sur 2 lignes si
                 l'espace manque. */}
@@ -567,15 +575,6 @@ export default function ModaleAnimation({ open, onClose }) {
             {/* Bouton « Comparer » retiré en Phase 14.7 — fonctionnalité
                 conservée pour usage futur (état comparerEnCours, handleComparer,
                 trace pointillée et styles afférents restent en place). */}
-
-            {/* Référence des axes — sélecteur enrichi COMMUN (Phase 15.2),
-                identique à la vue principale et branché sur le même état
-                partagé (mesureAxes + perimetresAxes). Tout choix ici se
-                répercute hors modale, et inversement. Encadré pour
-                rester cohérent avec les bandeaux de contrôle. */}
-            <div className="modale-animation-ref-axes-bandeau">
-              <ReferenceAxesSelector />
-            </div>
 
             <p className="modale-animation-mention-seuil">
               ⓘ Pour l&apos;exploration historique, seules les bulles avec

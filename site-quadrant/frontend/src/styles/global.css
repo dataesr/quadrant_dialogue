@@ -244,6 +244,14 @@
   flex-wrap: wrap;
   gap: 0.4rem 1rem;
   padding: 0.2rem 0 0.6rem;
+  /* En mode « avec panneau de détails », .zone-quadrant--avec-details
+     passe en grille 2 colonnes (quadrant + panneau). Sans cette règle,
+     le sélecteur n'occuperait que la 1ʳᵉ cellule et se rétrécirait
+     (voire décalerait le quadrant) à l'ouverture de la barre latérale.
+     On force la pleine largeur (no-op quand .zone-quadrant est en
+     simple bloc, panneau fermé) — aucun effet secondaire au clic sur
+     une bulle. Même principe que .filtres-actifs. */
+  grid-column: 1 / -1;
 }
 .ref-axes-titre {
   font-size: 0.9rem;
@@ -1016,7 +1024,11 @@ body.exporting .ref-axes-container {
   inset: 0;
   background: rgba(0, 0, 30, 0.55);
   display: flex;
-  align-items: center;
+  /* Alignée en haut (Phase 15.3) plutôt que centrée : la modale est
+     haute (quadrant + contrôles) et l'iframe est embarquée dans une
+     page hôte — la centrer obligeait à scroller la page pour voir le
+     haut/bas. En flex-start elle reste accessible sans scroll. */
+  align-items: flex-start;
   justify-content: center;
   z-index: 200;
   padding: 1rem;

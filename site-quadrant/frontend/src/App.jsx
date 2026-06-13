@@ -52,13 +52,6 @@ function AppShell() {
             <CursusTabs />
           </div>
 
-          {/* Sélecteur de référence des axes (Phase 15.2) : remonté
-              tout en haut, au-dessus de la zone filtres + quadrant, pour
-              une position stable (ne saute pas pendant les chargements
-              de données). Visible dès qu'un établissement est
-              sélectionné, dans les deux vues. */}
-          {etabContexte && <ReferenceAxesSelector />}
-
           <div className="quadrant-grille">
             <aside className="panneau-filtres">
               {/* AffichageSelector placé en tête : la bascule
@@ -92,6 +85,16 @@ function AppShell() {
             >
               {etabContexte ? (
                 <>
+                  {/* Sélecteur de référence des axes (Phase 15.3) : placé
+                      au-dessus du quadrant DANS la zone de droite (pas
+                      au-dessus du panneau de filtres). En mode « avec
+                      détails » la zone passe en grille 2 colonnes — le
+                      sélecteur span 1/-1 (cf. .ref-axes-container) pour
+                      rester pleine largeur et stable à l'ouverture de la
+                      barre latérale (aucun effet secondaire au clic
+                      sur une bulle). Placé avant FiltresActifs pour ne
+                      pas bouger quand les pills de filtres apparaissent. */}
+                  <ReferenceAxesSelector />
                   {/* Bandeau des filtres actifs (pills cliquables avec ×
                       pour retirer un filtre individuellement). Visible
                       uniquement si au moins un filtre est actif —
