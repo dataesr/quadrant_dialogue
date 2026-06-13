@@ -504,13 +504,17 @@ Bloc `exports` dans `config.php` :
 
 ### Référence des axes (vue Mentions)
 
-En vue Mentions, l'utilisateur peut basculer entre 3 modes de référence pour les axes du quadrant (lignes pointillées + classification des cadrans dans le tableau) :
+En vue Mentions, l'API expose plusieurs références pour les axes du quadrant (lignes pointillées + classification des cadrans dans le tableau). Le sélecteur frontend en présente un sous-ensemble (la refonte « mesure × périmètre » de la Phase 15.1 — médiane/moyenne × étab/national — arrive avec le volet frontend de la phase) :
 
 - **Médiane établissement** (défaut) — médiane des taux sur les mentions de l'établissement courant.
 - **Moyenne établissement** — moyenne pondérée `SUM(num)/SUM(denom)` sur les mentions de l'établissement (= « moyenne par tête », ne surreprésente pas les petites mentions).
 - **Moyenne nationale** — moyenne pondérée sur toutes les mentions France entière (filtres disciplinaires appliqués, sans filtre étab).
 
-Calculé par `/quadrant` dans le bloc `axes` de la réponse (`mediane_etab_x/y`, `moyenne_etab_x/y`, `moyenne_nationale_x/y`). La moyenne nationale réutilise la même requête SQL que les bulles (avant filtrage par étab côté agrégation) — pas de requête supplémentaire. State frontend : `referenceAxes` dans AppContext (défaut `'mediane_etab'`).
+- **Médiane nationale** (Phase 15.1) — médiane des taux par mention sur toutes les mentions France entière (filtres disciplinaires appliqués, sans filtre étab).
+
+Calculé par `/quadrant` dans le bloc `axes` de la réponse (`mediane_etab_x/y`, `moyenne_etab_x/y`, `moyenne_nationale_x/y`, `mediane_nationale_x/y`). La moyenne nationale réutilise la même requête SQL que les bulles (avant filtrage par étab côté agrégation) — pas de requête supplémentaire. State frontend : `referenceAxes` dans AppContext (défaut `'mediane_etab'`).
+
+**Convention métier — seuil de la médiane nationale (Phase 15.1)** : la médiane nationale (`calculerMedianesNationales`) n'inclut que les mentions à `denom_x >= 20 ET denom_y >= 20` (`Diffusion::SEUIL_FIABILITE`). C'est une **asymétrie volontaire** avec la médiane établissement, qui inclut au contraire **toutes** les mentions à `denom > 0` (y compris les fragiles 1-19, via `pointsCalculables`). Rationale : la médiane établissement doit refléter fidèlement le positionnement de l'étab (micro-mentions comprises) ; un repère national, lui, doit être robuste et non tiré par le bruit des micro-mentions multipliées à l'échelle France entière. Même JOIN/périmètre que `calculerSommesNationales` (sans `filtre_perimetre`), mais récupère les lignes individuelles pour une médiane PHP (`mediane()`) au lieu d'une moyenne pondérée. Champ additif : strictement compatible ascendant, aucun champ existant retiré.
 
 Présenté côté UI comme un groupe de 3 boutons radio empilés verticalement (`fr-fieldset` + `fr-radio-group`) dans le panneau « Plus d'options ». Le segment control horizontal ne tenait pas la largeur du panneau latéral 280 px (libellés tronqués). Les libellés complets sont également reportés directement sur le quadrant : le label de la ligne de référence verticale est en bas (sous l'axe X, centré sur la ligne), celui de la ligne horizontale à gauche (dans la marge gauche, aligné sur la ligne). La marge gauche du SVG (`MARGIN.left` dans `geometry.js`) a été augmentée à 160 px pour accueillir « Moyenne établissement » (~145 px à fontSize 11).
 

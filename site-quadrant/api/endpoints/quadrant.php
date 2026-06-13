@@ -625,6 +625,15 @@ if ($vue === 'mentions') {
         $dom, $discipli, $secteur, $master
     );
 
+    // Médiane nationale (Phase 15.1) : médiane des taux par mention sur
+    // France entière, seuil de fiabilité 20 sur les deux axes (cf.
+    // calculerMedianesNationales — asymétrie volontaire avec la médiane étab).
+    [$medNatX, $medNatY] = calculerMedianesNationales(
+        $formation, $millesime, $var1, $var2,
+        $dateInserVar1, $dateInserVar2,
+        $dom, $discipli, $secteur, $master
+    );
+
     $axes = [
         'mediane_etab_x'      => $medEtabX,
         'mediane_etab_y'      => $medEtabY,
@@ -632,6 +641,8 @@ if ($vue === 'mentions') {
         'moyenne_etab_y'      => $sumDenomYEtab > 0 ? round($sumNumYEtab / $sumDenomYEtab, 4) : null,
         'moyenne_nationale_x' => $sumDenomXNat  > 0 ? round($sumNumXNat  / $sumDenomXNat,  4) : null,
         'moyenne_nationale_y' => $sumDenomYNat  > 0 ? round($sumNumYNat  / $sumDenomYNat,  4) : null,
+        'mediane_nationale_x' => $medNatX,
+        'mediane_nationale_y' => $medNatY,
     ];
 }
 
@@ -950,6 +961,103 @@ function calculerSommesNationales(
         (int)($row['sum_denom_x'] ?? 0),
         (int)($row['sum_num_y']   ?? 0),
         (int)($row['sum_denom_y'] ?? 0),
+    ];
+}
+
+/**
+ * Calcule la MÉDIANE NATIONALE des taux pour les deux axes (vue=mentions).
+ *
+ * Même périmètre et même JOIN que calculerSommesNationales() — France
+ * entière, filtres disciplinaires appliqués, SANS le filtre_perimetre LIKE
+ * — mais on récupère les lignes individuelles (numérateur + dénominateur
+ * par mention) pour calculer une médiane des taux côté PHP, là où la
+ * moyenne nationale se contente de SUM(num)/SUM(denom).
+ *
+ * ⚠ Asymétrie volontaire avec la médiane ÉTABLISSEMENT :
+ *   - médiane établissement (pointsCalculables) : inclut TOUTES les mentions
+ *     à denom > 0, y compris les fragiles (denom 1-19). On veut refléter
+ *     fidèlement le positionnement de l'étab, micro-mentions comprises.
+ *   - médiane nationale (ici) : seules les mentions à denom_x ET denom_y
+ *     >= SEUIL_FIABILITE (20) participent. Un repère national doit être
+ *     robuste, non tiré par le bruit des micro-mentions multipliées à
+ *     l'échelle France entière (cf. seuil de diffusion SIES).
+ *
+ * Retourne [medianeX|null, medianeY|null] (null si aucune mention ≥ 20/20).
+ */
+function calculerMedianesNationales(
+    string $formation, string $millesime, string $var1, string $var2,
+    string $dateInserVar1, string $dateInserVar2,
+    string $dom, string $discipli, string $secteur, string $master
+): array {
+    $conditions = [
+        'm1.formation = :formation',
+        'm1.millesime = :millesime',
+        'm1.indicateur = :var1',
+        'm1.date_inser = :date1',
+        'm2.indicateur = :var2',
+        'm2.date_inser = :date2',
+    ];
+    $params = [
+        ':formation' => $formation,
+        ':millesime' => $millesime,
+        ':var1'      => $var1,
+        ':date1'     => $dateInserVar1,
+        ':var2'      => $var2,
+        ':date2'     => $dateInserVar2,
+    ];
+    if ($dom !== '')      { $conditions[] = 'm1.dom = :dom';                                  $params[':dom']      = $dom; }
+    if ($discipli !== '') { $conditions[] = 'm1.discipli = :discipli';                        $params[':discipli'] = $discipli; }
+    if ($secteur !== '')  { $conditions[] = 'm1.secteur_disciplinaire_quadrant = :secteur';   $params[':secteur']  = $secteur; }
+    if ($formation === 'Master' && $master !== '') {
+        $conditions[] = 'm1.master = :master';
+        $params[':master'] = $master;
+    }
+
+    // Seuil de fiabilité 20 appliqué côté SQL sur les DEUX dénominateurs.
+    $conditions[] = 'm1.denominateur >= :seuil_x';
+    $conditions[] = 'm2.denominateur >= :seuil_y';
+    $params[':seuil_x'] = Diffusion::SEUIL_FIABILITE;
+    $params[':seuil_y'] = Diffusion::SEUIL_FIABILITE;
+
+    $whereClause = implode(' AND ', $conditions);
+
+    $sql = "
+        SELECT
+            m1.numerateur   AS num_x,
+            m1.denominateur AS denom_x,
+            m2.numerateur   AS num_y,
+            m2.denominateur AS denom_y
+        FROM stats_quadrant m1
+        INNER JOIN stats_quadrant m2
+            ON m1.diplom    = m2.diplom
+           AND m1.id_paysage = m2.id_paysage
+           AND m1.millesime = m2.millesime
+        WHERE $whereClause
+    ";
+
+    $stmt = Database::get()->prepare($sql);
+    $stmt->execute($params);
+
+    $xs = [];
+    $ys = [];
+    while ($row = $stmt->fetch()) {
+        $dx = (int)$row['denom_x'];
+        $dy = (int)$row['denom_y'];
+        // Garde-fou (les seuils SQL le garantissent déjà) : pas de division par 0.
+        if ($dx <= 0 || $dy <= 0) {
+            continue;
+        }
+        $xs[] = (int)$row['num_x'] / $dx;
+        $ys[] = (int)$row['num_y'] / $dy;
+    }
+
+    if (empty($xs)) {
+        return [null, null];
+    }
+
+    return [
+        round(mediane($xs), 4),
+        round(mediane($ys), 4),
     ];
 }
 
