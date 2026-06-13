@@ -46,7 +46,8 @@
  *
  *  3. Tous les modes d'axes calculés en parallèle.
  *     Vue Mentions : `mediane_etab_x/y`, `moyenne_etab_x/y`,
- *     `moyenne_nationale_x/y`. Vue Établissements : `mediane_x/y`,
+ *     `moyenne_nationale_x/y`, `mediane_nationale_x/y` (Phase 15.2 —
+ *     seuil 20, cohérent /quadrant). Vue Établissements : `mediane_x/y`,
  *     `moyenne_x/y`. Permet au frontend de basculer la référence sans
  *     refetch.
  *
@@ -311,14 +312,29 @@ if ($vue === 'mentions') {
         $millesimeStr = (string)$millesime;
         $lignes       = $lignesNationales[$millesimeStr] ?? [];
 
+        // Moyenne nationale pondérée (SUM(num)/SUM(denom)) sur toutes les
+        // mentions France entière.
         $snx = 0; $sdx = 0; $sny = 0; $sdy = 0;
+        // Médiane nationale (Phase 15.2) : médiane des taux par mention,
+        // seuil de fiabilité 20 sur les DEUX dénominateurs (asymétrie
+        // volontaire avec la médiane étab — cf. /quadrant.php
+        // calculerMedianesNationales et CLAUDE.md). Permet à la modale
+        // d'animation d'afficher la médiane nationale comme le quadrant.
+        $natTauxX = []; $natTauxY = [];
         foreach ($lignes as $l) {
-            $snx += (int)$l['num_x']; $sdx += (int)$l['denom_x'];
-            $sny += (int)$l['num_y']; $sdy += (int)$l['denom_y'];
+            $dnx = (int)$l['denom_x']; $dny = (int)$l['denom_y'];
+            $snx += (int)$l['num_x']; $sdx += $dnx;
+            $sny += (int)$l['num_y']; $sdy += $dny;
+            if ($dnx >= Diffusion::SEUIL_FIABILITE && $dny >= Diffusion::SEUIL_FIABILITE) {
+                $natTauxX[] = (int)$l['num_x'] / $dnx;
+                $natTauxY[] = (int)$l['num_y'] / $dny;
+            }
         }
 
         $series[$millesimeStr]['axes']['moyenne_nationale_x'] = $sdx > 0 ? round($snx / $sdx, 4) : null;
         $series[$millesimeStr]['axes']['moyenne_nationale_y'] = $sdy > 0 ? round($sny / $sdy, 4) : null;
+        $series[$millesimeStr]['axes']['mediane_nationale_x'] = !empty($natTauxX) ? round(mediane($natTauxX), 4) : null;
+        $series[$millesimeStr]['axes']['mediane_nationale_y'] = !empty($natTauxY) ? round(mediane($natTauxY), 4) : null;
     }
 }
 
@@ -645,9 +661,11 @@ function calculerAxes(string $vue, array $pointsCalculables, array $pointsBruts)
             'mediane_etab_y'      => $medY,
             'moyenne_etab_x'      => $sdx > 0 ? round($snx / $sdx, 4) : null,
             'moyenne_etab_y'      => $sdy > 0 ? round($sny / $sdy, 4) : null,
-            // moyenne_nationale ajoutée par le main (cf. §7)
+            // moyenne_nationale ET mediane_nationale ajoutées par le main (cf. §7)
             'moyenne_nationale_x' => null,
             'moyenne_nationale_y' => null,
+            'mediane_nationale_x' => null,
+            'mediane_nationale_y' => null,
         ];
     }
 
