@@ -48,7 +48,9 @@ export default function CompteurMouvements({ mouvements }) {
       const n = cat.libs.length;
       const motMention = n > 1 ? 'mentions' : 'mention';
       const qualif = n > 1 ? cat.plur : cat.sing;
-      return { cle: cat.cle, texte: `${n} ${motMention} ${qualif}`, detail: cat.libs.join(', ') };
+      // Séparateur ; (et non ,) car un intitulé de mention peut contenir
+      // une virgule.
+      return { cle: cat.cle, texte: `${n} ${motMention} ${qualif}`, detail: cat.libs.join(' ; ') };
     });
 
   const intro = millesime_precedent != null
