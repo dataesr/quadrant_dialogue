@@ -1,23 +1,21 @@
 import { useApp } from '../context/AppContext.jsx';
 import { trackEvent } from '../utils/matomo.js';
 
-// Sélecteur enrichi de référence des axes (Phase 15.1), sorti des
-// « Plus d'options » et rendu visible sous le quadrant. Style « pilule »
-// cohérent avec les contrôles d'animation.
+// Sélecteur enrichi de référence des axes (Phase 15.1, compacté 15.2).
+// Rendu sur UNE seule ligne, au-dessus de la zone de filtres/quadrant :
 //
-//   Vue Mentions :
-//     - Mesure   : Médiane | Moyenne (exclusif, l'un toujours actif).
-//     - Périmètre: Établissement | National (multi-sélection — 0, 1 ou 2
-//                  actifs ; 0 actif = aucune ligne de référence tracée).
-//   Vue Positionnement :
-//     - Mesure uniquement (Médiane | Moyenne). Le périmètre est national
-//       par construction (pas de filtre étab) → pas de sélecteur de
-//       périmètre. Pilote `referenceAxesPositionnement` (paramètre
-//       `agregation` côté API → data.reference).
+//   Référence des axes : [Médiane] [Moyenne]   [Établissement] [National]
 //
-// Les couleurs des pilules de périmètre rappellent celles des lignes
-// tracées sur le quadrant (étab = bleu Marianne, national = gris) — cf.
-// LignesReference.jsx.
+//   - Mesure    : Médiane | Moyenne (exclusif, l'une toujours active).
+//   - Périmètre : Établissement | National (multi — au moins un actif,
+//     bascule auto si on désactive le dernier, cf. AppContext).
+//   Vue Positionnement : Mesure seule (périmètre national implicite →
+//   pilote `referenceAxesPositionnement` / paramètre `agregation`).
+//
+// Pas de labels « Mesure » / « Périmètre » : le titre suffit. Les groupes
+// gardent un aria-label pour la sémantique. Les pilules de périmètre
+// actives reprennent la couleur de leur ligne (étab = bleu, national =
+// gris) — cf. utils/referenceAxes.js / LignesReference.jsx.
 
 export default function ReferenceAxesSelector() {
   const {
@@ -41,24 +39,22 @@ export default function ReferenceAxesSelector() {
   }
 
   function basculerPerimetre(perimetre) {
-    togglePerimetreAxes(perimetre);
     // L'état après bascule n'est pas encore lu ici (setState async) ; on
-    // logge l'intention (ajout/retrait) à partir de l'état courant.
+    // logge l'intention à partir de l'état courant.
     const action = perimetresAxes.includes(perimetre) ? 'retrait' : 'ajout';
+    togglePerimetreAxes(perimetre);
     trackEvent('Référence axes', `perimetre_${action}`, perimetre, {
       etab: etabInfo?.libelle, vue, cursus, millesime,
     });
   }
 
-  // Mesure active selon la vue.
   const mesureActive = vue === 'mentions' ? mesureAxes : referenceAxesPositionnement;
 
   return (
-    <div className="reference-axes-selecteur" aria-label="Référence des axes">
-      <span className="ref-axes-titre">Référence des axes</span>
+    <div className="ref-axes-container" aria-label="Référence des axes">
+      <span className="ref-axes-titre">Référence des axes&nbsp;:</span>
 
-      <div className="ref-axes-groupe" role="group" aria-label="Mesure">
-        <span className="ref-axes-label">Mesure</span>
+      <div className="ref-axes-groupe ref-axes-mesure" role="group" aria-label="Mesure">
         {[
           { value: 'mediane', label: 'Médiane' },
           { value: 'moyenne', label: 'Moyenne' },
@@ -80,11 +76,9 @@ export default function ReferenceAxesSelector() {
       </div>
 
       {/* Périmètre — vue Mentions uniquement (multi-sélection). En vue
-          Positionnement la vue est nationale par construction, le
-          périmètre n'a pas de sens. */}
+          Positionnement la vue est nationale par construction. */}
       {vue === 'mentions' && (
-        <div className="ref-axes-groupe" role="group" aria-label="Périmètre">
-          <span className="ref-axes-label">Périmètre</span>
+        <div className="ref-axes-groupe ref-axes-perimetre" role="group" aria-label="Périmètre">
           {[
             { value: 'etab',     label: 'Établissement', classe: 'ref-axes-pilule--etab' },
             { value: 'national', label: 'National',      classe: 'ref-axes-pilule--national' },

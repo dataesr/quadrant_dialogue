@@ -21,6 +21,7 @@ import {
 } from '../utils/colors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
 import { formatLibelle, formatLibelleAxe } from '../utils/libelleAxe.js';
+import { descripteursReferences, cleAxe } from '../utils/referenceAxes.js';
 import { formatDelta } from '../utils/formatDelta.js';
 import { trackEvent } from '../utils/matomo.js';
 import MessageErreur from './MessageErreur.jsx';
@@ -509,23 +510,29 @@ export default function Quadrant({ forExport = false } = {}) {
   //     (médiane/moyenne). 0 périmètre actif → aucune ligne. Fallback
   //     sur data.reference si data.axes est absent (backend ancien).
   const referencesTracees = (() => {
+    const descripteurs = descripteursReferences(vue, {
+      mesureAxes, perimetresAxes, referenceAxesPositionnement,
+    });
+    // Positionnement : coordonnées depuis data.reference (pilotée par
+    // le paramètre `agregation` côté API).
     if (vue !== 'mentions') {
       return data.reference
-        ? [{ ...data.reference, perimetre: 'positionnement', mesure: referenceAxesPositionnement }]
+        ? descripteurs.map((d) => ({ ...d, x: data.reference.x, y: data.reference.y }))
         : [];
     }
+    // Mentions : coordonnées depuis data.axes via la clé de chaque réf.
     if (!data.axes) {
       return data.reference
-        ? [{ ...data.reference, perimetre: 'etab', mesure: mesureAxes }]
+        ? [{ perimetre: 'etab', mesure: mesureAxes, x: data.reference.x, y: data.reference.y }]
         : [];
     }
-    const suffixe = { etab: 'etab', national: 'nationale' };
     const refs = [];
-    for (const perimetre of perimetresAxes) {
-      const x = data.axes[`${mesureAxes}_${suffixe[perimetre]}_x`];
-      const y = data.axes[`${mesureAxes}_${suffixe[perimetre]}_y`];
+    for (const d of descripteurs) {
+      const key = cleAxe(d);
+      const x = data.axes[`${key}_x`];
+      const y = data.axes[`${key}_y`];
       if (x == null || y == null) continue;
-      refs.push({ x, y, perimetre, mesure: mesureAxes });
+      refs.push({ ...d, x, y });
     }
     return refs;
   })();

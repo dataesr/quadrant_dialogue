@@ -7,6 +7,9 @@ import {
 import {
   COLORS_DOMAINE, COULEUR_ETAB_PAR_KEY,
 } from '../utils/colors.js';
+import {
+  STYLE_PERIMETRE, libelleReference, formaterPourcentage as fmtPct, cleAxe,
+} from '../utils/referenceAxes.js';
 
 // Z-index sémantique pour la vue Établissements (cohérent avec
 // Quadrant.jsx). « autres » en fond, « selectionne » au premier plan.
@@ -20,21 +23,14 @@ const ORDRE_RENDU_ETAB = {
   selectionne:                 4,
 };
 
-// Libellés des modes d'axes (cohérent LignesReference.jsx) — affichés
-// à côté des pointillés dans le quadrant animé.
-const LABEL_REF = {
-  mediane_etab:      'Médiane établissement',
-  moyenne_etab:      'Moyenne établissement',
-  moyenne_nationale: 'Moyenne nationale',
-  mediane: 'Médiane',
-  moyenne: 'Moyenne',
-};
-
 // Quadrant SVG animé pour la modale d'évolution temporelle (Phase 11b).
 //
 // Props :
-//   - bulles, axes, referenceAxesMode, vue, libelleX, libelleY,
+//   - bulles, axes, vue, libelleX, libelleY,
 //     millesimeCourant, bullesTouteSerie : cf. MVP.
+//   - references : descripteurs des lignes de référence à tracer
+//     ([{perimetre, mesure}], 0/1/2), résolus en coords depuis `axes`
+//     (Phase 15.2 — affichage multiple, cf. utils/referenceAxes.js).
 //   - dureeTransitionMs : durée des transitions CSS sur cx/cy
 //     (adaptée à la vitesse de lecture, cf. ModaleAnimation).
 //   - traceContinue : Map<id, Array<{cx, cy}>> — positions
@@ -54,7 +50,7 @@ const LABEL_REF = {
 export default function QuadrantAnime({
   bulles,
   axes,
-  referenceAxesMode,
+  references,
   vue,
   libelleX,
   libelleY,
@@ -112,14 +108,22 @@ export default function QuadrantAnime({
     return out.filter((d) => d > 0);
   }, [bullesTouteSerie, bulles]);
 
-  // Référence des axes (lignes pointillées)
-  const refXY = useMemo(() => {
-    if (!axes) return null;
-    const x = axes[`${referenceAxesMode}_x`];
-    const y = axes[`${referenceAxesMode}_y`];
-    if (x == null || y == null) return null;
-    return { x, y };
-  }, [axes, referenceAxesMode]);
+  // Références des axes (Phase 15.2) : tableau de 0/1/2 lignes, chacune
+  // résolue depuis le bloc `axes` du millésime courant via sa clé. Les
+  // coordonnées changent à chaque millésime → animation des lignes.
+  const refsXY = useMemo(() => {
+    if (!axes || !Array.isArray(references)) return [];
+    const out = [];
+    for (const ref of references) {
+      const key = cleAxe(ref);
+      const x = axes[`${key}_x`];
+      const y = axes[`${key}_y`];
+      if (x == null || y == null) continue;
+      out.push({ ...ref, x, y });
+    }
+    return out;
+  }, [axes, references]);
+  const aDeuxRefs = refsXY.length === 2;
 
   // Helper : couleur d'une bulle selon vue + id
   function couleurPourBulle(b) {
@@ -193,68 +197,78 @@ export default function QuadrantAnime({
         libelleY={libelleY}
       />
 
-      {/* Lignes de référence + libellés (cohérent LignesReference.jsx).
-          Libellé verticale en bas-gauche du plot (zone peu dense),
-          libellé horizontale à gauche juste au-dessus de la ligne.
-          Animation via la propriété CSS transform (style inline) —
-          fluide cross-navigateur, contrairement à l'attribut SVG. */}
-      {refXY && (() => {
-        const xPx = xScaleBase(toPercent(refXY.x));
-        const yPx = yScaleBase(toPercent(refXY.y));
+      {/* Lignes de référence + libellés (cohérent LignesReference.jsx :
+          mêmes couleurs/pointillés par périmètre, mêmes règles de
+          placement — slots opposés si 2 réfs, bascule anti-débordement
+          selon la valeur). Animation via la propriété CSS transform
+          (lignes posées à 0 puis translatées) — fluide cross-navigateur,
+          contrairement à l'attribut SVG. */}
+      {refsXY.map((ref, i) => {
+        const xPx = xScaleBase(toPercent(ref.x));
+        const yPx = yScaleBase(toPercent(ref.y));
         const plotTop    = MARGIN.top;
         const plotBottom = MARGIN.top + PLOT_HEIGHT;
         const plotLeft   = MARGIN.left;
-        const label      = LABEL_REF[referenceAxesMode] || '';
-        const labelX = label ? `${label} : ${formaterPourcentage(refXY.x)}` : '';
-        const labelY = label ? `${label} : ${formaterPourcentage(refXY.y)}` : '';
+        const plotRight  = MARGIN.left + PLOT_WIDTH;
+        const style = STYLE_PERIMETRE[ref.perimetre] || STYLE_PERIMETRE.positionnement;
+        const label  = libelleReference(ref);
+        const labelX = `${label} : ${fmtPct(ref.x)}`;
+        const labelY = `${label} : ${fmtPct(ref.y)}`;
+
+        const secondaire = aDeuxRefs && ref.perimetre === 'national';
+
+        // Verticale : slot bas (défaut) / haut (secondaire) + bascule
+        // horizontale selon la valeur X.
+        const vLabelY = secondaire ? plotTop + 14 : plotBottom - 8;
+        const vAnchor = ref.x < 0.30 ? 'start' : 'end';
+        const vBaseX  = ref.x < 0.30 ? 5 : -5;
+        // Horizontale : slot gauche (défaut) / droite (secondaire) +
+        // bascule verticale selon la valeur Y.
+        const hAnchor = secondaire ? 'end' : 'start';
+        const hBaseX  = secondaire ? plotRight - 5 : plotLeft + 5;
+        const hBaseY  = ref.y > 0.70 ? 14 : -5;
+
         return (
-          <g>
-            {/* Ligne verticale : base à x=0 (de plotTop à plotBottom),
-                translatée horizontalement par xPx via CSS transform. */}
+          <g key={`${ref.perimetre}-${i}`}>
             <line
               className="quadrant-anime-ref-line"
               x1={0} x2={0}
               y1={plotTop} y2={plotBottom}
-              stroke="#555"
-              strokeDasharray="4 3"
+              stroke={style.stroke}
+              strokeDasharray={style.dash}
               style={{ transform: `translate(${xPx}px, 0px)`, transition: transitionLigne }}
             />
-            {/* Ligne horizontale : base à y=0, translatée verticalement par yPx. */}
             <line
               className="quadrant-anime-ref-line"
-              x1={plotLeft} x2={plotLeft + PLOT_WIDTH}
+              x1={plotLeft} x2={plotRight}
               y1={0} y2={0}
-              stroke="#555"
-              strokeDasharray="4 3"
+              stroke={style.stroke}
+              strokeDasharray={style.dash}
               style={{ transform: `translate(0px, ${yPx}px)`, transition: transitionLigne }}
             />
-            {label && (
-              <>
-                <text
-                  x={-5}
-                  y={plotBottom - 8}
-                  fontSize={11}
-                  fill="#666"
-                  textAnchor="end"
-                  style={{ transform: `translate(${xPx}px, 0px)`, transition: transitionLigne }}
-                >
-                  {labelX}
-                </text>
-                <text
-                  x={plotLeft + 5}
-                  y={-5}
-                  fontSize={11}
-                  fill="#666"
-                  textAnchor="start"
-                  style={{ transform: `translate(0px, ${yPx}px)`, transition: transitionLigne }}
-                >
-                  {labelY}
-                </text>
-              </>
-            )}
+            <text
+              x={vBaseX}
+              y={vLabelY}
+              fontSize={11}
+              fill={style.stroke}
+              textAnchor={vAnchor}
+              style={{ transform: `translate(${xPx}px, 0px)`, transition: transitionLigne }}
+            >
+              {labelX}
+            </text>
+            <text
+              x={hBaseX}
+              y={hBaseY}
+              fontSize={11}
+              fill={style.stroke}
+              textAnchor={hAnchor}
+              style={{ transform: `translate(0px, ${yPx}px)`, transition: transitionLigne }}
+            >
+              {labelY}
+            </text>
           </g>
         );
-      })()}
+      })}
 
       {/* Traces résiduelles continues — fines, opacity 0.3,
           trajectoire complète depuis ms[0] jusqu'au millésime courant.
@@ -363,15 +377,4 @@ export function bulleCxCy(b) {
     cx: xScaleBase(toPercent(b.x)),
     cy: yScaleBase(toPercent(b.y)),
   };
-}
-
-// Formatage de la valeur de référence pour le libellé des axes
-// (« Médiane établissement : 72,0 % »). Une décimale, virgule
-// française, espace insécable avant le %.
-function formaterPourcentage(taux) {
-  const v = (taux ?? 0) * 100;
-  return v.toLocaleString('fr-FR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }) + ' %';
 }

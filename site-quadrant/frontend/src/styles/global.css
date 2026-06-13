@@ -231,33 +231,29 @@
   border-color: #000091;
 }
 
-/* Sélecteur de référence des axes (Phase 15.1) — visible sous le
-   quadrant, style « pilule » cohérent avec les contrôles d'animation.
-   Mesure (exclusif) + Périmètre (multi). Les pilules de périmètre
-   actives reprennent la couleur de leur ligne sur le quadrant
-   (étab = bleu Marianne, national = gris). */
-.reference-axes-selecteur {
+/* Sélecteur de référence des axes (Phase 15.1, compacté 15.2) — une
+   seule ligne, au-dessus de la zone filtres/quadrant. Titre + 4 pilules
+   (Mesure exclusif + Périmètre multi), espacement plus large entre les
+   deux groupes pour les distinguer. Les pilules de périmètre actives
+   reprennent la couleur de leur ligne sur le quadrant (étab = bleu
+   Marianne, national = gris). Wrap sur écran étroit. */
+.ref-axes-container {
   display: flex;
+  flex-direction: row;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-  padding: 0.6rem 0.25rem 0.1rem;
-  margin-top: 0.25rem;
+  gap: 0.4rem 1rem;
+  padding: 0.2rem 0 0.6rem;
 }
 .ref-axes-titre {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 500;
   color: #161616;
 }
 .ref-axes-groupe {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-}
-.ref-axes-label {
-  font-size: 0.8rem;
-  color: #555;
-  font-weight: 500;
+  gap: 0.25rem;
 }
 .ref-axes-pilule {
   border: 1px solid #929292;
@@ -294,7 +290,7 @@
   cursor: not-allowed;
 }
 /* Masqué pendant l'export PNG (comme les contrôles de zoom). */
-body.exporting .reference-axes-selecteur {
+body.exporting .ref-axes-container {
   display: none;
 }
 
@@ -1152,6 +1148,14 @@ body.exporting .reference-axes-selecteur {
 .modale-animation-ref-axes.fr-segmented {
   padding: 0.5rem 1.25rem;
   border-top: 1px solid #f0f0f0;
+}
+/* Bandeau du sélecteur enrichi commun dans la modale (Phase 15.2). */
+.modale-animation-ref-axes-bandeau {
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid #f0f0f0;
+}
+.modale-animation-ref-axes-bandeau .ref-axes-container {
+  padding: 0;
 }
 .modale-animation-ref-axes .label {
   color: #555;

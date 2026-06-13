@@ -1,4 +1,9 @@
 import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
+import {
+  STYLE_PERIMETRE,
+  libelleReference,
+  formaterPourcentage,
+} from '../../utils/referenceAxes.js';
 
 // Lignes de référence des axes (Phase 15.1 — affichage multiple).
 //
@@ -31,31 +36,6 @@ import { MARGIN, PLOT_WIDTH, PLOT_HEIGHT, toPercent } from './geometry.js';
 //       (textAnchor=start) ; X > 70 % → à gauche (end) ; sinon à gauche.
 //     · horizontale (valeur Y) : Y > 70 % (proche du haut) → texte
 //       SOUS la ligne ; sinon au-dessus.
-
-const STYLE_PERIMETRE = {
-  etab:           { stroke: '#000091', dash: '4 4' },
-  national:       { stroke: '#666666', dash: '8 4' },
-  positionnement: { stroke: '#555555', dash: '4 3' },
-};
-
-const NOM_MESURE = { mediane: 'Médiane', moyenne: 'Moyenne' };
-
-function libelleReference(ref) {
-  const m = NOM_MESURE[ref.mesure] || 'Médiane';
-  if (ref.perimetre === 'etab')     return `${m} établissement`;
-  if (ref.perimetre === 'national') return `${m} nationale`;
-  return m; // positionnement (vue nationale par construction)
-}
-
-// Format d'un taux (0..1) en pourcentage français : une décimale,
-// virgule, espace insécable avant le %. « 0,755 » → « 75,5 % ».
-function formaterPourcentage(taux) {
-  const v = (taux ?? 0) * 100;
-  return v.toLocaleString('fr-FR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }) + ' %';
-}
 
 export default function LignesReference({ references, xScale, yScale }) {
   // Compat ascendante : ancienne prop `reference` (objet unique).

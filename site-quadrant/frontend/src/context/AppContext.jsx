@@ -95,15 +95,23 @@ export function AppProvider({ children }) {
   const [referenceAxesPositionnement, setReferenceAxesPositionnement] =
     useState(DEFAULT_REFERENCE_AXES_POSITIONNEMENT);
 
-  // Toggle d'un périmètre (étab / national) en multi-sélection. Ajoute
-  // s'il est absent, retire s'il est présent — 0, 1 ou 2 peuvent être
-  // actifs (0 = mode « sans référence », aucune ligne tracée).
+  // Toggle d'un périmètre (étab / national) en multi-sélection, avec
+  // contrainte « au moins un actif » (Phase 15.2) : désactiver le
+  // dernier périmètre actif bascule silencieusement sur l'autre plutôt
+  // que de laisser 0 actif (un quadrant sans repère n'a pas de sens
+  // métier). 1 ou 2 peuvent être actifs, jamais 0.
   const togglePerimetreAxes = useCallback((perimetre) => {
-    setPerimetresAxes((prev) =>
-      prev.includes(perimetre)
-        ? prev.filter((p) => p !== perimetre)
-        : [...prev, perimetre]
-    );
+    setPerimetresAxes((prev) => {
+      if (prev.includes(perimetre)) {
+        const restants = prev.filter((p) => p !== perimetre);
+        if (restants.length === 0) {
+          // C'était le dernier actif → bascule auto sur l'autre.
+          return [perimetre === 'etab' ? 'national' : 'etab'];
+        }
+        return restants;
+      }
+      return [...prev, perimetre];
+    });
   }, []);
 
   // `referenceAxes` dérivé : mode « principal » (string unique) pour les

@@ -266,8 +266,9 @@ export default function AdvancedFilters() {
           </div>
 
           {/* Le sélecteur « Référence des axes » a été déplacé hors de
-              ce panneau (Phase 15.1) — il est désormais visible par
-              défaut sous le quadrant. Cf. ReferenceAxesSelector.jsx. */}
+              ce panneau (Phase 15.1, repositionné 15.2) — il est désormais
+              visible en haut, au-dessus de la zone filtres/quadrant.
+              Cf. ReferenceAxesSelector.jsx. */}
 
           <button
             type="button"

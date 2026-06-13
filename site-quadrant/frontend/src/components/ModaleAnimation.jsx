@@ -8,6 +8,8 @@ import { formatLibelleAxe } from '../utils/libelleAxe.js';
 import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
 import LoaderBarre from './LoaderBarre.jsx';
 import SliderDuree from './sous-populations/SliderDuree.jsx';
+import ReferenceAxesSelector from './ReferenceAxesSelector.jsx';
+import { descripteursReferences } from '../utils/referenceAxes.js';
 import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 
 // Modale d'animation temporelle (Phase 11b — MVP + v2).
@@ -54,23 +56,13 @@ const COMPARER_VISIBLE_MS    = 5000;
 const COMPARER_FADE_OUT_MS   = 1000;
 const COMPARER_FLASH_PAUSE_MS = 200; // pause à M-1 avant de relancer
 
-const MODES_AXES_MENTIONS = [
-  { code: 'mediane_etab',      libelle: 'Médiane établissement' },
-  { code: 'moyenne_etab',      libelle: 'Moyenne établissement' },
-  { code: 'moyenne_nationale', libelle: 'Moyenne nationale' },
-];
-const MODES_AXES_ETAB = [
-  { code: 'mediane', libelle: 'Médiane' },
-  { code: 'moyenne', libelle: 'Moyenne' },
-];
-
 export default function ModaleAnimation({ open, onClose }) {
   const {
     etabInfo, cursus, vue, millesime,
     variableX, variableY, dateInserX, dateInserY,
     etabContexte, domaine, discipline, secteur, mention, typeMaster,
     representativite, memeTypologie,
-    referenceAxes, referenceAxesPositionnement,
+    mesureAxes, perimetresAxes, referenceAxesPositionnement,
   } = useApp();
 
   const fermerRef = useRef(null);
@@ -118,19 +110,18 @@ export default function ModaleAnimation({ open, onClose }) {
   //                (fade-in via la transition opacity 400 ms).
   const [phaseAnim, setPhaseAnim] = useState('normal');
 
-  // Mode de référence des axes (initialise sur celui de l'app).
-  // L'endpoint serie-temporelle ne calcule que 3 modes en vue Mentions
-  // (mediane_etab / moyenne_etab / moyenne_nationale) — il n'a PAS
-  // mediane_nationale. Le `referenceAxes` dérivé de l'app pouvant
-  // désormais valoir 'mediane_nationale' (Phase 15.1), on clampe l'init
-  // sur un mode connu de la modale pour éviter un segmented sans option
-  // active et un fetch d'axe inexistant.
-  const [refMode, setRefMode] = useState(() => {
-    if (vue !== 'mentions') return referenceAxesPositionnement;
-    return MODES_AXES_MENTIONS.some((m) => m.code === referenceAxes)
-      ? referenceAxes
-      : 'mediane_etab';
-  });
+  // Références des axes (Phase 15.2) : pilotées par l'ÉTAT PARTAGÉ de
+  // l'app (mesureAxes + perimetresAxes / referenceAxesPositionnement) via
+  // le sélecteur enrichi commun rendu dans la modale (ReferenceAxesSelector).
+  // Plus de state local `refMode` — tout choix dans la modale se
+  // répercute sur la vue principale et inversement. Les descripteurs
+  // sont résolus en coordonnées par QuadrantAnime depuis les axes du
+  // millésime courant. L'endpoint serie-temporelle calcule désormais
+  // les 4 clés Mentions (dont mediane_nationale, Phase 15.2).
+  const referencesAxes = useMemo(
+    () => descripteursReferences(vue, { mesureAxes, perimetresAxes, referenceAxesPositionnement }),
+    [vue, mesureAxes, perimetresAxes, referenceAxesPositionnement]
+  );
 
   // -------------------- Fetch au montage --------------------
   useEffect(() => {
@@ -429,7 +420,6 @@ export default function ModaleAnimation({ open, onClose }) {
   const ms = data?.millesimes_disponibles || [];
   const animationDispo = ms.length >= 2;
   const iCourant = ms.indexOf(millesimeCourant);
-  const modesAxes = vue === 'mentions' ? MODES_AXES_MENTIONS : MODES_AXES_ETAB;
 
   return (
     <div
@@ -503,7 +493,7 @@ export default function ModaleAnimation({ open, onClose }) {
               <QuadrantAnime
                 bulles={bullesCourantes}
                 axes={axesCourants}
-                referenceAxesMode={refMode}
+                references={referencesAxes}
                 vue={vue}
                 libelleX={libelleAxeX}
                 libelleY={libelleAxeY}
@@ -578,31 +568,14 @@ export default function ModaleAnimation({ open, onClose }) {
                 conservée pour usage futur (état comparerEnCours, handleComparer,
                 trace pointillée et styles afférents restent en place). */}
 
-            {/* Référence des axes — même composant `fr-segmented--sm`,
-                cohérent avec le sélecteur de vitesse au-dessus. Pour
-                les libellés longs (« Moyenne nationale »), le segment
-                wrap si besoin de largeur. */}
-            <fieldset className="fr-segmented fr-segmented--sm modale-animation-ref-axes">
-              <legend className="fr-segmented__legend">Référence des axes</legend>
-              <div className="fr-segmented__elements">
-                {modesAxes.map((m) => {
-                  const id = `modale-anim-ref-${m.code}`;
-                  return (
-                    <div key={m.code} className="fr-segmented__element">
-                      <input
-                        type="radio"
-                        id={id}
-                        name="modale-anim-ref"
-                        value={m.code}
-                        checked={refMode === m.code}
-                        onChange={() => setRefMode(m.code)}
-                      />
-                      <label className="fr-label" htmlFor={id}>{m.libelle}</label>
-                    </div>
-                  );
-                })}
-              </div>
-            </fieldset>
+            {/* Référence des axes — sélecteur enrichi COMMUN (Phase 15.2),
+                identique à la vue principale et branché sur le même état
+                partagé (mesureAxes + perimetresAxes). Tout choix ici se
+                répercute hors modale, et inversement. Encadré pour
+                rester cohérent avec les bandeaux de contrôle. */}
+            <div className="modale-animation-ref-axes-bandeau">
+              <ReferenceAxesSelector />
+            </div>
 
             <p className="modale-animation-mention-seuil">
               ⓘ Pour l&apos;exploration historique, seules les bulles avec
