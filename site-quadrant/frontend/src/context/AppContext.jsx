@@ -354,6 +354,12 @@ export function AppProvider({ children }) {
   const setVue = useCallback((v) => {
     setVueState(v);
     setDetailsCibleState(null);
+    // Le terme de recherche/suivi est spécifique à la vue (un libellé de
+    // mention en vue Mentions, un nom d'établissement en Positionnement) :
+    // on le réinitialise pour qu'un terme périmé ne bleede pas d'une vue
+    // à l'autre (sinon il n'y matche aucune bulle et atténuait tout le
+    // quadrant — cf. fix 15.5).
+    setRechercheMention('');
   }, []);
   const setMillesime = useCallback((m) => {
     setMillesimeState(m);

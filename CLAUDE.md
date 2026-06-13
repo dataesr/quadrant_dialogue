@@ -571,6 +571,16 @@ Chaque catégorie expose la **liste des libellés** concernés. `comparaison_dis
 
 **Format texte (15.4).** Une seule phrase sobre, **sans couleur ni encadrement par catégorie** (couleurs non exploitées, alourdissantes en lecture rapide) : « **Par rapport au millésime 2021 — 1 mention disparue, 8 mentions réapparues.** » Le mot « mention(s) » est explicité et accordé en nombre, comme le qualificatif (nouvelle·s / disparue·s / réapparue·s / sous le seuil de fiabilité). « aucun mouvement de mention » si tout est à zéro.
 
+### Performance & rendu — corrections (Phase 15.5)
+
+**Pas de refetch au changement de référence des axes.** Basculer la **mesure** (Médiane ⇄ Moyenne) ou le **périmètre** (Établissement ⇄ National) ne déclenche **aucun appel** à `/api/quadrant` : c'est une bascule purement visuelle (lignes pointillées + libellés). Toutes les valeurs sont récupérées en **une seule** réponse :
+- vue **Mentions** : bloc `axes` (médiane/moyenne × étab/national, 4 paires) — déjà le cas ; `agregation` est figé à `'mediane'` côté `useQuadrant`.
+- vue **Positionnement** : `reference_positionnement` (médiane **et** moyenne, calculées sur les mêmes `pointsCalculables`) — ajouté en 15.5. Avant, `agregation` (piloté par `referenceAxesPositionnement`) figurait dans les dépendances du `useEffect` de fetch → refetch inutile à chaque bascule. `agregation` est désormais constant (`'mediane'`) côté `useQuadrant` ; le frontend lit `data.reference_positionnement[mediane|moyenne]` dans `referencesTracees`. `data.reference` (mono-valeur) reste exposé pour la compat ascendante et l'export XLSX (qui refetch à la demande au clic, hors interaction de bascule).
+
+**Règle frontend** : un changement purement visuel (mesure/périmètre de référence, vitesse d'animation, mention suivie, zoom…) ne doit **jamais** figurer dans les dépendances d'un `useEffect` de fetch. Ces états restent locaux/dérivés ; les données nécessaires sont demandées en une fois.
+
+**Bulle de l'établissement de référence (Positionnement) — atténuation corrigée.** `Bulles.jsx` n'atténue les bulles non-correspondantes (opacité 0.2) **que si** le terme de recherche (`rechercheMention`) correspond à au moins une bulle affichée. Un terme **périmé** (ex. un libellé de mention conservé en passant en vue Positionnement, où il ne matche aucun établissement) ne doit pas faire pâlir tout le quadrant — dont la bulle `selectionne` (rouge `#E91719`, rendue au-dessus). Sans match, aucune atténuation : on s'aligne sur la modale d'animation, qui n'atténue jamais. En complément, `setVue` réinitialise `rechercheMention` (le terme est spécifique à la vue : libellé de mention vs nom d'établissement).
+
 ### UX — Reset automatique du zoom
 
 Le zoom du quadrant est automatiquement réinitialisé à chaque changement de paramètre structurel (vue, cursus, millésime, axes, filtres avancés, `mesureAxes`/`perimetresAxes`). Évite de rester zoomé sur une zone sans bulles après une bascule de filtre. Le clic sur une bulle ne change aucun de ces paramètres → le zoom est conservé pendant l'exploration interactive.

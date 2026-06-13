@@ -153,11 +153,14 @@ export default function Quadrant({ forExport = false } = {}) {
     domaine, discipline, secteur, mention, typeMaster,
     representativite,
     memeTypologie,
-    // Vue Positionnement : le sélecteur Médiane/Moyenne pilote data.reference
-    // via le paramètre `agregation` de l'API. Vue Mentions : data.axes est
-    // consulté via referenceAxes côté Quadrant — on laisse 'mediane' (sans
-    // effet sur l'affichage).
-    agregation: vue === 'etablissements' ? referenceAxesPositionnement : 'mediane',
+    // `agregation` figé à 'mediane' — la bascule Médiane/Moyenne ne doit
+    // PAS provoquer de refetch (Phase 15.5). Vue Mentions : data.axes
+    // porte déjà les 4 valeurs (lues via referenceAxes). Vue
+    // Positionnement : data.reference_positionnement porte médiane ET
+    // moyenne en parallèle → le frontend bascule côté client (cf.
+    // referencesTracees plus bas). On garde 'mediane' constant pour ne
+    // dépendre d'aucun état de sélection visuelle.
+    agregation: 'mediane',
     forExport,
   });
 
@@ -513,9 +516,19 @@ export default function Quadrant({ forExport = false } = {}) {
     const descripteurs = descripteursReferences(vue, {
       mesureAxes, perimetresAxes, referenceAxesPositionnement,
     });
-    // Positionnement : coordonnées depuis data.reference (pilotée par
-    // le paramètre `agregation` côté API).
+    // Positionnement : médiane ET moyenne sont renvoyées en parallèle
+    // dans data.reference_positionnement (Phase 15.5) → on bascule côté
+    // client selon referenceAxesPositionnement, sans refetch. Fallback
+    // sur data.reference (backend antérieur, toujours médiane ici).
     if (vue !== 'mentions') {
+      const refPos = data.reference_positionnement;
+      if (refPos) {
+        const x = refPos[`${referenceAxesPositionnement}_x`];
+        const y = refPos[`${referenceAxesPositionnement}_y`];
+        if (x != null && y != null) {
+          return descripteurs.map((d) => ({ ...d, x, y }));
+        }
+      }
       return data.reference
         ? descripteurs.map((d) => ({ ...d, x: data.reference.x, y: data.reference.y }))
         : [];

@@ -48,8 +48,17 @@ export default function Bulles({
 }) {
   if (!bulles?.length) return null;
 
-  const aucuneRecherche = !rechercheMention;
-  const aUneRechercheActive = !aucuneRecherche;
+  // On n'active l'atténuation/surbrillance QUE si le terme de recherche
+  // correspond à au moins une bulle affichée. Sinon (terme « périmé » —
+  // p. ex. un nom de mention conservé au passage en vue Positionnement,
+  // où il ne matche aucun établissement), atténuer toutes les bulles
+  // ferait pâlir le quadrant entier, dont la bulle de l'établissement de
+  // référence (régression 15.x). La modale d'animation n'atténue jamais :
+  // on s'aligne sur elle dans le cas « aucun match ».
+  const ilYAUnMatch =
+    !!rechercheMention &&
+    bulles.some((b) => libellesMatchent(b.libelle, rechercheMention));
+  const aUneRechercheActive = ilYAUnMatch;
 
   return (
     <g className="quadrant-bulles">

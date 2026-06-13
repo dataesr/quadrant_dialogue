@@ -562,6 +562,22 @@ if (!empty($pointsCalculables)) {
     }
 }
 
+// Vue Positionnement : exposer médiane ET moyenne en parallèle
+// (Phase 15.5) — le frontend bascule entre les deux côté client sans
+// refetch. Calculées sur les mêmes points calculables que `reference`.
+// (`reference` reste exposé pour la compat ascendante / les exports.)
+$referencePositionnement = null;
+if ($vue === 'etablissements' && !empty($pointsCalculables)) {
+    $xs = array_column($pointsCalculables, 'x');
+    $ys = array_column($pointsCalculables, 'y');
+    $referencePositionnement = [
+        'mediane_x' => round(mediane($xs), 4),
+        'mediane_y' => round(mediane($ys), 4),
+        'moyenne_x' => round(array_sum($xs) / count($xs), 4),
+        'moyenne_y' => round(array_sum($ys) / count($ys), 4),
+    ];
+}
+
 // =============================================================================
 // 7 bis. Trois références d'axes pour vue=mentions
 // =============================================================================
@@ -790,6 +806,12 @@ $reponse = [
 // moyenne étab, moyenne nationale.
 if ($axes !== null) {
     $reponse['axes'] = $axes;
+}
+
+// Vue Positionnement : médiane + moyenne en une fois (Phase 15.5) →
+// bascule client sans refetch.
+if ($referencePositionnement !== null) {
+    $reponse['reference_positionnement'] = $referencePositionnement;
 }
 
 // Distinguer le « pas de données » légitime (combinaison valide mais vide en BDD)
