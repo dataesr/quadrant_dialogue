@@ -1,36 +1,37 @@
-// Compteur de mouvements de bulles (Phase 15.3) — vue Mentions.
+// Compteur de mouvements de bulles (Phase 15.3, déplacé dans la modale
+// d'animation en 15.4).
 //
-// Affiché en permanence sous le quadrant principal (hors animation),
-// il contextualise les mouvements entre le millésime courant et le
-// précédent pour aider à distinguer les vraies évolutions du
-// référentiel des artefacts de seuil de fiabilité.
+// Affiché sous le quadrant ANIMÉ (la transition prend tout son sens en
+// animation, là où l'utilisateur la voit se faire). Contextualise les
+// mouvements entre le millésime affiché et le précédent de la série.
 //
-// Données : `data.mouvements` renvoyé par /api/quadrant (vue Mentions
-// avec établissement de contexte). Quatre catégories, calculées au
-// seuil de fiabilité (20) côté backend :
+// Données : `mouvements` (par millésime) renvoyé par
+// /api/quadrant/serie-temporelle. Quatre catégories au seuil de
+// fiabilité (20), calculées côté backend :
 //   - nouvelles      : absente au précédent → visible au courant
 //   - disparues      : présente au précédent → absente au courant
 //   - reapparues     : sous le seuil au précédent → visible au courant
-//   - masquees_seuil : présente au courant mais sous le seuil (état
-//                      courant, pas une transition)
+//   - masquees_seuil : présente au courant mais sous le seuil
 //
-// Au premier millésime observé (`comparaison_disponible=false`) :
+// Au premier millésime de la série (`comparaison_disponible=false`) :
 // message « Première année observée ».
+//
+// Format texte (Phase 15.4) : une seule phrase, sans couleur ni
+// encadrement — « Par rapport au millésime 2021 — 1 mention disparue,
+// 8 mentions réapparues. » Le mot « mention(s) » est explicité et
+// accordé en nombre, comme le qualificatif.
 
-// Symbole + libellés (singulier / pluriel) par catégorie. `transition`
-// distingue les comptes « par rapport au précédent » du décompte
-// d'état courant (masquées) pour une formulation correcte.
 const CATEGORIES = [
-  { cle: 'nouvelles',      symbole: '+', sing: 'nouvelle',   plur: 'nouvelles',   classe: 'est-nouvelle',  transition: true },
-  { cle: 'disparues',      symbole: '−', sing: 'disparue',   plur: 'disparues',   classe: 'est-disparue',  transition: true },
-  { cle: 'reapparues',     symbole: '↑', sing: 'réapparue',  plur: 'réapparues',  classe: 'est-reapparue', transition: true },
-  { cle: 'masquees_seuil', symbole: '⊘', sing: 'sous le seuil', plur: 'sous le seuil', classe: 'est-masquee', transition: false },
+  { cle: 'nouvelles',      sing: 'nouvelle',                plur: 'nouvelles' },
+  { cle: 'disparues',      sing: 'disparue',                plur: 'disparues' },
+  { cle: 'reapparues',     sing: 'réapparue',               plur: 'réapparues' },
+  { cle: 'masquees_seuil', sing: 'sous le seuil de fiabilité', plur: 'sous le seuil de fiabilité' },
 ];
 
-export default function CompteurMouvements({ mouvements, millesime }) {
+export default function CompteurMouvements({ mouvements }) {
   if (!mouvements) return null;
 
-  const { comparaison_disponible, seuil } = mouvements;
+  const { comparaison_disponible, millesime_precedent } = mouvements;
 
   if (!comparaison_disponible) {
     return (
@@ -40,49 +41,23 @@ export default function CompteurMouvements({ mouvements, millesime }) {
     );
   }
 
-  const precedent = millesime != null ? Number(millesime) - 1 : null;
-
-  const badges = CATEGORIES
+  const segments = CATEGORIES
+    .map((cat) => ({ ...cat, n: (mouvements[cat.cle] || []).length }))
+    .filter((cat) => cat.n > 0)
     .map((cat) => {
-      const libs = mouvements[cat.cle] || [];
-      return { ...cat, libs, n: libs.length };
-    })
-    .filter((cat) => cat.n > 0);
+      const motMention = cat.n > 1 ? 'mentions' : 'mention';
+      const qualif = cat.n > 1 ? cat.plur : cat.sing;
+      return `${cat.n} ${motMention} ${qualif}`;
+    });
 
-  const aucunMouvement = badges.length === 0;
+  const intro = millesime_precedent != null
+    ? `Par rapport au millésime ${millesime_precedent} —`
+    : 'Par rapport au millésime précédent —';
 
   return (
     <p className="compteur-mouvements">
-      <span className="compteur-mouvements-intro">
-        {precedent != null
-          ? `Par rapport à ${precedent} :`
-          : 'Par rapport au millésime précédent :'}
-      </span>
-      {aucunMouvement ? (
-        <span className="compteur-mouvements-vide">aucun mouvement de mention.</span>
-      ) : (
-        badges.map((cat) => {
-          const motCle = cat.n > 1 ? cat.plur : cat.sing;
-          // Le décompte d'état (masquées) porte une mention de seuil ;
-          // les transitions n'en ont pas besoin.
-          const suffixe = cat.transition ? '' : ` de fiabilité (effectif < ${seuil})`;
-          // Détail au survol : libellés concernés (utile pour vérifier
-          // une évolution donnée). Libellés vides ignorés.
-          const detail = cat.libs.filter(Boolean).join(', ');
-          return (
-            <span
-              key={cat.cle}
-              className={`compteur-mouvements-badge ${cat.classe}`}
-              title={detail || undefined}
-            >
-              <span className="compteur-mouvements-symbole" aria-hidden="true">
-                {cat.symbole}
-              </span>
-              {cat.n} {motCle}{suffixe}
-            </span>
-          );
-        })
-      )}
+      {intro}{' '}
+      {segments.length > 0 ? segments.join(', ') : 'aucun mouvement de mention'}.
     </p>
   );
 }

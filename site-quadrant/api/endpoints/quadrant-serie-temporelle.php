@@ -255,6 +255,10 @@ $lignesContextuelles = fetcherLignesPourVariables(
 // =============================================================================
 
 $series = [];
+// Points bruts par millésime (avant filtrage d'affichage) — réutilisés
+// pour le compteur de mouvements (Phase 15.4), qui compare chaque
+// millésime au précédent de la série.
+$pointsBrutsParMillesime = [];
 foreach ($millesimesCommuns as $millesime) {
     $millesimeStr = (string)$millesime;
     $lignesM = $lignesContextuelles[$millesimeStr] ?? [];
@@ -278,6 +282,7 @@ foreach ($millesimesCommuns as $millesime) {
     } else {
         $pointsBruts = agregerParEtablissement($lignesM);
     }
+    $pointsBrutsParMillesime[$millesimeStr] = $pointsBruts;
 
     [$bulles, $pointsCalculables] = construireBulles(
         $pointsBruts, $vue, $etabContexte, $contexteId, $seuil, $representativite
@@ -338,6 +343,32 @@ if ($vue === 'mentions') {
     }
 }
 
+// =============================================================================
+// 8. Compteur de mouvements par millésime (Phase 15.4, vue Mentions)
+// =============================================================================
+//
+// Pour chaque millésime de la série, on compte les mouvements de bulles
+// par rapport au millésime PRÉCÉDENT de la série (la « frame » que
+// l'utilisateur vient de voir glisser). Calculé sur les points BRUTS
+// (avant seuil/représentativité), au seuil de fiabilité (20). Le
+// premier millésime n'a pas de précédent → comparaison_disponible=false
+// (« Première année observée » côté frontend). Vue Mentions uniquement.
+if ($vue === 'mentions') {
+    $precedent = null; // points bruts du millésime précédent de la série
+    $precMillesime = null;
+    foreach ($millesimesCommuns as $millesime) {
+        $millesimeStr = (string)$millesime;
+        $courant = $pointsBrutsParMillesime[$millesimeStr] ?? [];
+        $series[$millesimeStr]['mouvements'] = calculerMouvements(
+            $courant,
+            $precedent,
+            $precMillesime
+        );
+        $precedent     = $courant;
+        $precMillesime = (int)$millesime;
+    }
+}
+
 Response::json([
     'millesimes_disponibles' => array_map('intval', $millesimesCommuns),
     'series'                 => $series,
@@ -348,6 +379,108 @@ Response::json([
 // =============================================================================
 // Fonctions auxiliaires
 // =============================================================================
+
+/**
+ * Compteur de mouvements de bulles entre un millésime et le précédent
+ * de la série (Phase 15.4, vue Mentions). Clé de jointure = diplom.
+ *
+ * Aide à distinguer les vraies évolutions du référentiel SIES des
+ * simples franchissements du seuil de fiabilité. Calculé sur les points
+ * BRUTS (avant filtrage d'affichage).
+ *
+ * État d'une mention pour le couple (denom_x, denom_y) :
+ *   0 = absente    (un denom à 0 → non mesurée, aucune bulle possible)
+ *   1 = sous seuil (présente mais denom < SEUIL_FIABILITE sur un axe)
+ *   2 = visible    (denom >= SEUIL_FIABILITE sur les DEUX axes)
+ *
+ * Quatre catégories (mutuellement exclusives par mention) :
+ *   - nouvelles      : absente au précédent → visible au courant.
+ *   - disparues      : présente (>= 1) au précédent → absente au courant.
+ *   - masquees_seuil : présente au courant mais sous le seuil (état 1).
+ *   - reapparues     : sous le seuil au précédent → visible au courant.
+ *   (visible → visible = stable, non compté.)
+ *
+ * $pointsPrec null (premier millésime) → comparaison_disponible=false.
+ * `millesime_precedent` informe le libellé frontend (« Par rapport au
+ * millésime 2021 — … »).
+ */
+function calculerMouvements(array $pointsCourant, ?array $pointsPrec, ?int $millesimePrec): array
+{
+    $etat = static function (array $p): int {
+        $dx = (int)$p['denom_x'];
+        $dy = (int)$p['denom_y'];
+        if ($dx < 1 || $dy < 1) {
+            return 0;
+        }
+        if ($dx >= Diffusion::SEUIL_FIABILITE && $dy >= Diffusion::SEUIL_FIABILITE) {
+            return 2;
+        }
+        return 1;
+    };
+
+    $base = [
+        'comparaison_disponible' => $pointsPrec !== null,
+        'millesime_precedent'    => $millesimePrec,
+        'seuil'                  => Diffusion::SEUIL_FIABILITE,
+        'nouvelles'              => [],
+        'disparues'              => [],
+        'masquees_seuil'         => [],
+        'reapparues'             => [],
+    ];
+
+    if ($pointsPrec === null) {
+        return $base; // premier millésime : pas de comparaison
+    }
+
+    $etatCourant = [];
+    $libelles    = [];
+    foreach ($pointsCourant as $p) {
+        $cle = $p['diplom'];
+        $etatCourant[$cle] = $etat($p);
+        $libelles[$cle]    = (string)($p['libelle_intitule'] ?? '');
+    }
+    $etatPrec = [];
+    foreach ($pointsPrec as $p) {
+        $cle = $p['diplom'];
+        $etatPrec[$cle] = $etat($p);
+        if (!isset($libelles[$cle]) || $libelles[$cle] === '') {
+            $libelles[$cle] = (string)($p['libelle_intitule'] ?? '');
+        }
+    }
+
+    $nouvelles  = [];
+    $disparues  = [];
+    $masquees   = [];
+    $reapparues = [];
+
+    $toutesCles = array_unique(array_merge(array_keys($etatCourant), array_keys($etatPrec)));
+    foreach ($toutesCles as $cle) {
+        $c   = $etatCourant[$cle] ?? 0;
+        $p   = $etatPrec[$cle]    ?? 0;
+        $lib = $libelles[$cle]    ?? '';
+        if ($c === 1) {
+            $masquees[] = $lib;
+        } elseif ($p === 0 && $c === 2) {
+            $nouvelles[] = $lib;
+        } elseif ($p >= 1 && $c === 0) {
+            $disparues[] = $lib;
+        } elseif ($p === 1 && $c === 2) {
+            $reapparues[] = $lib;
+        }
+        // p >= 1 & c === 2 (hors p === 1) ou p === 2 & c === 2 : stable.
+    }
+
+    $tri = static function (array $libs): array {
+        sort($libs, SORT_NATURAL | SORT_FLAG_CASE);
+        return $libs;
+    };
+
+    $base['nouvelles']      = $tri($nouvelles);
+    $base['disparues']      = $tri($disparues);
+    $base['masquees_seuil'] = $tri($masquees);
+    $base['reapparues']     = $tri($reapparues);
+    return $base;
+}
 
 function chargerIndicateursCursus(string $formation): array
 {

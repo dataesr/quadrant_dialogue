@@ -9,6 +9,7 @@ import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
 import LoaderBarre from './LoaderBarre.jsx';
 import SliderDuree from './sous-populations/SliderDuree.jsx';
 import Combobox from './selectors/Combobox.jsx';
+import CompteurMouvements from './CompteurMouvements.jsx';
 import ReferenceAxesSelector from './ReferenceAxesSelector.jsx';
 import { descripteursReferences } from '../utils/referenceAxes.js';
 import { VITESSES, VITESSE_DEFAUT } from '../utils/animationSpeeds.js';
@@ -270,6 +271,14 @@ export default function ModaleAnimation({ open, onClose }) {
     return data.series[String(millesimeCourant)]?.axes || null;
   }, [data, millesimeCourant]);
 
+  // Compteur de mouvements du millésime courant (Phase 15.4) : calculé
+  // par millésime côté serie-temporelle (vue Mentions). null en
+  // Positionnement (non rendu) ou si l'API ne l'a pas fourni.
+  const mouvementsCourants = useMemo(() => {
+    if (!data?.series || millesimeCourant == null) return null;
+    return data.series[String(millesimeCourant)]?.mouvements || null;
+  }, [data, millesimeCourant]);
+
   // Populations de référence au millésime courant (« entrants
   // 2021-22 », « sortants 2023 »…). Variables par millésime →
   // libellés des axes se mettent à jour pendant l'animation, ce qui
@@ -500,37 +509,39 @@ export default function ModaleAnimation({ open, onClose }) {
 
         {!loading && !error && animationDispo && (
           <>
-            {/* Suivi d'une mention (Phase 15.3, vue Mentions uniquement) :
-                liste TOUTES les mentions de la série (tous millésimes),
-                pilote `rechercheMention` partagé → halo coloré sur la
-                bulle suivie dans QuadrantAnime + highlight cohérent sur
-                le quadrant principal. Mode free-text (comme la barre de
-                recherche) : onSelect ET onTextChange écrivent l'état. */}
-            {vue === 'mentions' && mentionsSuivables.length > 0 && (
-              <div className="modale-animation-suivi">
-                <Combobox
-                  id="modale-anim-suivi-mention"
-                  label="Suivre une mention"
-                  placeholder="Choisir une mention à mettre en évidence…"
-                  items={mentionsSuivables.map((l) => ({ id: l, libelle: l }))}
-                  value={rechercheMention}
-                  onSelect={(id) => setRechercheMention(id)}
-                  onTextChange={(t) => setRechercheMention(t)}
+            {/* Ligne haute 50/50 (Phase 15.4) : « Suivre une mention »
+                à gauche, curseur de millésime à droite. Titres portés
+                par les libellés natifs des deux composants (.fr-label),
+                déjà homogènes. La colonne gauche reste présente même en
+                Positionnement (vide) → le curseur garde sa demi-largeur.
+                Suivi mention = vue Mentions uniquement : free-text sur la
+                liste de TOUTES les mentions de la série (tous millésimes),
+                pilote `rechercheMention` partagé → halo dans QuadrantAnime. */}
+            <div className="modale-animation-controles-haut">
+              <div className="modale-animation-suivre">
+                {vue === 'mentions' && mentionsSuivables.length > 0 && (
+                  <Combobox
+                    id="modale-anim-suivi-mention"
+                    label="Suivre une mention"
+                    placeholder="Choisir une mention à mettre en évidence…"
+                    items={mentionsSuivables.map((l) => ({ id: l, libelle: l }))}
+                    value={rechercheMention}
+                    onSelect={(id) => setRechercheMention(id)}
+                    onTextChange={(t) => setRechercheMention(t)}
+                  />
+                )}
+              </div>
+              <div className="modale-animation-millesime">
+                <SliderDuree
+                  valeurs={ms}
+                  valeur={millesimeCourant}
+                  onChanger={handleChoisirMillesime}
+                  idBase="anim-millesime"
+                  libelle="Millésime"
+                  suffixe=""
+                  disabled={comparerEnCours}
                 />
               </div>
-            )}
-
-            {/* Curseur de millésime DSFR — au-dessus du quadrant (Phase 14.6) */}
-            <div className="modale-animation-slider-commun">
-              <SliderDuree
-                valeurs={ms}
-                valeur={millesimeCourant}
-                onChanger={handleChoisirMillesime}
-                idBase="anim-millesime"
-                libelle="Millésime"
-                suffixe=""
-                disabled={comparerEnCours}
-              />
             </div>
 
             <div className="modale-animation-quadrant">
@@ -550,6 +561,16 @@ export default function ModaleAnimation({ open, onClose }) {
                 rechercheMention={rechercheMention}
               />
             </div>
+
+            {/* Compteur de mouvements (Phase 15.4) — sous le quadrant
+                animé, au-dessus des contrôles. Vue Mentions uniquement.
+                key={millesimeCourant} → remontage à chaque changement de
+                millésime, rejouant le fondu d'apparition (CSS). */}
+            {vue === 'mentions' && (
+              <div className="modale-animation-compteur">
+                <CompteurMouvements key={millesimeCourant} mouvements={mouvementsCourants} />
+              </div>
+            )}
 
             {/* Référence des axes — sélecteur enrichi COMMUN (Phase 15.2),
                 identique à la vue principale et branché sur le même état

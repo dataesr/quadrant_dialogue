@@ -469,54 +469,19 @@ body.exporting .ref-axes-container {
   text-align: right;
 }
 
-/* Compteur de mouvements de bulles (Phase 15.3) — ligne sobre sous le
-   quadrant, vue Mentions. Texte discret + petites pastilles colorées
-   par catégorie (pas de badges criards). */
+/* Compteur de mouvements de bulles (Phase 15.3, déplacé dans la modale
+   d'animation en 15.4). Texte sobre, sur une seule phrase — sans
+   couleur ni encadrement par catégorie (les couleurs ne sont pas
+   exploitées et alourdiraient la lecture en animation rapide). */
 .compteur-mouvements {
-  margin: 0.5rem 0 0;
+  margin: 0;
   font-size: 0.85rem;
   color: #3a3a3a;
-  line-height: 1.7;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
+  line-height: 1.6;
 }
-.compteur-mouvements--na,
-.compteur-mouvements-vide {
+.compteur-mouvements--na {
   color: #666;
   font-style: italic;
-}
-.compteur-mouvements-intro {
-  color: #666;
-  margin-right: 0.15rem;
-}
-.compteur-mouvements-badge {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  padding: 0.05rem 0.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid currentColor;
-  background: #fff;
-  white-space: nowrap;
-  cursor: default;
-}
-.compteur-mouvements-symbole {
-  font-weight: 700;
-}
-/* Couleurs par catégorie (texte + bordure, fond blanc — sobre). */
-.compteur-mouvements-badge.est-nouvelle  { color: #0063CB; }
-.compteur-mouvements-badge.est-disparue  { color: #666;    }
-.compteur-mouvements-badge.est-reapparue { color: #18753C; }
-.compteur-mouvements-badge.est-masquee   { color: #B34000; }
-
-/* Sélecteur « Suivre une mention » dans la modale d'animation
-   (Phase 15.3) — aligné à gauche, largeur contrainte pour ne pas
-   occuper toute la modale. */
-.modale-animation-suivi {
-  margin-bottom: 0.75rem;
-  max-width: 420px;
 }
 
 /* Vue tableau alternative au quadrant. Une <section> par cadran, plus
@@ -1148,11 +1113,61 @@ body.exporting .ref-axes-container {
   height: auto;
   display: block;
 }
-/* Curseur de millésime DSFR — au-dessus du quadrant (Phase 14.6). */
-.modale-animation-slider-commun {
-  padding: 0.6rem 1.25rem 0.2rem;
+/* Ligne haute de contrôles (Phase 15.4) : sélecteur « Suivre une
+   mention » à gauche, curseur de millésime à droite, 50/50 avec
+   marges latérales propres et un gap central net. Au-dessus du
+   quadrant. En vue Positionnement la colonne gauche reste présente
+   mais vide → le curseur occupe la moitié droite (cohérence visuelle
+   avec la vue Mentions). */
+.modale-animation-controles-haut {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 0.75rem 1.25rem 0.25rem;
+}
+.modale-animation-suivre,
+.modale-animation-millesime {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+/* Le curseur (largeur fixe 400px par défaut, partagée avec la modale
+   d'analyse fine) remplit ici sa colonne 50 %. */
+.modale-animation-millesime .slider-duree.fr-range-group {
+  width: 100%;
+  max-width: 100%;
+}
+/* Repli en 2 lignes sous 900px : chaque contrôle prend toute la largeur. */
+@media (max-width: 900px) {
+  .modale-animation-controles-haut {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+/* Compteur de mouvements (Phase 15.4) — sous le quadrant animé,
+   au-dessus des contrôles de lecture. Séparé par de fins filets. Une
+   légère apparition en fondu rejoue à chaque changement de millésime
+   (remontage via key={millesimeCourant}) — discret, sans couleur. */
+.modale-animation-compteur {
+  padding: 0.6rem 1.25rem;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+@keyframes modale-animation-compteur-apparition {
+  from { opacity: 0.35; }
+  to   { opacity: 1; }
+}
+.modale-animation-compteur .compteur-mouvements {
+  animation: modale-animation-compteur-apparition 0.35s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .modale-animation-compteur .compteur-mouvements {
+    animation: none;
+  }
 }
 /* Contrôles de lecture + vitesse — sous le quadrant (Phase 14.6) :
    lecture à gauche, vitesse à droite, wrap si l'espace manque. */
