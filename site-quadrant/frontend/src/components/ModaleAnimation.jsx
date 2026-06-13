@@ -8,8 +8,10 @@ import { formatLibelleAxe } from '../utils/libelleAxe.js';
 import QuadrantAnime, { bulleCxCy } from './QuadrantAnime.jsx';
 import LoaderBarre from './LoaderBarre.jsx';
 import SliderDuree from './sous-populations/SliderDuree.jsx';
+import Combobox from './selectors/Combobox.jsx';
 import ReferenceAxesSelector from './ReferenceAxesSelector.jsx';
 import { descripteursReferences } from '../utils/referenceAxes.js';
+import { VITESSES, VITESSE_DEFAUT } from '../utils/animationSpeeds.js';
 import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 
 // Modale d'animation temporelle (Phase 11b — MVP + v2).
@@ -35,18 +37,22 @@ import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 //    Pendant ce flow le bouton est verrouillé pour éviter le double-
 //    clic.
 //
-// 3. Sélecteur 3 vitesses : Lente (2 s/millésime), Moyenne (1 s),
-//    Rapide (0.5 s). La durée de transition CSS des bulles s'adapte
-//    en parallèle pour rester proportionnelle à l'intervalle
-//    (transition = ~80 % du tick) — évite que les bulles n'aient pas
-//    le temps de finir leur mouvement avant le tick suivant.
+// 3. Sélecteur 3 vitesses : Lente (3 s/millésime), Normale (2 s),
+//    Rapide (1 s) — recalibrage Phase 15.3, cf. utils/animationSpeeds.js.
+//    La durée de transition CSS des bulles s'adapte en parallèle pour
+//    rester proportionnelle à l'intervalle (transition = ~80 % du tick)
+//    — évite que les bulles n'aient pas le temps de finir leur
+//    mouvement avant le tick suivant.
 
-// Map vitesse → { tickMs, transitionMs }
-const VITESSES = {
-  lente:   { tickMs: 2000, transitionMs: 1600, libelle: 'Lente' },
-  moyenne: { tickMs: 1000, transitionMs:  800, libelle: 'Moyenne' },
-  rapide:  { tickMs:  500, transitionMs:  400, libelle: 'Rapide' },
-};
+// 4. Suivi d'une mention (Phase 15.3, vue Mentions) : un sélecteur
+//    « Suivre une mention » (liste TOUTES les mentions de la série, tous
+//    millésimes confondus) pilote le même état `rechercheMention` que la
+//    barre de recherche du quadrant principal. La bulle correspondante
+//    reçoit un halo coloré dans QuadrantAnime, qui la suit au fil des
+//    millésimes (et disparaît aux millésimes où elle n'est pas affichée).
+
+// VITESSES + VITESSE_DEFAUT : importés de utils/animationSpeeds.js
+// (source unique partagée avec la modale d'analyse fine).
 
 // Mode « Comparer » : durée de la transition one-shot M-1 → M (plus
 // lent que les transitions normales pour bien voir le mouvement) et
@@ -63,6 +69,7 @@ export default function ModaleAnimation({ open, onClose }) {
     etabContexte, domaine, discipline, secteur, mention, typeMaster,
     representativite, memeTypologie,
     mesureAxes, perimetresAxes, referenceAxesPositionnement,
+    rechercheMention, setRechercheMention,
   } = useApp();
 
   const fermerRef = useRef(null);
@@ -78,8 +85,8 @@ export default function ModaleAnimation({ open, onClose }) {
   const intervalRef = useRef(null);
   const millesimePrecedentRef = useRef(null);
 
-  // -------------------- Vitesse (v2) --------------------
-  const [vitesse, setVitesse] = useState('moyenne');
+  // -------------------- Vitesse (v2, recalibrée Phase 15.3) --------------------
+  const [vitesse, setVitesse] = useState(VITESSE_DEFAUT);
   // Durée de transition appliquée par défaut ; un override (mode
   // Comparer) peut le forcer temporairement.
   const [dureeOverride, setDureeOverride] = useState(null);
@@ -240,6 +247,23 @@ export default function ModaleAnimation({ open, onClose }) {
     if (!data?.series || millesimeCourant == null) return [];
     return data.series[String(millesimeCourant)]?.bulles || [];
   }, [data, millesimeCourant]);
+
+  // -------------------- Suivi d'une mention (Phase 15.3) --------------------
+  // Liste des libellés à proposer dans le sélecteur « Suivre une
+  // mention » : l'UNION des mentions sur TOUS les millésimes de la
+  // série (pas seulement le millésime courant — cf. demande métier),
+  // pour pouvoir suivre une mention qui n'apparaît pas à l'année
+  // affichée. Dédoublonné par libellé, trié en français. Vue Mentions
+  // uniquement (en Positionnement le suivi établissement est déjà
+  // assuré par le sélecteur d'étab global).
+  const mentionsSuivables = useMemo(() => {
+    if (vue !== 'mentions') return [];
+    const libelles = new Set();
+    for (const b of bullesTouteSerie.values()) {
+      if (b.libelle) libelles.add(b.libelle);
+    }
+    return Array.from(libelles).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [bullesTouteSerie, vue]);
 
   const axesCourants = useMemo(() => {
     if (!data?.series || millesimeCourant == null) return null;
@@ -476,6 +500,26 @@ export default function ModaleAnimation({ open, onClose }) {
 
         {!loading && !error && animationDispo && (
           <>
+            {/* Suivi d'une mention (Phase 15.3, vue Mentions uniquement) :
+                liste TOUTES les mentions de la série (tous millésimes),
+                pilote `rechercheMention` partagé → halo coloré sur la
+                bulle suivie dans QuadrantAnime + highlight cohérent sur
+                le quadrant principal. Mode free-text (comme la barre de
+                recherche) : onSelect ET onTextChange écrivent l'état. */}
+            {vue === 'mentions' && mentionsSuivables.length > 0 && (
+              <div className="modale-animation-suivi">
+                <Combobox
+                  id="modale-anim-suivi-mention"
+                  label="Suivre une mention"
+                  placeholder="Choisir une mention à mettre en évidence…"
+                  items={mentionsSuivables.map((l) => ({ id: l, libelle: l }))}
+                  value={rechercheMention}
+                  onSelect={(id) => setRechercheMention(id)}
+                  onTextChange={(t) => setRechercheMention(t)}
+                />
+              </div>
+            )}
+
             {/* Curseur de millésime DSFR — au-dessus du quadrant (Phase 14.6) */}
             <div className="modale-animation-slider-commun">
               <SliderDuree
@@ -503,6 +547,7 @@ export default function ModaleAnimation({ open, onClose }) {
                 traceContinue={traceContinue}
                 traceComparaison={traceComparaison}
                 phaseAnim={phaseAnim}
+                rechercheMention={rechercheMention}
               />
             </div>
 

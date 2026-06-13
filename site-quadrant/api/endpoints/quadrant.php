@@ -381,6 +381,19 @@ foreach ($pointsBrutsPrec as $p) {
     ];
 }
 
+// Compteur de mouvements de bulles (Phase 15.3, vue Mentions
+// uniquement). Compare le millésime courant au précédent à partir des
+// points BRUTS (avant tout filtrage d'affichage : forme/diffusion,
+// représentativité) pour distinguer les vraies évolutions du
+// référentiel des artefacts de seuil. Calculé seulement quand un
+// établissement de contexte est sélectionné — sinon les diploms de
+// plusieurs établissements se chevaucheraient et le décompte n'aurait
+// pas de sens (le compteur cible les mentions d'un établissement).
+$mouvements = null;
+if ($vue === 'mentions' && $etabContexte !== '') {
+    $mouvements = calculerMouvements($pointsBruts, $pointsBrutsPrec);
+}
+
 // =============================================================================
 // 6. Calcul des coordonnées et formes pour chaque point
 // =============================================================================
@@ -797,6 +810,13 @@ if ($vue === 'mentions') {
     $reponse['mentions_non_representees'] = $mentionsNonRepresentees;
 }
 
+// Compteur de mouvements (Phase 15.3) : présent en vue Mentions avec un
+// établissement de contexte. Absent sinon (le frontend ne l'affiche
+// qu'en vue Mentions).
+if ($mouvements !== null) {
+    $reponse['mouvements'] = $mouvements;
+}
+
 Response::json($reponse);
 
 
@@ -888,6 +908,104 @@ function agregerLignesParVue(
         $parEtab[$uai]['denom_y'] += (int)$l['denom_y'];
     }
     return array_values($parEtab);
+}
+
+/**
+ * Compteur de mouvements de bulles entre le millésime courant et le
+ * précédent (vue Mentions, Phase 15.3).
+ *
+ * Aide l'utilisateur à distinguer les vraies évolutions du référentiel
+ * SIES des simples franchissements du seuil de fiabilité. Calculé sur
+ * les points BRUTS (avant filtrage d'affichage) pour rester exhaustif.
+ *
+ * État d'une mention pour le couple (denom_x, denom_y) :
+ *   0 = absente    (un denom à 0 → non mesurée, aucune bulle possible)
+ *   1 = sous seuil (présente mais denom < SEUIL_FIABILITE sur un axe)
+ *   2 = visible    (denom >= SEUIL_FIABILITE sur les DEUX axes)
+ *
+ * Le seuil retenu est SEUIL_FIABILITE (20) : « visible » = repère fiable.
+ *
+ * Quatre catégories (mutuellement exclusives par mention) :
+ *   - nouvelles      : absente au précédent → visible au courant.
+ *   - disparues      : présente (>= 1) au précédent → absente au courant.
+ *   - masquees_seuil : présente au courant mais sous le seuil (état 1) —
+ *                      la mention existe mais n'est pas un repère fiable.
+ *   - reapparues     : sous le seuil au précédent → visible au courant.
+ *   (visible → visible = stable, non compté.)
+ *
+ * `comparaison_disponible` = false quand aucune ligne n'existe au
+ * millésime précédent (premier millésime de la BDD / année creuse) :
+ * le frontend affiche alors « Première année observée ».
+ *
+ * Chaque catégorie expose la LISTE des libellés concernés (le frontend
+ * en dérive les compteurs et un éventuel détail au survol).
+ */
+function calculerMouvements(array $pointsCourant, array $pointsPrec): array
+{
+    $etat = static function (array $p): int {
+        $dx = (int)$p['denom_x'];
+        $dy = (int)$p['denom_y'];
+        if ($dx < 1 || $dy < 1) {
+            return 0;
+        }
+        if ($dx >= Diffusion::SEUIL_FIABILITE && $dy >= Diffusion::SEUIL_FIABILITE) {
+            return 2;
+        }
+        return 1;
+    };
+
+    $etatCourant = [];
+    $libelles    = [];
+    foreach ($pointsCourant as $p) {
+        $cle = $p['diplom'];
+        $etatCourant[$cle] = $etat($p);
+        $libelles[$cle]    = (string)($p['libelle_intitule'] ?? '');
+    }
+    $etatPrec = [];
+    foreach ($pointsPrec as $p) {
+        $cle = $p['diplom'];
+        $etatPrec[$cle] = $etat($p);
+        if (!isset($libelles[$cle]) || $libelles[$cle] === '') {
+            $libelles[$cle] = (string)($p['libelle_intitule'] ?? '');
+        }
+    }
+
+    $nouvelles  = [];
+    $disparues  = [];
+    $masquees   = [];
+    $reapparues = [];
+
+    $toutesCles = array_unique(array_merge(array_keys($etatCourant), array_keys($etatPrec)));
+    foreach ($toutesCles as $cle) {
+        $c   = $etatCourant[$cle] ?? 0;
+        $p   = $etatPrec[$cle]    ?? 0;
+        $lib = $libelles[$cle]    ?? '';
+        if ($c === 1) {
+            // Présente au courant mais sous le seuil de fiabilité.
+            $masquees[] = $lib;
+        } elseif ($p === 0 && $c === 2) {
+            $nouvelles[] = $lib;
+        } elseif ($p >= 1 && $c === 0) {
+            $disparues[] = $lib;
+        } elseif ($p === 1 && $c === 2) {
+            $reapparues[] = $lib;
+        }
+        // p >= 1 & c === 2 (hors p === 1) ou p === 2 & c === 2 : stable.
+    }
+
+    $tri = static function (array $libs): array {
+        sort($libs, SORT_NATURAL | SORT_FLAG_CASE);
+        return $libs;
+    };
+
+    return [
+        'comparaison_disponible' => count($pointsPrec) > 0,
+        'seuil'                  => Diffusion::SEUIL_FIABILITE,
+        'nouvelles'              => $tri($nouvelles),
+        'disparues'              => $tri($disparues),
+        'masquees_seuil'         => $tri($masquees),
+        'reapparues'             => $tri($reapparues),
+    ];
 }
 
 /**

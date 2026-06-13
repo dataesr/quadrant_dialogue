@@ -27,6 +27,7 @@ import { trackEvent } from '../utils/matomo.js';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
 import LoaderQuadrant from './LoaderQuadrant.jsx';
+import CompteurMouvements from './CompteurMouvements.jsx';
 import { useDelayedLoading } from '../hooks/useDelayedLoading.js';
 
 // Composant principal du quadrant. Orchestrateur :
@@ -630,6 +631,14 @@ export default function Quadrant({ forExport = false } = {}) {
         <button type="button" onClick={() => zoomBy(1/1.5)} aria-label="Zoom arrière">−</button>
         <button type="button" onClick={zoomReset}           aria-label="Réinitialiser le zoom">⌂</button>
       </div>
+
+      {/* Compteur de mouvements de bulles (Phase 15.3) — sous le
+          quadrant, vue Mentions uniquement. Pas sur l'instance
+          off-screen d'export (le PNG n'a pas besoin de ce contexte
+          dynamique). */}
+      {vue === 'mentions' && !forExport && (
+        <CompteurMouvements mouvements={data.mouvements} millesime={millesime} />
+      )}
 
       {/* Tooltip flottant.
           Vue Mentions : libellé de la mention (gras) + valeurs X/Y.

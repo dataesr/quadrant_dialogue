@@ -536,6 +536,33 @@ Chaque ligne pointillée porte un libellé « Mesure périmètre : valeur % » (
   - verticale (valeur X) : X < 30 % → texte à droite de la ligne (`textAnchor=start`, sinon il sortirait à gauche) ; X > 70 % → à gauche (`end`) ; entre les deux → à gauche par défaut.
   - horizontale (valeur Y) : Y > 70 % (proche du haut) → texte **sous** la ligne (sinon il sortirait en haut) ; sinon au-dessus.
 
+### Animation temporelle enrichie (Phase 15.3)
+
+Trois améliorations à l'animation temporelle (Phase 11), suite aux retours utilisateurs :
+
+**1. Recalibrage des vitesses (centralisation).** Le mapping vitesse → durées (ms) est désormais une **source unique** dans `frontend/src/utils/animationSpeeds.js` (`VITESSES` + `VITESSE_DEFAUT`), consommée par `ModaleAnimation.jsx` (millésimes) ET `ModaleAnalyseSousPopulations.jsx` (durée d'observation) — plus de duplication. Tout est décalé d'un cran vers le plus lent et l'ancienne « rapide » (500 ms) est supprimée :
+
+| Libellé | tick (ms) | transition (ms) | clé |
+|---|---|---|---|
+| Lente | 3000 | 2400 | `lente` |
+| Normale | 2000 | 1600 | `normale` |
+| Rapide | 1000 | 800 | `rapide` |
+
+`transitionMs` ≈ 80 % du tick (les bulles finissent leur mouvement avant le tick suivant). Défaut = `normale`. Les libellés restent « Lente / Normale / Rapide » (la clé `moyenne` est renommée `normale`). Plus aucune valeur de vitesse en dur dans les composants. (Les autres timings — fade-out 400 ms, fade-out trace comparaison 1000 ms, constantes `COMPARER_*` — restent locaux à `ModaleAnimation`, hors périmètre de la centralisation.)
+
+**2. Suivi d'une mention (halo) — vue Mentions uniquement.** Réutilise le filtre existant **« Rechercher une mention »** (état partagé `rechercheMention`). Dans la modale d'animation, un sélecteur **« Suivre une mention »** (`Combobox`) liste **l'union des mentions sur TOUS les millésimes** de la série (`bullesTouteSerie`, pas seulement le millésime courant — pour pouvoir suivre une mention absente à l'année affichée) et écrit `rechercheMention`. `QuadrantAnime` reçoit `rechercheMention` et trace un **halo** (anneau `fill:none`, stroke `#E91719` — même rouge que le highlight de recherche du quadrant principal, cf. `Bulles.jsx`) autour de la bulle dont le libellé correspond, dans une couche au-dessus des bulles, translaté comme elle (il glisse d'un millésime à l'autre). **Cas mention absente à un millésime : option A** — `opaciteBulle(false)=0` masque le halo (pas de position fantôme) ; il revient si la mention réapparaît. Changer/effacer la sélection déplace/retire le halo. L'état étant partagé, la sélection persiste sur le quadrant principal après fermeture (cohérent avec la barre de recherche). Pas applicable en vue Positionnement (suivi établissement déjà assuré par le sélecteur d'étab global).
+
+**3. Compteur de mouvements de bulles — vue Mentions uniquement.** Affiché en permanence **sous le quadrant principal** (`CompteurMouvements.jsx`, pas sur l'instance d'export), il contextualise les mouvements entre le millésime courant et le précédent. Calculé côté **backend** (`/quadrant`, helper `calculerMouvements`) à partir des points **bruts** (avant filtrage d'affichage : forme/diffusion, représentativité), pas d'appel supplémentaire. Exposé dans `data.mouvements` uniquement en `vue=mentions` AVEC un établissement de contexte (sinon les diploms de plusieurs étabs se chevaucheraient). Cohérent avec les filtres disciplinaires actifs (déjà dans le WHERE de `/quadrant`).
+
+**Convention de comptage (seuil de fiabilité 20).** État d'une mention pour le couple (denom_x, denom_y) : `0`=absente (un denom à 0 → non mesurée), `1`=sous seuil (présente mais denom < 20 sur un axe), `2`=visible (denom ≥ 20 sur les **deux** axes). Le seuil retenu est **`Diffusion::SEUIL_FIABILITE` (20)** : « visible » = repère fiable (choix produit, cf. Phase 15.3 ; assumé incohérent avec l'affichage du quadrant principal qui dessine aussi les bulles fragiles 5-19 en triangles/croix). Quatre catégories mutuellement exclusives par mention :
+
+- **nouvelles** : absente au précédent → visible au courant (vraie nouveauté).
+- **disparues** : présente (≥ 1) au précédent → absente au courant (vraie disparition).
+- **réapparues** : sous le seuil au précédent → visible au courant (franchit le seuil à la hausse).
+- **masquées par seuil** : présente au courant mais sous le seuil (état courant `1`) — la mention existe mais n'est **pas** un repère fiable. **Distinction métier** : une « disparue » est sortie du référentiel (effectif tombé à 0 / mention supprimée), une « masquée par seuil » est toujours là mais avec un effectif < 20 (artefact de fiabilité, pas une vraie disparition).
+
+Chaque catégorie expose la **liste des libellés** concernés (le frontend en dérive le compteur + un détail au survol). `comparaison_disponible=false` quand aucune ligne n'existe au millésime précédent (premier millésime / année creuse) → le frontend affiche « Première année observée — pas de comparaison ». Champ **additif**, strictement compatible ascendant.
+
 ### UX — Reset automatique du zoom
 
 Le zoom du quadrant est automatiquement réinitialisé à chaque changement de paramètre structurel (vue, cursus, millésime, axes, filtres avancés, `mesureAxes`/`perimetresAxes`). Évite de rester zoomé sur une zone sans bulles après une bascule de filtre. Le clic sur une bulle ne change aucun de ces paramètres → le zoom est conservé pendant l'exploration interactive.

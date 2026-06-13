@@ -10,6 +10,7 @@ import MiniQuadrantSousPop from './MiniQuadrantSousPop.jsx';
 import SankeyParcoursSousPop from './SankeyParcoursSousPop.jsx';
 import OngletMentionsAgregees from './OngletMentionsAgregees.jsx';
 import SliderDuree from './SliderDuree.jsx';
+import { VITESSES, VITESSE_DEFAUT } from '../../utils/animationSpeeds.js';
 
 // Modale large « Analyse de l'insertion par sous-population » (Phase 14).
 //
@@ -22,13 +23,8 @@ import SliderDuree from './SliderDuree.jsx';
 //   - boucle setInterval lisant un ref synchronisé inconditionnellement ;
 //   - bouclage fin de cycle fade-out → snap → fade-in (pas de glissement
 //     30 → 6 qui n'aurait pas de sens chronologique) ;
-//   - 3 vitesses (Lente / Moyenne / Rapide).
-
-const VITESSES = {
-  lente:   { tickMs: 2000, transitionMs: 1600, libelle: 'Lente' },
-  moyenne: { tickMs: 1000, transitionMs:  800, libelle: 'Moyenne' },
-  rapide:  { tickMs:  500, transitionMs:  400, libelle: 'Rapide' },
-};
+//   - 3 vitesses (Lente / Normale / Rapide) — mapping centralisé et
+//     recalibré Phase 15.3 (cf. utils/animationSpeeds.js).
 
 const ONGLETS_BASE = [
   { id: 'comparaison', libelle: 'Comparaison' },
@@ -97,7 +93,7 @@ export default function ModaleAnalyseSousPopulations({
   const intervalRef        = useRef(null);
   const dureePrecedenteRef = useRef(null);
 
-  const [vitesse, setVitesse] = useState('moyenne');
+  const [vitesse, setVitesse] = useState(VITESSE_DEFAUT);
   const tickMs       = VITESSES[vitesse].tickMs;
   const transitionMs = VITESSES[vitesse].transitionMs;
 

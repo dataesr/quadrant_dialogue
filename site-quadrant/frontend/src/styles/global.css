@@ -469,6 +469,56 @@ body.exporting .ref-axes-container {
   text-align: right;
 }
 
+/* Compteur de mouvements de bulles (Phase 15.3) — ligne sobre sous le
+   quadrant, vue Mentions. Texte discret + petites pastilles colorées
+   par catégorie (pas de badges criards). */
+.compteur-mouvements {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #3a3a3a;
+  line-height: 1.7;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.compteur-mouvements--na,
+.compteur-mouvements-vide {
+  color: #666;
+  font-style: italic;
+}
+.compteur-mouvements-intro {
+  color: #666;
+  margin-right: 0.15rem;
+}
+.compteur-mouvements-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid currentColor;
+  background: #fff;
+  white-space: nowrap;
+  cursor: default;
+}
+.compteur-mouvements-symbole {
+  font-weight: 700;
+}
+/* Couleurs par catégorie (texte + bordure, fond blanc — sobre). */
+.compteur-mouvements-badge.est-nouvelle  { color: #0063CB; }
+.compteur-mouvements-badge.est-disparue  { color: #666;    }
+.compteur-mouvements-badge.est-reapparue { color: #18753C; }
+.compteur-mouvements-badge.est-masquee   { color: #B34000; }
+
+/* Sélecteur « Suivre une mention » dans la modale d'animation
+   (Phase 15.3) — aligné à gauche, largeur contrainte pour ne pas
+   occuper toute la modale. */
+.modale-animation-suivi {
+  margin-bottom: 0.75rem;
+  max-width: 420px;
+}
+
 /* Vue tableau alternative au quadrant. Une <section> par cadran, plus
    éventuellement une section finale « Mentions non représentées ». */
 .mention-reference-axes {

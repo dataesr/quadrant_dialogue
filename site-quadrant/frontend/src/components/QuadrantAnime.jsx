@@ -23,6 +23,19 @@ const ORDRE_RENDU_ETAB = {
   selectionne:                 4,
 };
 
+// Couleur du halo de suivi de mention (Phase 15.3). Identique au rouge
+// d'accent du highlight de recherche sur le quadrant principal
+// (Bulles.jsx, COULEUR_HIGHLIGHT) → même langage visuel : « voici la
+// mention que vous suivez », que ce soit à l'écran ou dans l'animation.
+const COULEUR_SUIVI = '#E91719';
+
+// Match libellé ↔ recherche (exact, insensible à la casse) — même règle
+// que Bulles.jsx (libellesMatchent) pour la cohérence du highlight.
+function libellesMatchent(libelle, recherche) {
+  if (!recherche || !libelle) return false;
+  return libelle.trim().toLowerCase() === recherche.trim().toLowerCase();
+}
+
 // Quadrant SVG animé pour la modale d'évolution temporelle (Phase 11b).
 //
 // Props :
@@ -42,6 +55,10 @@ const ORDRE_RENDU_ETAB = {
 //     fading: bool } — trace one-shot du mode « Comparer avec
 //     millésime précédent », plus visible (stroke 2, opacity 0.6),
 //     fade-out sur 1 s quand fading=true.
+//   - rechercheMention : libellé de la mention suivie (Phase 15.3). La
+//     bulle dont le libellé correspond reçoit un halo coloré qui la
+//     suit au fil des millésimes ; aux millésimes où elle n'est pas
+//     affichée, le halo disparaît (option A — pas de fantôme).
 //
 // Différences avec Quadrant.jsx (rappel MVP) : pas de zoom, pas
 // d'interaction (clic, survol, tooltip). Toutes les bulles sont
@@ -60,6 +77,7 @@ export default function QuadrantAnime({
   traceContinue,
   traceComparaison,
   phaseAnim = 'normal',
+  rechercheMention = '',
 }) {
   // Index id → bulle courante. Permet de savoir vite si une bulle
   // est présente ce millésime et de lire ses coords.
@@ -364,6 +382,42 @@ export default function QuadrantAnime({
           );
         })}
       </g>
+
+      {/* Halo de suivi de mention (Phase 15.3) — couche AU-DESSUS des
+          bulles pour que la mention suivie reste toujours visible.
+          Anneau (fill none) translaté comme la bulle correspondante,
+          donc il glisse avec elle d'un millésime à l'autre. Aux
+          millésimes où la bulle n'est pas affichée, opaciteBulle(false)
+          = 0 → halo masqué (option A : pas de position fantôme). */}
+      {rechercheMention && (
+        <g className="quadrant-anime-suivi">
+          {idsAffiches.map((id) => {
+            const present = bulleParId.has(id);
+            const b = present ? bulleParId.get(id) : bullesTouteSerie?.get(id);
+            if (!b || !libellesMatchent(b.libelle, rechercheMention)) return null;
+            const cx = xScaleBase(toPercent(b.x));
+            const cy = yScaleBase(toPercent(b.y));
+            const denom = b.denom_x ?? b.denom ?? 0;
+            const r = rayonBulle(denom, 'sqrt', allDenoms);
+            return (
+              <circle
+                key={`suivi-${id}`}
+                cx={0}
+                cy={0}
+                r={r + 5}
+                fill="none"
+                stroke={COULEUR_SUIVI}
+                strokeWidth={3}
+                style={{
+                  transform: `translate(${cx}px, ${cy}px)`,
+                  transition: transitionBulle,
+                  opacity: opaciteBulle(present),
+                }}
+              />
+            );
+          })}
+        </g>
+      )}
     </svg>
   );
 }
