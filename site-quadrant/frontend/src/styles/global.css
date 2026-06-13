@@ -483,6 +483,13 @@ body.exporting .ref-axes-container {
   color: #666;
   font-style: italic;
 }
+/* Segments porteurs d'infobulle (libellés des mentions concernées) —
+   souligné pointillé discret + cursor:help comme affordance. */
+.compteur-mouvements-detail {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
 
 /* Vue tableau alternative au quadrant. Une <section> par cadran, plus
    éventuellement une section finale « Mentions non représentées ». */
@@ -1133,6 +1140,16 @@ body.exporting .ref-axes-container {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+/* Titres uniformes (Phase 15.4) : le libellé du Combobox « Suivre une
+   mention » s'aligne sur celui du curseur de millésime
+   (.slider-duree .fr-label) — même taille, couleur (bleu Marianne) et
+   graisse, pour des en-têtes de colonne homogènes. */
+.modale-animation-suivre .fr-label {
+  font-size: 0.82rem;
+  color: #000091;
+  font-weight: 500;
+  margin-bottom: 0.1rem;
 }
 /* Le curseur (largeur fixe 400px par défaut, partagée avec la modale
    d'analyse fine) remplit ici sa colonne 50 %. */

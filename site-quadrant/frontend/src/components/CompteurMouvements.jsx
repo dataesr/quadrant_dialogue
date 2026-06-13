@@ -42,12 +42,13 @@ export default function CompteurMouvements({ mouvements }) {
   }
 
   const segments = CATEGORIES
-    .map((cat) => ({ ...cat, n: (mouvements[cat.cle] || []).length }))
-    .filter((cat) => cat.n > 0)
+    .map((cat) => ({ ...cat, libs: (mouvements[cat.cle] || []).filter(Boolean) }))
+    .filter((cat) => cat.libs.length > 0)
     .map((cat) => {
-      const motMention = cat.n > 1 ? 'mentions' : 'mention';
-      const qualif = cat.n > 1 ? cat.plur : cat.sing;
-      return `${cat.n} ${motMention} ${qualif}`;
+      const n = cat.libs.length;
+      const motMention = n > 1 ? 'mentions' : 'mention';
+      const qualif = n > 1 ? cat.plur : cat.sing;
+      return { cle: cat.cle, texte: `${n} ${motMention} ${qualif}`, detail: cat.libs.join(', ') };
     });
 
   const intro = millesime_precedent != null
@@ -57,7 +58,20 @@ export default function CompteurMouvements({ mouvements }) {
   return (
     <p className="compteur-mouvements">
       {intro}{' '}
-      {segments.length > 0 ? segments.join(', ') : 'aucun mouvement de mention'}.
+      {segments.length > 0 ? (
+        segments.map((s, i) => (
+          <span key={s.cle}>
+            {/* Infobulle native : libellés des mentions concernées. */}
+            <span className="compteur-mouvements-detail" title={s.detail}>
+              {s.texte}
+            </span>
+            {i < segments.length - 1 ? ', ' : ''}
+          </span>
+        ))
+      ) : (
+        'aucun mouvement de mention'
+      )}
+      .
     </p>
   );
 }
