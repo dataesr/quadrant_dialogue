@@ -33,7 +33,7 @@ export default function AideTooltip({ texte, ariaLabel = 'Aide' }) {
   if (!texte) return null;
 
   return (
-    <span className="indicateur-avec-tooltip" ref={wrapperRef}>
+    <span className="indicateur-avec-tooltip indicateur-avec-tooltip--icon" ref={wrapperRef}>
       <button
         type="button"
         className="bouton-info fr-icon-question-line"

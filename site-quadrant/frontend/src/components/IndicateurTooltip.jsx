@@ -91,7 +91,10 @@ export default function IndicateurTooltip({
 
   return (
     <span
-      className="indicateur-avec-tooltip"
+      className={
+        'indicateur-avec-tooltip'
+        + (mode === 'iconOnly' ? ' indicateur-avec-tooltip--icon' : '')
+      }
       ref={wrapperRef}
     >
       {mode === 'inline' && <span>{libelle}</span>}

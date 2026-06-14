@@ -1449,17 +1449,23 @@ body.exporting .ref-axes-container {
   letter-spacing: normal;
   margin-top: 2px;
 }
+/* « ? » en icône seule (mode iconOnly d'IndicateurTooltip, ou AideTooltip) :
+   l'ancre est le bouton lui-même, placé en FIN de titre / d'en-tête. On ancre
+   le bord DROIT du tooltip sur le bouton et on ouvre vers la GAUCHE (vers le
+   titre, où il y a de la place) plutôt que vers la droite où il déborderait /
+   serait coupé (en-têtes de colonnes du tableau d'analyse fine, rubriques de
+   la barre latérale…). useAutoPlacement rattrape tout débordement résiduel.
+   Le mode `inline` (libellé inclus dans l'ancre, donc bord gauche déjà loin
+   à gauche) garde `left: 0`. */
+.indicateur-avec-tooltip--icon .tooltip-definition {
+  left: auto;
+  right: 0;
+}
 /* Variante plus étroite pour les aides courtes (« ? » salaires, Phase 15.7)
-   — tooltip purement contextuel, ~50 mots, à garder compact (200-300 px).
-   Le « ? » est en fin de titre : on ancre le bord DROIT du tooltip sur le
-   bouton et on ouvre vers la GAUCHE (vers le titre, où il y a de la place),
-   plutôt que vers la droite où il déborderait / serait coupé. useAutoPlacement
-   rattrape tout débordement résiduel. */
+   — tooltip purement contextuel, ~50 mots, à garder compact (200-300 px). */
 .indicateur-avec-tooltip .tooltip-definition--court {
   max-width: 280px;
   min-width: 200px;
-  left: auto;
-  right: 0;
 }
 
 /* ----------------------------------------------------------------------
