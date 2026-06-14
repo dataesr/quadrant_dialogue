@@ -347,6 +347,27 @@ $seuilAnalyse = (function () {
 $analyseDisponible = $nbEtudiantsReference !== null
     && $nbEtudiantsReference >= $seuilAnalyse;
 
+// =============================================================================
+// 8 ter. Salaires (médiane + quartiles) de la mention référence (Phase 15.6)
+// =============================================================================
+//
+// Salaire mensuel net en équivalent temps plein (DSN, méthodologie SIES),
+// disponible uniquement à 12/18/24/30 mois (jamais à 6). Les 4 colonnes
+// (nb_salaires, salaire_q1/q2/q3) sont NULL en BDD quand l'effectif est sous
+// le seuil de diffusion (20) — on n'expose donc une cellule que lorsque
+// salaire_q2 est renseigné. Les quantiles n'étant PAS agrégeables, le bloc
+// n'est calculé que pour une mention UNIQUE (vue Mentions, ou vue
+// Positionnement avec filtre mention) : en mode agrégat établissement,
+// salaires.disponible = false. Volume max : 6 millésimes × 4 durées = 24
+// lignes pour la référence (diplômé/ensemble/français/ensemble).
+$salaires = ['disponible' => false, 'donnees_par_millesime_et_duree' => new stdClass()];
+
+if ($vue === 'mentions' || ($vue === 'etablissements' && $mention !== '')) {
+    $salIdPaysage = $vue === 'mentions' ? $etabContexte : $targetId;
+    $salDiplom    = $vue === 'mentions' ? $targetId     : $mention;
+    $salaires = chargerSalairesReference($pdo, $salIdPaysage, $salDiplom, $motifContexte);
+}
+
 Response::json([
     'type'              => $vue === 'mentions' ? 'mention' : 'etablissement',
     'identite'          => $identite,
@@ -357,6 +378,7 @@ Response::json([
         'disponible'             => $analyseDisponible,
         'nb_etudiants_reference' => $nbEtudiantsReference,
     ],
+    'salaires'          => $salaires,
 ]);
 
 
@@ -510,6 +532,64 @@ function chargerDonneesBrutes(
  *
  * Renvoie la liste dans l'ordre du référentiel.
  */
+/**
+ * Charge les salaires (médiane + quartiles) de la mention RÉFÉRENCE
+ * (diplômé / ensemble / français / ensemble) sur tous les millésimes et
+ * toutes les durées de salaire disponibles (12/18/24/30 — jamais 6).
+ *
+ * Renvoie :
+ *   [
+ *     'disponible' => bool,                 // au moins une cellule présente
+ *     'donnees_par_millesime_et_duree' => {
+ *        "2022": { "12": {nb_salaires, q1, q2, q3}, "24": {...} }, ...
+ *     }
+ *   ]
+ *
+ * Une cellule n'est exposée que si salaire_q2 est renseigné (les 4 colonnes
+ * sont NULL ensemble sous le seuil de diffusion source). filtre_perimetre
+ * LIKE garde l'accès, par cohérence avec le reste de l'endpoint.
+ */
+function chargerSalairesReference(PDO $pdo, string $idPaysage, string $diplom, string $motifContexte): array
+{
+    $stmt = $pdo->prepare("
+        SELECT millesime, date_inser, nb_salaires, salaire_q1, salaire_q2, salaire_q3
+        FROM stats_sous_populations
+        WHERE id_paysage = :id_paysage
+          AND diplom = :diplom
+          AND obtention_diplome = 'diplômé'
+          AND genre = 'ensemble'
+          AND nationalite = 'français'
+          AND regime_inscription = 'ensemble'
+          AND date_inser IN ('12', '18', '24', '30')
+          AND salaire_q2 IS NOT NULL
+          AND filtre_perimetre LIKE :motif
+        ORDER BY millesime, CAST(date_inser AS UNSIGNED)
+    ");
+    $stmt->execute([
+        ':id_paysage' => $idPaysage,
+        ':diplom'     => $diplom,
+        ':motif'      => $motifContexte,
+    ]);
+
+    $parMillesime = [];
+    foreach ($stmt->fetchAll() as $r) {
+        $m = (string)$r['millesime'];
+        $d = (string)$r['date_inser'];
+        $parMillesime[$m][$d] = [
+            'nb_salaires' => $r['nb_salaires'] !== null ? (int)$r['nb_salaires'] : null,
+            'q1'          => $r['salaire_q1']  !== null ? (int)$r['salaire_q1']  : null,
+            'q2'          => $r['salaire_q2']  !== null ? (int)$r['salaire_q2']  : null,
+            'q3'          => $r['salaire_q3']  !== null ? (int)$r['salaire_q3']  : null,
+        ];
+    }
+
+    return [
+        'disponible'                     => !empty($parMillesime),
+        // Objet vide ⇒ stdClass pour sérialiser en {} et non [] côté JSON.
+        'donnees_par_millesime_et_duree' => empty($parMillesime) ? new stdClass() : $parMillesime,
+    ];
+}
+
 function normaliserDonnees(array $canonique, array $rowsBdd, int $seuil = null): array
 {
     // Seuil effectif : laisse l'appelant le surdéfinir (mode export

@@ -9,8 +9,10 @@ import TableauEcarts from './TableauEcarts.jsx';
 import MiniQuadrantSousPop from './MiniQuadrantSousPop.jsx';
 import SankeyParcoursSousPop from './SankeyParcoursSousPop.jsx';
 import OngletMentionsAgregees from './OngletMentionsAgregees.jsx';
+import OngletSalaires from './OngletSalaires.jsx';
 import SliderDuree from './SliderDuree.jsx';
 import { VITESSES, VITESSE_DEFAUT } from '../../utils/animationSpeeds.js';
+import { aAuMoinsUnSalaire } from '../../utils/salaires.js';
 
 // Modale large « Analyse de l'insertion par sous-population » (Phase 14).
 //
@@ -101,7 +103,10 @@ export default function ModaleAnalyseSousPopulations({
   // l'animation en pause (les bulles ne défilent pas hors écran).
   const [ongletActif, setOngletActif] = useState('comparaison');
   function changerOnglet(id) {
-    if (id !== 'quadrant') setEnLecture(false);
+    // L'animation (durée) anime le Quadrant ET l'onglet Salaires (mêmes
+    // blocs pilotés par dureeCourante) ; on ne met en pause que pour les
+    // onglets statiques (Comparaison, Parcours, Mentions agrégées).
+    if (id !== 'quadrant' && id !== 'salaires') setEnLecture(false);
     if (id !== ongletActif) {
       // Suivi Matomo des onglets explorés dans l'analyse fine.
       trackEvent('Analyse fine', 'onglet', id, {
@@ -271,12 +276,75 @@ export default function ModaleAnalyseSousPopulations({
   const libelleMentionUnique = mentionLabel
     || (modeReponse === 'etablissement' ? mentionsAgregees[0]?.libelle_intitule : null);
 
-  const onglets = estAgregatMulti
-    ? [...ONGLETS_BASE, { id: 'mentions', libelle: 'Mentions agrégées' }]
-    : ONGLETS_BASE;
+  // Onglet « Salaires » (Phase 15.6) : visible si la mention a des données de
+  // salaire pour au moins une sous-population. Absent en mode établissement
+  // (quantiles non agrégeables → salaires_par_sous_pop null côté API).
+  const salairesParSousPop = data?.salaires_par_sous_pop || null;
+  const salairesDispo = !!salairesParSousPop
+    && Object.values(salairesParSousPop).some((sp) => aAuMoinsUnSalaire(sp?.donnees_par_duree));
+
+  const onglets = [
+    ...ONGLETS_BASE,
+    ...(salairesDispo ? [{ id: 'salaires', libelle: 'Salaires' }] : []),
+    ...(estAgregatMulti ? [{ id: 'mentions', libelle: 'Mentions agrégées' }] : []),
+  ];
   // Onglet effectif : si l'onglet courant n'existe plus (ex. mention ⇄ étab),
   // on retombe sur Comparaison.
   const ongletEffectif = onglets.some((o) => o.id === ongletActif) ? ongletActif : 'comparaison';
+
+  // Contrôles de lecture (⏮ ▶ ⏭ + Vitesse) — partagés par les onglets
+  // Quadrant et Salaires (tous deux animés par la durée). `scope` rend les
+  // ids/name uniques entre les deux instances montées simultanément.
+  function renderControlesLecture(scope) {
+    return (
+      <div className="modale-asp-controls">
+        <div className="modale-asp-controls-lecture">
+          <button
+            type="button"
+            className="fr-btn fr-btn--sm fr-btn--tertiary"
+            onClick={handlePrev}
+            disabled={iCourant <= 0}
+            aria-label="Durée précédente"
+          >⏮</button>
+          <button
+            type="button"
+            className="fr-btn fr-btn--sm"
+            onClick={handlePlayPause}
+            aria-label={enLecture ? 'Pause' : 'Lecture'}
+          >{enLecture ? '⏸ Pause' : '▶ Lecture'}</button>
+          <button
+            type="button"
+            className="fr-btn fr-btn--sm fr-btn--tertiary"
+            onClick={handleNext}
+            disabled={iCourant >= durees.length - 1}
+            aria-label="Durée suivante"
+          >⏭</button>
+        </div>
+
+        <fieldset className="fr-segmented fr-segmented--sm modale-asp-vitesse">
+          <legend className="fr-segmented__legend">Vitesse</legend>
+          <div className="fr-segmented__elements">
+            {Object.entries(VITESSES).map(([code, conf]) => {
+              const id = `modale-asp-vitesse-${scope}-${code}`;
+              return (
+                <div key={code} className="fr-segmented__element">
+                  <input
+                    type="radio"
+                    id={id}
+                    name={`modale-asp-vitesse-${scope}`}
+                    value={code}
+                    checked={vitesse === code}
+                    onChange={() => setVitesse(code)}
+                  />
+                  <label className="fr-label" htmlFor={id}>{conf.libelle}</label>
+                </div>
+              );
+            })}
+          </div>
+        </fieldset>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -421,57 +489,7 @@ export default function ModaleAnalyseSousPopulations({
                   enLecture={enLecture}
                 />
 
-                {animationDispo && (
-                  /* Contrôles sur UNE ligne (Phase 14.7) : lecture à gauche,
-                     vitesse à droite — même structure que la modale d'animation
-                     temporelle (Mentions/Positionnement). */
-                  <div className="modale-asp-controls">
-                    <div className="modale-asp-controls-lecture">
-                      <button
-                        type="button"
-                        className="fr-btn fr-btn--sm fr-btn--tertiary"
-                        onClick={handlePrev}
-                        disabled={iCourant <= 0}
-                        aria-label="Durée précédente"
-                      >⏮</button>
-                      <button
-                        type="button"
-                        className="fr-btn fr-btn--sm"
-                        onClick={handlePlayPause}
-                        aria-label={enLecture ? 'Pause' : 'Lecture'}
-                      >{enLecture ? '⏸ Pause' : '▶ Lecture'}</button>
-                      <button
-                        type="button"
-                        className="fr-btn fr-btn--sm fr-btn--tertiary"
-                        onClick={handleNext}
-                        disabled={iCourant >= durees.length - 1}
-                        aria-label="Durée suivante"
-                      >⏭</button>
-                    </div>
-
-                    <fieldset className="fr-segmented fr-segmented--sm modale-asp-vitesse">
-                      <legend className="fr-segmented__legend">Vitesse</legend>
-                      <div className="fr-segmented__elements">
-                        {Object.entries(VITESSES).map(([code, conf]) => {
-                          const id = `modale-asp-vitesse-${code}`;
-                          return (
-                            <div key={code} className="fr-segmented__element">
-                              <input
-                                type="radio"
-                                id={id}
-                                name="modale-asp-vitesse"
-                                value={code}
-                                checked={vitesse === code}
-                                onChange={() => setVitesse(code)}
-                              />
-                              <label className="fr-label" htmlFor={id}>{conf.libelle}</label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-                  </div>
-                )}
+                {animationDispo && renderControlesLecture('quadrant')}
               </div>
 
               <div
@@ -487,6 +505,24 @@ export default function ModaleAnalyseSousPopulations({
                   seuilDiffusion={data.contexte?.seuil_applique}
                 />
               </div>
+
+              {/* Onglet « Salaires » (Phase 15.6) — mention avec données salaire */}
+              {salairesDispo && (
+                <div
+                  id="tabpanel-salaires"
+                  className={'fr-tabs__panel' + (ongletEffectif === 'salaires' ? ' fr-tabs__panel--selected' : '')}
+                  role="tabpanel"
+                  aria-labelledby="tab-salaires"
+                  tabIndex={0}
+                >
+                  <OngletSalaires
+                    salairesParSousPop={salairesParSousPop}
+                    dureeCourante={dureeCourante}
+                    millesime={millesime}
+                  />
+                  {animationDispo && renderControlesLecture('salaires')}
+                </div>
+              )}
 
               {/* Onglet « Mentions agrégées » — mode établissement, ≥2 mentions */}
               {estAgregatMulti && (

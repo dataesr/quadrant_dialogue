@@ -2338,3 +2338,175 @@ body.exporting .source-attribution {
 @media (prefers-reduced-motion: reduce) {
   .mini-quadrant-sp-bulles g { transition: none !important; }
 }
+
+/* =====================================================================
+   Salaires (Phase 15.6) — blocs Parcoursup + graphiques d'évolution.
+   Réutilisés dans la fiche détaillée (barre latérale) ET dans l'onglet
+   « Salaires » de la modale d'analyse fine.
+   ===================================================================== */
+
+/* --- Section salaires de la barre latérale --- */
+.section-salaires {
+  margin: 0.5rem 0 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eee;
+}
+.section-salaires > h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  color: #161616;
+}
+.bloc-salaire-graphe {
+  margin-top: 0.75rem;
+}
+.bloc-salaire-graphe-titre {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #444;
+  margin: 0 0 0.15rem;
+}
+.bloc-salaire-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: #777;
+  line-height: 1.35;
+}
+
+/* --- Bloc « Parcoursup » (médiane + fourchette Q1–Q3) --- */
+.bloc-salaire {
+  background: #f6f6fa;
+  border: 1px solid #e3e3ee;
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+  text-align: center;
+}
+.bloc-salaire--compact {
+  padding: 0.6rem 0.7rem;
+}
+.bloc-salaire-titre {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 0.3rem;
+}
+.bloc-salaire-mediane {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #000091;
+  line-height: 1.1;
+  margin: 0;
+}
+.bloc-salaire--compact .bloc-salaire-mediane {
+  font-size: 1.4rem;
+}
+.bloc-salaire-mediane-label {
+  font-size: 0.72rem;
+  color: #666;
+  margin: 0.1rem 0 0.5rem;
+}
+.bloc-salaire-vide {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #888;
+  margin: 0.5rem 0;
+}
+
+/* Fourchette interquartile : Q1 ●━━━● Q3 (décorative, pas à l'échelle). */
+.bloc-salaire-quartiles {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #333;
+}
+.bsq-borne {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.bsq-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.bsq-line {
+  flex: 1;
+  height: 2px;
+  background: #9a9aa8;
+}
+.bsq-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #000091;
+  flex: 0 0 auto;
+}
+.bloc-salaire-quartiles-legende {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  color: #888;
+  margin-top: 0.15rem;
+}
+.bloc-salaire-soustitre {
+  font-size: 0.72rem;
+  color: #666;
+  margin: 0.5rem 0 0;
+}
+
+/* --- Graphique d'évolution des salaires --- */
+.graphe-salaire {
+  position: relative;
+}
+.graphe-salaire-vide {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #999;
+  margin: 0.5rem 0;
+}
+
+/* --- Onglet « Salaires » de la modale d'analyse fine --- */
+.onglet-salaires-intro {
+  font-size: 0.85rem;
+  color: #444;
+  margin: 0 0 0.85rem;
+}
+.onglet-salaires-grille {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+}
+/* Repli 2 colonnes en deçà de ~820px de panneau (iframe étroite). */
+@media (max-width: 880px) {
+  .onglet-salaires-grille { grid-template-columns: repeat(2, 1fr); }
+}
+.bloc-salaire-sp {
+  border: 1px solid #e3e3ee;
+  border-radius: 6px;
+  padding: 0.65rem 0.7rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.bloc-salaire-sp-titre {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #161616;
+  margin: 0;
+}
+.bloc-salaire-sp-sous {
+  font-size: 0.7rem;
+  color: #777;
+  margin: 0 0 0.5rem;
+}
+.bloc-salaire-sp .bloc-salaire {
+  background: #f6f6fa;
+}
+.bloc-salaire-sp-vide {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #999;
+  margin: auto 0;
+  padding: 1.2rem 0;
+  text-align: center;
+}

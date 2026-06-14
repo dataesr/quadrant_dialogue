@@ -21,6 +21,9 @@ import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
 import Skeleton from './Skeleton.jsx';
 import ModaleAnalyseSousPopulations from './sous-populations/ModaleAnalyseSousPopulations.jsx';
+import BlocSalaireParcoursup from './sous-populations/BlocSalaireParcoursup.jsx';
+import GraphiqueEvolutionSalaires from './sous-populations/GraphiqueEvolutionSalaires.jsx';
+import { DUREES_SALAIRE, echelleCommune, donneesVersPoints } from '../utils/salaires.js';
 
 // Panneau de détails d'une bulle.
 //
@@ -385,6 +388,13 @@ export default function DetailsPanel() {
             />
           </section>
 
+          <SectionSalaires
+            salaires={data.salaires}
+            millesimeCourant={millesime}
+            dateInserX={dateInserX}
+            dateInserY={dateInserY}
+          />
+
           <SectionAutresIndicateurs
             donneesCourantes={data.donnees_courantes}
             historique={data.historique}
@@ -599,6 +609,125 @@ function ValeurCourante({ ligne, lignePrec, population }) {
     return <p className="valeur-principale valeur-non-diffusable">Pas de donnée</p>;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------
+// Section « Salaires » de la fiche détaillée d'une mention (Phase 15.6).
+//
+// Trois blocs empilés, dans l'esprit Parcoursup mais sur la vraie médiane
+// de la mention :
+//   1. BlocSalaireParcoursup (médiane + Q1–Q3) à la durée effective.
+//   2. Évolution sur les millésimes (durée fixe = durée effective).
+//   3. Évolution sur la durée (millésime fixe = millésime courant).
+// Les blocs 2 et 3 partagent la même échelle Y → les deux dynamiques
+// (interannuelle vs sur la durée d'observation) sont comparables à l'œil.
+//
+// Règle de durée effective (cf. brief 15.6) :
+//   durée d'un axe (X prioritaire, sinon Y) → sinon 12 → sinon première
+//   durée présente au millésime courant (12 → 18 → 24 → 30).
+//
+// Masquée si salaires.disponible !== true (pas de placeholder vide). En
+// mode agrégat établissement, l'API renvoie disponible=false (quantiles
+// non agrégeables) → section absente.
+// ---------------------------------------------------------------------
+function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY }) {
+  const parMillesime = salaires?.donnees_par_millesime_et_duree || null;
+
+  const { dureeEffective, donneesBloc1, donneesMillesimes, donneesDurees, echelleY } =
+    useMemo(() => {
+      const vide = {
+        dureeEffective: null, donneesBloc1: null,
+        donneesMillesimes: null, donneesDurees: null, echelleY: null,
+      };
+      if (!salaires?.disponible || !parMillesime) return vide;
+
+      const dataMillesimeCourant = parMillesime[String(millesimeCourant)] || {};
+      const voulue = String(dateInserX || dateInserY || '12');
+      const candidats = [voulue, '12', '18', '24', '30'];
+      const dureeEff =
+        candidats.find((d) => dataMillesimeCourant[d]) || voulue;
+
+      // Bloc 1 : la cellule (millésime courant, durée effective).
+      const bloc1 = dataMillesimeCourant[dureeEff] || null;
+
+      // Bloc 2 : durée fixe = durée effective, sur tous les millésimes.
+      const surMillesimes = {};
+      Object.keys(parMillesime).forEach((m) => {
+        surMillesimes[m] = parMillesime[m]?.[dureeEff] || null;
+      });
+
+      // Bloc 3 : millésime fixe = courant, sur les 4 durées de salaire.
+      const surDurees = {};
+      DUREES_SALAIRE.forEach((d) => {
+        surDurees[String(d)] = dataMillesimeCourant[String(d)] || null;
+      });
+
+      // Échelle Y commune aux blocs 2 et 3.
+      const echelle = echelleCommune(
+        donneesVersPoints(surMillesimes),
+        donneesVersPoints(surDurees),
+      );
+
+      return {
+        dureeEffective: dureeEff,
+        donneesBloc1: bloc1,
+        donneesMillesimes: surMillesimes,
+        donneesDurees: surDurees,
+        echelleY: echelle,
+      };
+    }, [salaires, parMillesime, millesimeCourant, dateInserX, dateInserY]);
+
+  if (!salaires?.disponible) return null;
+
+  const nbSal = donneesBloc1?.nb_salaires;
+  const sousTitre = typeof nbSal === 'number'
+    ? `Sur ${nbSal.toLocaleString('fr-FR')} sortants en emploi salarié`
+    : null;
+
+  return (
+    <section className="section-salaires">
+      <h3>Salaires des diplômés</h3>
+
+      <BlocSalaireParcoursup
+        donnees={donneesBloc1}
+        titre={`Salaire à ${dureeEffective} mois`}
+        sous_titre={sousTitre}
+        taille="compact"
+        messageVide={`Non disponible à ${dureeEffective} mois pour ${millesimeCourant}`}
+      />
+
+      <div className="bloc-salaire-graphe">
+        <p className="bloc-salaire-graphe-titre">
+          Évolution sur les millésimes (à {dureeEffective} mois)
+        </p>
+        <GraphiqueEvolutionSalaires
+          donnees={donneesMillesimes}
+          abscisses="millesimes"
+          marqueur_x={Number(millesimeCourant)}
+          echelle_y={echelleY}
+          hauteur={120}
+        />
+      </div>
+
+      <div className="bloc-salaire-graphe">
+        <p className="bloc-salaire-graphe-titre">
+          Évolution sur la durée (millésime {millesimeCourant})
+        </p>
+        <GraphiqueEvolutionSalaires
+          donnees={donneesDurees}
+          abscisses="durees"
+          marqueur_x={Number(dureeEffective)}
+          echelle_y={echelleY}
+          hauteur={120}
+        />
+      </div>
+
+      <p className="bloc-salaire-note">
+        Salaire mensuel net en équivalent temps plein, observé {dureeEffective} mois
+        après la diplomation. Sur les sortants en emploi salarié.
+      </p>
+    </section>
+  );
 }
 
 // ---------------------------------------------------------------------

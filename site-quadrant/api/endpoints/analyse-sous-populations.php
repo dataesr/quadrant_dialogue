@@ -152,10 +152,13 @@ $mentionsAgregees = [];   // mode établissement : [{diplom, libelle_intitule}, 
 
 if (!$modeEtab) {
     // -------------------- Mode mention (historique) --------------------
+    // Colonnes de salaire (Phase 15.6) — uniquement en mode mention : les
+    // quantiles ne sont PAS agrégeables, donc absents du mode établissement.
     $sql = "
         SELECT date_inser, obtention_diplome, genre, nationalite, regime_inscription,
                formation, population,
-               $colonnesEffectifs
+               $colonnesEffectifs,
+               nb_salaires, salaire_q1, salaire_q2, salaire_q3
         FROM stats_sous_populations
         WHERE id_paysage = :id_paysage
           AND diplom = :diplom
@@ -417,6 +420,16 @@ foreach ($dureesDisponibles as $d) {
 $repartitions = construireRepartitions($parDuree[$dureesDisponibles[0]], $seuil);
 
 // =============================================================================
+// 8 bis. Salaires par sous-population (Phase 15.6)
+// =============================================================================
+//
+// Médiane + quartiles, par sous-population principale × durée de salaire
+// (12/18/24/30 — jamais 6), pour le millésime de la modale. Les quantiles
+// n'étant pas agrégeables, on ne calcule ce bloc qu'en mode mention ;
+// en mode établissement il est null (l'onglet « Salaires » reste masqué).
+$salairesParSousPop = $modeEtab ? null : construireSalairesParSousPop($parDuree, $DEFINITIONS);
+
+// =============================================================================
 // 9. Identité (libellés depuis stats_quadrant)
 // =============================================================================
 
@@ -464,6 +477,7 @@ Response::json([
     'durees_disponibles' => $dureesDisponibles,
     'donnees_par_duree'  => $donneesParDuree,
     'repartitions'       => $repartitions,
+    'salaires_par_sous_pop' => $salairesParSousPop,
 ]);
 
 
@@ -526,6 +540,69 @@ function construireIndicateurs(?array $row, int $seuil): array
         'taux_emploi_non_sal' => $diffusableSortants && $nbSortants > 0 ? round($nbNonSal / $nbSortants, 3) : null,
         'taux_emploi_stable' => $diffusableSortants && $nbSortants > 0 ? round($nbStable / $nbSortants, 3) : null,
         'diffusable'         => $diffusableEntrants,
+    ];
+}
+
+/**
+ * Salaires (médiane + quartiles) par sous-population principale × durée
+ * de salaire (12/18/24/30), pour le millésime de la modale (Phase 15.6).
+ *
+ * Couvre les 6 sous-populations principales (référence + femmes + hommes +
+ * apprentis + tous_nationalite + ensemble_diplomation), dans l'ordre du
+ * tableau d'analyse fine. Les croisements genre×régime sont exclus (pas
+ * de bloc salaire dédié, données souvent trop fines).
+ *
+ * Structure renvoyée (clé = id de sous-population) :
+ *   [
+ *     'reference' => [
+ *        'id' => 'reference', 'libelle' => 'Diplômés français',
+ *        'donnees_par_duree' => {
+ *           "12" => {nb_salaires, q1, q2, q3} | null, "18" => ..., ...
+ *        }
+ *     ], ...
+ *   ]
+ *
+ * Une cellule (durée) n'est renseignée que si salaire_q2 existe (les 4
+ * colonnes sont NULL ensemble sous le seuil de diffusion source).
+ */
+function construireSalairesParSousPop(array $parDuree, array $definitions): array
+{
+    $dureesSalaire = ['12', '18', '24', '30'];
+    // Sous-populations principales = toutes sauf les croisements genre×régime.
+    $principales = array_filter($definitions, static fn($d) => !$d['croisement']);
+
+    $out = [];
+    foreach ($principales as $def) {
+        $cle = cleSousPopulation($def['od'], $def['genre'], $def['nat'], $def['reg']);
+        $donneesParDuree = [];
+        foreach ($dureesSalaire as $d) {
+            $row = $parDuree[$d][$cle] ?? null;
+            $donneesParDuree[$d] = salaireCellule($row);
+        }
+        $out[$def['id']] = [
+            'id'                => $def['id'],
+            'libelle'           => $def['libelle'],
+            'donnees_par_duree' => $donneesParDuree,
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * Extrait la cellule salaire (nb_salaires + 3 quartiles) d'une ligne BDD.
+ * null si la ligne est absente ou si la médiane (q2) n'est pas renseignée.
+ */
+function salaireCellule(?array $row): ?array
+{
+    if ($row === null || !isset($row['salaire_q2']) || $row['salaire_q2'] === null) {
+        return null;
+    }
+    return [
+        'nb_salaires' => $row['nb_salaires'] !== null ? (int)$row['nb_salaires'] : null,
+        'q1'          => $row['salaire_q1']  !== null ? (int)$row['salaire_q1']  : null,
+        'q2'          => (int)$row['salaire_q2'],
+        'q3'          => $row['salaire_q3']  !== null ? (int)$row['salaire_q3']  : null,
     ];
 }
 
