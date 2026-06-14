@@ -1,6 +1,8 @@
 import BlocSalaireParcoursup from './BlocSalaireParcoursup.jsx';
 import GraphiqueEvolutionSalaires from './GraphiqueEvolutionSalaires.jsx';
+import AideTooltip from '../AideTooltip.jsx';
 import { aAuMoinsUnSalaire } from '../../utils/salaires.js';
+import { AIDE_SALAIRES } from '../../utils/methodologieSalaires.js';
 
 // Onglet « Salaires » de la modale d'analyse fine (Phase 15.6).
 //
@@ -38,6 +40,8 @@ export default function OngletSalaires({ salairesParSousPop, dureeCourante, mill
       <p className="onglet-salaires-intro">
         Salaire mensuel net médian (équivalent temps plein) des sortants en emploi
         salarié, par sous-population — millésime {millesime}.
+        {' '}
+        <AideTooltip texte={AIDE_SALAIRES} ariaLabel="À propos des salaires" />
       </p>
 
       <div className="onglet-salaires-grille">

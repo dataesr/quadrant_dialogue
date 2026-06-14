@@ -1015,6 +1015,23 @@ body.exporting .ref-axes-container {
   margin: 0 0 0.5rem;
   color: #333;
 }
+/* Liste ordonnée des étapes de calcul (section Salaires, Phase 15.7). */
+.modale-methodologie-contenu .liste-etapes-methodo {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #333;
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+.modale-methodologie-contenu .liste-etapes-methodo li {
+  margin-bottom: 0.35rem;
+}
+/* Attribution de source discrète en fin de section. */
+.modale-methodologie-contenu .source-methodo {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #777;
+}
 
 /* Bouton « Méthodologie » dans le panneau de filtres latéral. Tertiaire
    discret pour ne pas concurrencer l'export en pied de panneau. */
@@ -1431,6 +1448,12 @@ body.exporting .ref-axes-container {
   text-transform: none;
   letter-spacing: normal;
   margin-top: 2px;
+}
+/* Variante plus étroite pour les aides courtes (« ? » salaires, Phase 15.7)
+   — tooltip purement contextuel, ~50 mots, à garder compact (200-300 px). */
+.indicateur-avec-tooltip .tooltip-definition--court {
+  max-width: 280px;
+  min-width: 200px;
 }
 
 /* ----------------------------------------------------------------------

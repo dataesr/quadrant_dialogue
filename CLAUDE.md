@@ -602,6 +602,14 @@ Chaque catégorie expose la **liste des libellés** concernés. `comparaison_dis
 
 **Méthodologie.** Salaire mensuel **net en équivalent temps plein** (DSN, SIES), observé à **12/18/24/30 mois** après la diplomation, sur les **sortants en emploi salarié**. Vraie médiane de la mention/sous-population (≠ moyenne nationale d'un type de formation comme sur Parcoursup).
 
+### Phase 15.7 — Méthodologie des salaires (tooltips « ? » + section modale)
+
+**Section « Salaires » de la modale méthodologie.** Nouvelle clé `salaires` dans `public/methodologie.json` (`libelle`, `intro`, `etapes[]`, `details`, `source`) — texte SIES/InserSup complet (« Définition du salaire utilisé » : base Tous Salariés/DSN, calcul EQTP avec exemple chiffré, mensualisation, quartiles, pas de 6 mois de 12 à 30, exclusions, pluriactivité). Rendue par `SectionSalaires` dans `ModaleMethodologie.jsx`, **après la section Indicateurs** : `intro` (paragraphes `\n\n`) → `etapes` en liste ordonnée (`.liste-etapes-methodo`) → `details` (paragraphes) → `source` discrète (`.source-methodo`). La modale n'a pas de table des matières/onglets (pile de `<section>` scrollable) — rien à indexer. Éditable par SFTP comme le reste du JSON ; embarquée dans `dist/` au build.
+
+**« ? » d'aide contextuel.** Composant générique `AideTooltip.jsx` (icône `fr-icon-question-line` `.bouton-info`, popup `.tooltip-definition tooltip-definition--court` repositionné par `useAutoPlacement`, ouverture hover/focus/clic, fermeture Échap/blur/clic extérieur) — même habillage et interaction qu'`IndicateurTooltip`, mais alimenté par un **texte littéral** plutôt que par la méthodologie indexée par indicateur. Posé au niveau du titre de la rubrique **« Salaires des diplômés »** (barre latérale, `DetailsPanel`) et de l'**en-tête de l'onglet « Salaires »** (modale d'analyse fine, `OngletSalaires`). Variante CSS `--court` (200–280 px) pour un tooltip compact. **Pas** de renvoi vers la modale méthodologie (choix produit : aide purement contextuelle).
+
+**Texte court centralisé.** Constante JS `AIDE_SALAIRES` (`utils/methodologieSalaires.js`, ~50 mots) — source unique réutilisée par les deux « ? ». Conservée en JS (et non dans le JSON SFTP) pour être disponible **synchroniquement**, sans dépendre du chargement asynchrone de la méthodologie. Le texte **long** reste dans `methodologie.json` (édition SFTP, rendu par la modale).
+
 ### UX — Reset automatique du zoom
 
 Le zoom du quadrant est automatiquement réinitialisé à chaque changement de paramètre structurel (vue, cursus, millésime, axes, filtres avancés, `mesureAxes`/`perimetresAxes`). Évite de rester zoomé sur une zone sans bulles après une bascule de filtre. Le clic sur une bulle ne change aucun de ces paramètres → le zoom est conservé pendant l'exploration interactive.

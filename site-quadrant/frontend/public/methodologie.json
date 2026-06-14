@@ -121,6 +121,16 @@
       "formule": "Diplômés sortants en emploi stable / Diplômés sortants"
     }
   },
+  "salaires": {
+    "libelle": "Salaires",
+    "intro": "L'information sur les salaires est issue de la base Tous Salariés (BTS), extraite de la Déclaration Sociale Nominative (DSN) et corrigée par l'Insee. La base tous salariés étant un fichier annuel, l'information contenue est le cumul des rémunérations de l'année associé à chaque salarié dans son établissement employeur.\n\nLe salaire calculé inclut les primes et indemnités. Il est net de cotisations sociales. Le fichier étant annuel, le principe de calcul est le suivant pour chaque date d'insertion :",
+    "etapes": [
+      "Repérage des personnes occupant un emploi à la date d'insertion grâce aux dates de contrat.",
+      "Le cumul des rémunérations de chaque personne est converti à un temps plein pendant toute l'année (équivalent temps plein, EQTP), quel que soit le volume de travail effectif. Par exemple, pour un salarié ayant occupé un poste de travail pendant six mois à 80 % et ayant perçu un total de 10 000 euros, le salaire en EQTP est de 10 000 / (0,5 × 0,8) = 25 000 euros par an."
+    ],
+    "details": "Ce montant est ensuite mensualisé, pour afficher un salaire mensuel, et arrondi à la dizaine d'euros.\n\nPour les personnes pluriactives salariées, les salaires sont cumulés en bornant à 1 la somme des EQTP associés aux différents emplois occupés simultanément. Pour chaque sous-population sont fournis les premier, second et troisième quartiles de la distribution, pour chaque mention, chaque établissement, chaque type de diplôme et au niveau national.\n\nLes salaires sont calculés sur un pas de 6 mois, de 12 à 30 mois, au même titre que les taux d'emploi salariés. Sont exclues les rémunérations liées au chômage et à l'apprentissage. Uniquement les contrats aidés et ordinaires, les salaires non nuls, associés à des heures non nulles sont conservés. Les EQTP de la fonction publique ou des particuliers employeurs ne sont pas toujours renseignés. Ils sont donc estimés en utilisant une méthodologie, qui consiste à diviser le nombre d'heures travaillées par 1 820 (durée annuelle correspondant à 35 heures hebdomadaires).\n\nSi un étudiant a poursuivi plusieurs formations en même temps, son salaire est comptabilisé dans les statistiques de chacun des diplômes. Cependant, il n'est comptabilisé qu'une seule fois à des niveaux plus agrégés, comme le niveau national.",
+    "source": "Source : SIES — InserSup, « Définition du salaire utilisé »."
+  },
   "cursus": {
     "Licence générale": {
       "libelle": "Licence générale",

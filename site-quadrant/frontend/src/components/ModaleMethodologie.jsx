@@ -109,6 +109,8 @@ export default function ModaleMethodologie({ open, onClose }) {
                 <SectionIndicateurs indicateurs={meth.indicateurs} />
               )}
 
+              {meth.salaires && <SectionSalaires salaires={meth.salaires} />}
+
               {Object.entries(meth.cursus || {}).map(([code, bloc]) => (
                 <section key={code}>
                   <h3>{bloc.libelle}</h3>
@@ -140,6 +142,34 @@ export default function ModaleMethodologie({ open, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Section « Salaires » (Phase 15.7) : texte SIES/InserSup complet.
+// intro (paragraphes séparés par \n\n) → étapes de calcul (liste ordonnée)
+// → détails (paragraphes) → attribution discrète de la source.
+function SectionSalaires({ salaires }) {
+  const paras = (txt) => (txt || '').split('\n\n').filter(Boolean);
+  return (
+    <section>
+      <h3>{salaires.libelle || 'Salaires'}</h3>
+      {paras(salaires.intro).map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
+      {Array.isArray(salaires.etapes) && salaires.etapes.length > 0 && (
+        <ol className="liste-etapes-methodo">
+          {salaires.etapes.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ol>
+      )}
+      {paras(salaires.details).map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
+      {salaires.source && (
+        <p className="source-methodo">{salaires.source}</p>
+      )}
+    </section>
   );
 }
 

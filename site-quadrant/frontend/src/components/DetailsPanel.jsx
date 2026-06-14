@@ -24,6 +24,8 @@ import ModaleAnalyseSousPopulations from './sous-populations/ModaleAnalyseSousPo
 import BlocSalaireParcoursup from './sous-populations/BlocSalaireParcoursup.jsx';
 import GraphiqueEvolutionSalaires from './sous-populations/GraphiqueEvolutionSalaires.jsx';
 import { DUREES_SALAIRE, echelleCommune, donneesVersPoints } from '../utils/salaires.js';
+import AideTooltip from './AideTooltip.jsx';
+import { AIDE_SALAIRES } from '../utils/methodologieSalaires.js';
 
 // Panneau de détails d'une bulle.
 //
@@ -702,7 +704,10 @@ function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY })
 
   return (
     <section className="section-salaires">
-      <h3>Salaires des diplômés</h3>
+      <h3>
+        Salaires des diplômés{' '}
+        <AideTooltip texte={AIDE_SALAIRES} ariaLabel="À propos des salaires" />
+      </h3>
 
       <BlocSalaireParcoursup
         donnees={donneesBloc1}
