@@ -20,12 +20,12 @@ import { aAuMoinsUnSalaire } from '../../utils/salaires.js';
 
 // Ordre + libellés courts de la grille (alignés sur les ids backend).
 const BLOCS = [
-  { id: 'reference',            titre: 'Référence',        sous: 'Diplômés français' },
-  { id: 'femmes',               titre: 'Femmes',           sous: 'Diplômées françaises' },
-  { id: 'hommes',               titre: 'Hommes',           sous: 'Diplômés français' },
-  { id: 'apprentis',            titre: 'Apprentis',        sous: 'Diplômés français' },
-  { id: 'tous_nationalite',     titre: 'Tous diplômés',    sous: 'Effet nationalité' },
-  { id: 'ensemble_diplomation', titre: 'Diplômés et non',  sous: 'Effet diplomation' },
+  { id: 'reference',            titre: 'Référence',                       sous: 'Diplômés français' },
+  { id: 'femmes',               titre: 'Femmes',                          sous: 'Diplômées françaises' },
+  { id: 'hommes',               titre: 'Hommes',                          sous: 'Diplômés français' },
+  { id: 'apprentis',            titre: 'Apprentis',                       sous: 'Diplômés français' },
+  { id: 'tous_nationalite',     titre: 'Diplômés français et étrangers',  sous: 'Effet nationalité' },
+  { id: 'ensemble_diplomation', titre: 'Diplômés et non diplômés français', sous: 'Effet diplomation' },
 ];
 
 export default function OngletSalaires({ salairesParSousPop, dureeCourante, millesime }) {
@@ -73,6 +73,7 @@ export default function OngletSalaires({ salairesParSousPop, dureeCourante, mill
                     abscisses="durees"
                     marqueur_x={dureeCourante}
                     hauteur={110}
+                    variant="standard"
                   />
                 </>
               )}

@@ -388,13 +388,6 @@ export default function DetailsPanel() {
             />
           </section>
 
-          <SectionSalaires
-            salaires={data.salaires}
-            millesimeCourant={millesime}
-            dateInserX={dateInserX}
-            dateInserY={dateInserY}
-          />
-
           <SectionAutresIndicateurs
             donneesCourantes={data.donnees_courantes}
             historique={data.historique}
@@ -409,6 +402,14 @@ export default function DetailsPanel() {
             indicateursDesAxes={[variableX, variableY]}
             millesimeCourant={millesime}
             cursus={cursus}
+          />
+
+          {/* Rubrique salaires en fin de liste des indicateurs (Phase 15.6.1). */}
+          <SectionSalaires
+            salaires={data.salaires}
+            millesimeCourant={millesime}
+            dateInserX={dateInserX}
+            dateInserY={dateInserY}
           />
 
           {analyseSousPop && (

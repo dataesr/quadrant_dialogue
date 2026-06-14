@@ -2346,16 +2346,9 @@ body.exporting .source-attribution {
    ===================================================================== */
 
 /* --- Section salaires de la barre latérale --- */
-.section-salaires {
-  margin: 0.5rem 0 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #eee;
-}
-.section-salaires > h3 {
-  font-size: 0.95rem;
-  margin: 0 0 0.5rem;
-  color: #161616;
-}
+/* Pas de style de titre dédié : le <h3> hérite de `.panneau-details h3`
+   (petites capitales grises) — même rendu que « AUTRES INDICATEURS » etc.
+   (Phase 15.6.1 : harmonisation avec les autres rubriques). */
 .bloc-salaire-graphe {
   margin-top: 0.75rem;
 }
@@ -2463,6 +2456,25 @@ body.exporting .source-attribution {
   font-style: italic;
   color: #999;
   margin: 0.5rem 0;
+}
+/* Légende Q1/Q2/Q3 — swatches au style de ligne réel (pointillés/plein),
+   même esprit que .legende-variantes mais avec des lignes (pas des puces)
+   pour distinguer les dasharray. */
+.legende-salaires {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: #555;
+}
+.legende-salaires span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.legende-salaires-swatch {
+  flex: 0 0 auto;
 }
 
 /* --- Onglet « Salaires » de la modale d'analyse fine --- */
