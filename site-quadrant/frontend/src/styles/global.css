@@ -1450,10 +1450,16 @@ body.exporting .ref-axes-container {
   margin-top: 2px;
 }
 /* Variante plus étroite pour les aides courtes (« ? » salaires, Phase 15.7)
-   — tooltip purement contextuel, ~50 mots, à garder compact (200-300 px). */
+   — tooltip purement contextuel, ~50 mots, à garder compact (200-300 px).
+   Le « ? » est en fin de titre : on ancre le bord DROIT du tooltip sur le
+   bouton et on ouvre vers la GAUCHE (vers le titre, où il y a de la place),
+   plutôt que vers la droite où il déborderait / serait coupé. useAutoPlacement
+   rattrape tout débordement résiduel. */
 .indicateur-avec-tooltip .tooltip-definition--court {
   max-width: 280px;
   min-width: 200px;
+  left: auto;
+  right: 0;
 }
 
 /* ----------------------------------------------------------------------
