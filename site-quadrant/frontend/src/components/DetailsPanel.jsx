@@ -634,11 +634,15 @@ function ValeurCourante({ ligne, lignePrec, population }) {
 function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY }) {
   const parMillesime = salaires?.donnees_par_millesime_et_duree || null;
 
-  const { dureeEffective, donneesBloc1, donneesMillesimes, donneesDurees, echelleY } =
+  const {
+    dureeEffective, donneesBloc1, donneesMillesimes, donneesDurees,
+    echelleY, aDonneesMillesimeCourant,
+  } =
     useMemo(() => {
       const vide = {
         dureeEffective: null, donneesBloc1: null,
         donneesMillesimes: null, donneesDurees: null, echelleY: null,
+        aDonneesMillesimeCourant: false,
       };
       if (!salaires?.disponible || !parMillesime) return vide;
 
@@ -648,7 +652,17 @@ function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY })
       const dureeEff =
         candidats.find((d) => dataMillesimeCourant[d]) || voulue;
 
-      // Bloc 1 : la cellule (millésime courant, durée effective).
+      // Le millésime courant a-t-il au moins une durée renseignée ? Pilote
+      // l'affichage du bloc 3 (« Évolution sur la durée ») — masqué sinon
+      // (Phase 15.6.2 : graphique vide/plat dénué de sens pour un millésime
+      // récent sans enquête d'insertion).
+      const aData = DUREES_SALAIRE.some(
+        (d) => dataMillesimeCourant[String(d)]?.q2 != null,
+      );
+
+      // Bloc 1 : la cellule (millésime courant, durée effective). Le fallback
+      // ne porte que sur la DURÉE au sein du millésime courant (pas de bascule
+      // cross-millésime) → « Non disponible » si le millésime courant est vide.
       const bloc1 = dataMillesimeCourant[dureeEff] || null;
 
       // Bloc 2 : durée fixe = durée effective, sur tous les millésimes.
@@ -663,11 +677,11 @@ function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY })
         surDurees[String(d)] = dataMillesimeCourant[String(d)] || null;
       });
 
-      // Échelle Y commune aux blocs 2 et 3.
-      const echelle = echelleCommune(
-        donneesVersPoints(surMillesimes),
-        donneesVersPoints(surDurees),
-      );
+      // Échelle Y : commune aux blocs 2 et 3 quand les deux sont affichés ;
+      // sinon (bloc 3 masqué) calculée sur les seules données du bloc 2.
+      const echelle = aData
+        ? echelleCommune(donneesVersPoints(surMillesimes), donneesVersPoints(surDurees))
+        : echelleCommune(donneesVersPoints(surMillesimes));
 
       return {
         dureeEffective: dureeEff,
@@ -675,6 +689,7 @@ function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY })
         donneesMillesimes: surMillesimes,
         donneesDurees: surDurees,
         echelleY: echelle,
+        aDonneesMillesimeCourant: aData,
       };
     }, [salaires, parMillesime, millesimeCourant, dateInserX, dateInserY]);
 
@@ -710,18 +725,20 @@ function SectionSalaires({ salaires, millesimeCourant, dateInserX, dateInserY })
         />
       </div>
 
-      <div className="bloc-salaire-graphe">
-        <p className="bloc-salaire-graphe-titre">
-          Évolution sur la durée (millésime {millesimeCourant})
-        </p>
-        <GraphiqueEvolutionSalaires
-          donnees={donneesDurees}
-          abscisses="durees"
-          marqueur_x={Number(dureeEffective)}
-          echelle_y={echelleY}
-          hauteur={120}
-        />
-      </div>
+      {aDonneesMillesimeCourant && (
+        <div className="bloc-salaire-graphe">
+          <p className="bloc-salaire-graphe-titre">
+            Évolution sur la durée (millésime {millesimeCourant})
+          </p>
+          <GraphiqueEvolutionSalaires
+            donnees={donneesDurees}
+            abscisses="durees"
+            marqueur_x={Number(dureeEffective)}
+            echelle_y={echelleY}
+            hauteur={120}
+          />
+        </div>
+      )}
 
       <p className="bloc-salaire-note">
         Salaire mensuel net en équivalent temps plein, observé {dureeEffective} mois
