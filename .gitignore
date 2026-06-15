@@ -33,6 +33,16 @@ temp/
 vendor/
 composer.lock
 
-# === Déploiement ===
+# === Déploiement (URLs serveur, chemins OVH — repo public) ===
 deploy.sh
+deploy-preprod.sh
+deploy-prod.sh
 .ftpconfig
+
+# === Doc interne (chemins serveur, URLs, structure) ===
+CLAUDE.md
+
+# === Configs par environnement (sur serveur uniquement) ===
+.env.php
+.env.production
+.env.preprod
