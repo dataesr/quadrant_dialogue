@@ -9,6 +9,14 @@
 
 return [
 
+    // Nom de l'environnement servi par ce config.php. Purement
+    // indicatif (traçabilité logs / diagnostic) : 'preprod' sur
+    // /homez.10002/mesouvm/quadsies, 'prod' sur
+    // /homez.10002/mesouvm/quadsies-prod. La BDD est partagée entre
+    // les deux environnements, seuls config.php et le code déployé
+    // diffèrent. Ne change aucun comportement métier.
+    'env_name' => 'preprod', // ou 'prod' sur le serveur de production
+
     // Base de données MySQL OVH
     'db' => [
         'host'     => 'mysql-quadrant.exemple.fr',
