@@ -38,7 +38,14 @@ export default function AdvancedFilters() {
     memeTypologie, setMemeTypologie,
     afficherDistributions, setAfficherDistributions,
     resetAdvancedFilters,
+    frontendConfig,
   } = useApp();
+
+  // Bouton « Voir l'évolution » conditionné par un flag de config
+  // (Phase 16.1). Opt-in : masqué par défaut, activé par environnement
+  // via `afficher_bouton_evolution` dans config.php. Un seul flag
+  // global — comportement identique en vues Mentions et Positionnement.
+  const afficherBoutonEvolution = !!frontendConfig?.afficherBoutonEvolution;
 
   function ouvrirModaleMethodologie() {
     setModaleMethodOpen(true);
@@ -115,20 +122,22 @@ export default function AdvancedFilters() {
           temporelle), elle gagne en visibilité ici. Disabled tant
           qu'aucun étab n'est sélectionné — cohérent avec les autres
           contrôles du panneau. */}
-      <button
-        type="button"
-        className="fr-btn fr-btn--sm fr-btn--secondary fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
-        onClick={() => {
-          trackEvent('Animation temporelle', 'ouverture_modale', null, {
-            etab: etabInfo?.libelle, vue, cursus, millesime,
-          });
-          setModaleAnimOpen(true);
-        }}
-        disabled={!etabContexte}
-      >
-        Voir l&apos;évolution
-      </button>
-      {modaleAnimOpen && (
+      {afficherBoutonEvolution && (
+        <button
+          type="button"
+          className="fr-btn fr-btn--sm fr-btn--secondary fr-btn--icon-left fr-icon-play-fill bouton-voir-evolution"
+          onClick={() => {
+            trackEvent('Animation temporelle', 'ouverture_modale', null, {
+              etab: etabInfo?.libelle, vue, cursus, millesime,
+            });
+            setModaleAnimOpen(true);
+          }}
+          disabled={!etabContexte}
+        >
+          Voir l&apos;évolution
+        </button>
+      )}
+      {afficherBoutonEvolution && modaleAnimOpen && (
         <ModaleAnimation open onClose={() => setModaleAnimOpen(false)} />
       )}
 

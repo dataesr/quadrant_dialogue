@@ -17,6 +17,16 @@ return [
     // diffèrent. Ne change aucun comportement métier.
     'env_name' => 'preprod', // ou 'prod' sur le serveur de production
 
+    // Affichage du bouton « Voir l'évolution » (ouvre la modale
+    // d'animation temporelle) dans la barre latérale des vues Mentions
+    // et Positionnement. Flag purement UI, exposé au frontend via
+    // /api/frontend-config (champ `afficherBoutonEvolution`).
+    //
+    // Par défaut désactivé — à activer explicitement ('true') sur les
+    // environnements où la fonctionnalité est pertinente. Si la clé est
+    // absente, le frontend masque le bouton (défaut false côté endpoint).
+    'afficher_bouton_evolution' => false,
+
     // Base de données MySQL OVH
     'db' => [
         'host'     => 'mysql-quadrant.exemple.fr',

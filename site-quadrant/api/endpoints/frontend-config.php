@@ -44,4 +44,12 @@ echo json_encode([
         'xlsx_enabled'       => $exports['xlsx_enabled']       ?? true,
         'docx_fiche_enabled' => $exports['docx_fiche_enabled'] ?? true,
     ],
+
+    // Affichage du bouton « Voir l'évolution » (modale d'animation
+    // temporelle). Contrairement aux exports (défaut permissif à true),
+    // ce flag est en opt-in : défaut `false` si la clé est absente de
+    // config.php. Préserver le bouton après déploiement requiert donc
+    // d'ajouter explicitement 'afficher_bouton_evolution' => true dans
+    // le config.php de chaque environnement.
+    'afficherBoutonEvolution' => (bool)($config['afficher_bouton_evolution'] ?? false),
 ]);

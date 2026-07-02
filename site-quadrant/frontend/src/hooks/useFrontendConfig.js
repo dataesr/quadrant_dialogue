@@ -17,6 +17,11 @@ const DEFAULTS = Object.freeze({
     xlsx_enabled:       true,
     docx_fiche_enabled: true,
   }),
+  // Bouton « Voir l'évolution » : opt-in. Contrairement aux exports
+  // (fallback permissif à true), le défaut est false — si l'endpoint
+  // est injoignable, le bouton reste masqué, cohérent avec l'intention
+  // (fonctionnalité activée explicitement par environnement).
+  afficherBoutonEvolution: false,
 });
 
 export function useFrontendConfig() {
@@ -33,6 +38,7 @@ export function useFrontendConfig() {
             xlsx_enabled:       data?.exports?.xlsx_enabled       ?? true,
             docx_fiche_enabled: data?.exports?.docx_fiche_enabled ?? true,
           },
+          afficherBoutonEvolution: data?.afficherBoutonEvolution ?? false,
         });
       })
       .catch(() => {
