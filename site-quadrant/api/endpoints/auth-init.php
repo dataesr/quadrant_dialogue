@@ -139,8 +139,9 @@ function serveFrontendWithContext(
     
     $html = preg_replace('/(<head[^>]*>)/i', '$1' . $metaTags, $html, 1);
     
-    // CSP iframe — autoriser uniquement le site hôte à embarquer
-    header('Content-Security-Policy: frame-ancestors https://dialogue.dgesip.fr');
+    // CSP iframe — autoriser uniquement les adresses du site hôte à embarquer
+    // (liste à garder identique à celle de api/.htaccess).
+    header('Content-Security-Policy: frame-ancestors https://dialogue.dgesip.fr https://dialogue.mesri.fr https://interactions.dgri.fr');
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
     
