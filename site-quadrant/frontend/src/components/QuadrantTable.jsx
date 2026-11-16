@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '../context/AppContext.jsx';
 import { useQuadrant } from '../hooks/useQuadrant.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import NoteCalculAgregats from './NoteCalculAgregats.jsx';
 import { trackEvent } from '../utils/matomo.js';
 import IndicateurTooltip from './IndicateurTooltip.jsx';
 import MessageErreur from './MessageErreur.jsx';
@@ -322,6 +323,8 @@ export default function QuadrantTable() {
           )}
         </section>
       )}
+
+      <NoteCalculAgregats vue={vue} mention={mention} />
 
       <p className="source-attribution">
         {LIBELLE_SOURCE} · {MENTION_DIFFUSION}

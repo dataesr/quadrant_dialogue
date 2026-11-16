@@ -216,22 +216,17 @@ $motifContexte = '%;' . $contexteId . ';%';
 // x_prev/y_prev = null — fallback gracieux côté frontend (tiret).
 $millesimePrec = (string)((int)$millesime - 1);
 
+// Conditions communes (hors indicateurs) : partagées par la requête
+// self-join (vue Mentions / Positionnement filtré sur une mention) et par
+// les deux requêtes plates de l'agrégat établissement (cf. section 4).
 $conditions = [
     'm1.formation = :formation',
     'm1.millesime IN (:millesime, :millesimePrec)',
-    'm1.indicateur = :var1',
-    'm1.date_inser = :date1',
-    'm2.indicateur = :var2',
-    'm2.date_inser = :date2',
 ];
 $params = [
     ':formation'     => $formation,
     ':millesime'     => $millesime,
     ':millesimePrec' => $millesimePrec,
-    ':var1'          => $var1,
-    ':date1'         => $dateInserVar1,
-    ':var2'          => $var2,
-    ':date2'         => $dateInserVar2,
 ];
 
 // Filtrage par contexte (cf. cadrage §3 et §4) :
@@ -246,16 +241,18 @@ if ($vue === 'mentions') {
     $params[':motif'] = $motifContexte;
 }
 
-// Filtres disciplinaires (uniquement vue=mentions)
-if ($vue === 'mentions') {
-    if ($dom !== '') {
-        $conditions[] = 'm1.dom = :dom';
-        $params[':dom'] = $dom;
-    }
-    if ($discipli !== '') {
-        $conditions[] = 'm1.discipli = :discipli';
-        $params[':discipli'] = $discipli;
-    }
+// Filtres disciplinaires (les deux vues). En vue Positionnement, la bulle
+// d'un établissement agrège alors uniquement ses mentions du domaine / de la
+// discipline choisis — cohérent avec /quadrant/details et l'analyse fine
+// (SousPopulations::resoudreMentionsFiltrees). Auparavant limité à
+// vue=mentions : le filtre était affiché mais sans effet en Positionnement.
+if ($dom !== '') {
+    $conditions[] = 'm1.dom = :dom';
+    $params[':dom'] = $dom;
+}
+if ($discipli !== '') {
+    $conditions[] = 'm1.discipli = :discipli';
+    $params[':discipli'] = $discipli;
 }
 
 // Filtre secteur quadrant (les deux vues)
@@ -299,14 +296,29 @@ if ($formation === 'Master' && $master !== '') {
     $params[':master'] = $master;
 }
 
-$whereClause = implode(' AND ', $conditions);
+$whereCommun = implode(' AND ', $conditions);
 
 // =============================================================================
-// 4. Requête principale : self-join pour récupérer var1 et var2 ensemble
+// 4. Requête principale
 // =============================================================================
+//
+// Deux stratégies selon ce que représente une bulle :
+//
+//  - Bulle = une mention (vue Mentions, ou Positionnement filtré sur une
+//    mention) : self-join var1/var2 par (diplom, id_paysage, millesime). Une
+//    mention n'est placée que si elle dispose des DEUX indicateurs.
+//
+//  - Bulle = un établissement (Positionnement sans filtre mention) : chaque
+//    axe est le taux de l'établissement sur TOUTES ses mentions disposant de
+//    cet indicateur, indépendamment de l'autre axe. Deux requêtes plates (une
+//    par indicateur) : les lignes X portent num_y/denom_y = 0 et inversement,
+//    la somme par établissement (agregerLignesParVue) donne donc directement
+//    SUM(num)/SUM(denom) par axe. Cohérent avec l'encart /quadrant/details.
+//    Avant correction, le self-join écartait de l'agrégat les mentions n'ayant
+//    qu'un des deux indicateurs → écart infobulle ↔ encart (cas USMB, LG 2023,
+//    réussite en 3 ou 4 ans × taux de poursuivants : 51,8 % vs 52,5 %).
 
-$sql = "
-    SELECT
+$colonnesCommunes = "
         m1.millesime,
         m1.diplom,
         m1.libelle_intitule,
@@ -317,24 +329,65 @@ $sql = "
         m1.secteur_disciplinaire_quadrant,
         m1.dom,
         m1.dom_lib,
-        m1.filtre_perimetre,
-        m1.numerateur   AS num_x,
-        m1.denominateur AS denom_x,
-        m1.population   AS population_x,
-        m2.numerateur   AS num_y,
-        m2.denominateur AS denom_y,
-        m2.population   AS population_y
-    FROM stats_quadrant m1
-    INNER JOIN stats_quadrant m2
-        ON m1.diplom    = m2.diplom
-       AND m1.id_paysage = m2.id_paysage
-       AND m1.millesime = m2.millesime
-    WHERE $whereClause
-";
+        m1.filtre_perimetre";
 
-$stmt = Database::get()->prepare($sql);
-$stmt->execute($params);
-$lignes = $stmt->fetchAll();
+if ($vue === 'etablissements' && $mention === '') {
+    $sqlAxe = "
+        SELECT $colonnesCommunes,
+            m1.numerateur   AS num,
+            m1.denominateur AS denom,
+            m1.population   AS population
+        FROM stats_quadrant m1
+        WHERE $whereCommun
+          AND m1.indicateur = :ind
+          AND m1.date_inser = :date
+    ";
+    $stmt = Database::get()->prepare($sqlAxe);
+
+    $lignes = [];
+    foreach ([['x', $var1, $dateInserVar1], ['y', $var2, $dateInserVar2]] as [$axe, $ind, $date]) {
+        $autre = $axe === 'x' ? 'y' : 'x';
+        $stmt->execute(array_merge($params, [':ind' => $ind, ':date' => $date]));
+        foreach ($stmt->fetchAll() as $l) {
+            $l["num_$axe"]          = $l['num'];
+            $l["denom_$axe"]        = $l['denom'];
+            $l["population_$axe"]   = $l['population'];
+            $l["num_$autre"]        = 0;
+            $l["denom_$autre"]      = 0;
+            $l["population_$autre"] = null;
+            unset($l['num'], $l['denom'], $l['population']);
+            $lignes[] = $l;
+        }
+    }
+} else {
+    $sql = "
+        SELECT $colonnesCommunes,
+            m1.numerateur   AS num_x,
+            m1.denominateur AS denom_x,
+            m1.population   AS population_x,
+            m2.numerateur   AS num_y,
+            m2.denominateur AS denom_y,
+            m2.population   AS population_y
+        FROM stats_quadrant m1
+        INNER JOIN stats_quadrant m2
+            ON m1.diplom    = m2.diplom
+           AND m1.id_paysage = m2.id_paysage
+           AND m1.millesime = m2.millesime
+        WHERE $whereCommun
+          AND m1.indicateur = :var1
+          AND m1.date_inser = :date1
+          AND m2.indicateur = :var2
+          AND m2.date_inser = :date2
+    ";
+    $stmt = Database::get()->prepare($sql);
+    $stmt->execute(array_merge($params, [
+        ':var1'  => $var1,
+        ':date1' => $dateInserVar1,
+        ':var2'  => $var2,
+        ':date2' => $dateInserVar2,
+    ]));
+    $lignes = $stmt->fetchAll();
+}
 
 // =============================================================================
 // 5. Agrégation selon la vue
@@ -910,6 +963,10 @@ function agregerLignesParVue(
                 'denom_y'          => 0,
             ];
         }
+        // Lignes mono-axe (cf. section 4) : population de l'autre axe à null
+        // → on retient la première valeur renseignée rencontrée.
+        $parEtab[$uai]['population_x'] ??= $l['population_x'];
+        $parEtab[$uai]['population_y'] ??= $l['population_y'];
         $parEtab[$uai]['num_x']   += (int)$l['num_x'];
         $parEtab[$uai]['denom_x'] += (int)$l['denom_x'];
         $parEtab[$uai]['num_y']   += (int)$l['num_y'];

@@ -75,6 +75,17 @@ $etabContexte = $_GET['etab_contexte'] ?? '';
 $mention      = $_GET['mention']       ?? '';
 $forExport    = !empty($_GET['for_export']);
 
+// Filtres disciplinaires (vue=etablissements sans mention) : l'agrégat de
+// l'établissement porte sur ses seules mentions filtrées, comme la bulle
+// de /quadrant. Sans effet en vue=mentions ou avec filtre mention (une
+// seule mention ciblée). Valeurs bindées en PDO, pas d'injection possible.
+$filtresDisciplinaires = [
+    'dom'      => (string)($_GET['dom']      ?? ''),
+    'discipli' => (string)($_GET['discipli'] ?? ''),
+    'secteur'  => (string)($_GET['secteur']  ?? ''),
+    'master'   => (string)($_GET['master']   ?? ''),
+];
+
 // Seuil de diffusion appliqué sur les valeurs courantes/historiques.
 //   - Affichage écran : Diffusion::SEUIL_DIFFUSION (5).
 //   - Export Word     : `exports.seuil_diffusable` (20 par défaut),
@@ -227,7 +238,7 @@ $canonique = listeCanoniqueIndicateurs($indicateursReferentiel);
 
 $rowsCourant = chargerDonneesBrutes(
     $pdo, $vue, $targetId, $etabContexte, $mention,
-    $formation, $millesime
+    $formation, $millesime, $filtresDisciplinaires
 );
 // Seuil effectif : si on est en mode export (for_export=1), on
 // applique le seuil plus strict configuré (seuil_diffusable), sinon
@@ -242,7 +253,7 @@ $donneesCourantes = normaliserDonnees($canonique, $rowsCourant, $seuilEffectif);
 
 $rowsHistorique = chargerDonneesBrutes(
     $pdo, $vue, $targetId, $etabContexte, $mention,
-    $formation, null /* tous millésimes */
+    $formation, null /* tous millésimes */, $filtresDisciplinaires
 );
 
 // Bucket par millésime, puis on normalise chaque seau avec la liste canonique.
@@ -324,14 +335,8 @@ if ($vue === 'mentions' || ($vue === 'etablissements' && $mention !== '')) {
     }
 } elseif ($vue === 'etablissements') {
     // Agrégat établissement : mentions filtrées (mêmes filtres que /quadrant).
-    $filtresAnalyse = [
-        'dom'      => $_GET['dom']      ?? '',
-        'discipli' => $_GET['discipli'] ?? '',
-        'secteur'  => $_GET['secteur']  ?? '',
-        'master'   => $_GET['master']   ?? '',
-    ];
     $mentionsAnalyse = SousPopulations::resoudreMentionsFiltrees(
-        $pdo, $targetId, $formation, $millesime, $filtresAnalyse, $motifContexte
+        $pdo, $targetId, $formation, $millesime, $filtresDisciplinaires, $motifContexte
     );
     $diplomsAnalyse = array_column($mentionsAnalyse, 'diplom');
     $nbEtudiantsReference = SousPopulations::sommeReferenceAgregee(
@@ -437,7 +442,9 @@ function listeCanoniqueIndicateurs(array $referentiel): array
  *
  *  - vue=mentions          : filtre par diplom + id_paysage (etab_contexte)
  *  - vue=etablissements
- *      sans mention        : agrège par établissement (SUM num/denom)
+ *      sans mention        : agrège par établissement (SUM num/denom),
+ *                            sur les mentions satisfaisant les filtres
+ *                            disciplinaires (mêmes filtres que /quadrant)
  *      avec mention        : filtre par id_paysage + diplom, pas d'agrégation
  *
  * Si $millesime est null, on charge tous les millésimes (pour l'historique).
@@ -453,7 +460,8 @@ function chargerDonneesBrutes(
     string $etabContexte,
     string $mention,
     string $formation,
-    ?string $millesime
+    ?string $millesime,
+    array $filtres = []
 ): array {
     $params = [
         ':formation' => $formation,
@@ -475,6 +483,25 @@ function chargerDonneesBrutes(
         // vue=etablissements sans filtre mention : agrégat sur toutes les mentions.
         $conditions[] = 'id_paysage = :id';
         $params[':id'] = $targetId;
+        // Mêmes filtres que la bulle de /quadrant (et que
+        // SousPopulations::resoudreMentionsFiltrees). Chaque indicateur est
+        // sommé sur toutes les mentions filtrées qui en disposent.
+        if (($filtres['dom'] ?? '') !== '') {
+            $conditions[] = 'dom = :dom';
+            $params[':dom'] = $filtres['dom'];
+        }
+        if (($filtres['discipli'] ?? '') !== '') {
+            $conditions[] = 'discipli = :discipli';
+            $params[':discipli'] = $filtres['discipli'];
+        }
+        if (($filtres['secteur'] ?? '') !== '') {
+            $conditions[] = 'secteur_disciplinaire_quadrant = :secteur';
+            $params[':secteur'] = $filtres['secteur'];
+        }
+        if ($formation === 'Master' && ($filtres['master'] ?? '') !== '') {
+            $conditions[] = 'master = :master';
+            $params[':master'] = $filtres['master'];
+        }
     }
 
     if ($millesime !== null) {

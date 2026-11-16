@@ -20,6 +20,7 @@ import {
   ORDRE_CATEGORIES_ETAB,
 } from '../utils/colors.js';
 import { LIBELLE_SOURCE, MENTION_DIFFUSION } from '../utils/constants.js';
+import NoteCalculAgregats from './NoteCalculAgregats.jsx';
 import { formatLibelle, formatLibelleAxe } from '../utils/libelleAxe.js';
 import { descripteursReferences, cleAxe } from '../utils/referenceAxes.js';
 import { formatDelta } from '../utils/formatDelta.js';
@@ -734,6 +735,8 @@ export default function Quadrant({ forExport = false } = {}) {
         </div>
       )}
 
+      {!forExport && <NoteCalculAgregats vue={vue} mention={mention} />}
+
       <p className="source-attribution">
         {LIBELLE_SOURCE} · {MENTION_DIFFUSION}
       </p>
@@ -752,6 +755,12 @@ export default function Quadrant({ forExport = false } = {}) {
 // Le décalage est appliqué en transform plutôt qu'en ajustant `left`
 // pour ne pas se mettre en boucle de mesure (transform sort du flux,
 // le layout du parent reste stable).
+// Format français : 1 décimale, virgule, espace insécable avant le %
+// (cohérent avec l'encart du panneau de détails).
+function formatPctTooltip(v) {
+  return `${(v * 100).toFixed(1).replace('.', ',')}\u00a0%`;
+}
+
 function QuadrantTooltip({ hovered, vue }) {
   const ref = useAutoPlacement([hovered]);
 
@@ -770,13 +779,13 @@ function QuadrantTooltip({ hovered, vue }) {
         </div>
       )}
       <div>
-        Axe horizontal : {(hovered.bulle.x * 100).toFixed(1)} %
+        Axe horizontal : {formatPctTooltip(hovered.bulle.x)}
         {hovered.bulle.x_prev != null && (
           <span className="delta">{' '}{formatDelta(hovered.bulle.x, hovered.bulle.x_prev)}</span>
         )}
       </div>
       <div>
-        Axe vertical&nbsp;&nbsp; : {(hovered.bulle.y * 100).toFixed(1)} %
+        Axe vertical&nbsp;&nbsp; : {formatPctTooltip(hovered.bulle.y)}
         {hovered.bulle.y_prev != null && (
           <span className="delta">{' '}{formatDelta(hovered.bulle.y, hovered.bulle.y_prev)}</span>
         )}

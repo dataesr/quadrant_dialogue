@@ -215,8 +215,7 @@ if (count($millesimesCommuns) < 2) {
 // Filtres SQL appliqués ici :
 //   - formation, indicateur, date_inser, millesime IN (...) (toujours)
 //   - filtre_perimetre LIKE (vue=mentions uniquement)
-//   - dom, discipli (vue=mentions, optionnels)
-//   - secteur (les deux vues, optionnel)
+//   - dom, discipli, secteur (les deux vues, optionnels)
 //   - mention diplom (vue=etablissements avec filtre mention, optionnel)
 //   - master (formation=Master, optionnel)
 //
@@ -561,11 +560,9 @@ function fetcherLignesPourVariables(
         $conditions[] = 'filtre_perimetre LIKE :motif';
         $paramsCommuns[':motif'] = '%;' . $contexteId . ';%';
     }
-    // Filtres disciplinaires (vue=mentions, hors mention bug bridge)
-    if ($vue === 'mentions') {
-        if ($dom !== '')      { $conditions[] = 'dom = :dom';           $paramsCommuns[':dom'] = $dom; }
-        if ($discipli !== '') { $conditions[] = 'discipli = :discipli'; $paramsCommuns[':discipli'] = $discipli; }
-    }
+    // Filtres disciplinaires (les deux vues — cohérent /quadrant.php)
+    if ($dom !== '')      { $conditions[] = 'dom = :dom';           $paramsCommuns[':dom'] = $dom; }
+    if ($discipli !== '') { $conditions[] = 'discipli = :discipli'; $paramsCommuns[':discipli'] = $discipli; }
     if ($secteur !== '')  { $conditions[] = 'secteur_disciplinaire_quadrant = :secteur'; $paramsCommuns[':secteur'] = $secteur; }
     if ($mention !== '')  { $conditions[] = 'diplom = :mention';       $paramsCommuns[':mention'] = $mention; }
     if ($formation === 'Master' && $master !== '') {
@@ -602,7 +599,11 @@ function fetcherLignesPourVariables(
     $sqlY = "
         SELECT millesime, diplom, id_paysage,
                numerateur AS num_y, denominateur AS denom_y,
-               population AS population_y
+               population AS population_y,
+               secteur_disciplinaire_quadrant, dom, dom_lib,
+               libelle_intitule, uo_lib, reg_id,
+               typologie_d_universites_et_assimiles AS typologie,
+               filtre_perimetre
         FROM stats_quadrant
         WHERE $whereCommun
           AND indicateur = :ind AND date_inser = :date
@@ -621,6 +622,24 @@ function fetcherLignesPourVariables(
     foreach ($lignesY as $ly) {
         $key = $ly['millesime'] . '|' . $ly['diplom'] . '|' . $ly['id_paysage'];
         $indexY[$key] = $ly;
+    }
+
+    // Agrégat établissement (vue Positionnement sans filtre mention) : chaque
+    // axe porte sur TOUTES les mentions de l'établissement disposant de
+    // l'indicateur, sans exiger l'autre (cohérent /quadrant.php et l'encart
+    // /quadrant/details). Lignes mono-axe : l'autre axe à 0, la somme par
+    // établissement (agregerParEtablissement) donne SUM(num)/SUM(denom).
+    if ($vue === 'etablissements' && $mention === '') {
+        $parMillesime = [];
+        foreach ($lignesX as $lx) {
+            $lx['num_y'] = 0; $lx['denom_y'] = 0; $lx['population_y'] = null;
+            $parMillesime[$lx['millesime']][] = $lx;
+        }
+        foreach ($lignesY as $ly) {
+            $ly['num_x'] = 0; $ly['denom_x'] = 0; $ly['population_x'] = null;
+            $parMillesime[$ly['millesime']][] = $ly;
+        }
+        return $parMillesime;
     }
 
     // Jointure + ventilation par millésime
@@ -664,6 +683,8 @@ function agregerParEtablissement(array $lignes): array
                 'num_y' => 0, 'denom_y' => 0,
             ];
         }
+        $parEtab[$uai]['population_x'] ??= $l['population_x'] ?? null;
+        $parEtab[$uai]['population_y'] ??= $l['population_y'] ?? null;
         $parEtab[$uai]['num_x']   += (int)$l['num_x'];
         $parEtab[$uai]['denom_x'] += (int)$l['denom_x'];
         $parEtab[$uai]['num_y']   += (int)$l['num_y'];

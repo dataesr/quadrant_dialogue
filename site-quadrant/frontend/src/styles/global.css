@@ -469,6 +469,17 @@ body.exporting .ref-axes-container {
   text-align: right;
 }
 
+/* Note de lecture sur le périmètre de calcul des agrégats (vue Mentions :
+   références sur les mentions disposant des deux indicateurs ; vue
+   Positionnement : chaque axe sur toutes les mentions disposant de
+   l'indicateur). Masquée à l'export PNG (cf. body.exporting). */
+.note-calcul-agregats {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #666;
+}
+
 /* Compteur de mouvements de bulles (Phase 15.3, déplacé dans la modale
    d'animation en 15.4). Texte sobre, sur une seule phrase — sans
    couleur ni encadrement par catégorie (les couleurs ne sont pas
@@ -1481,7 +1492,8 @@ body.exporting .quadrant-zoom-controls,
 body.exporting .quadrant-tooltip,
 body.exporting .graphe-tooltip,
 body.exporting .panneau-details,
-body.exporting .source-attribution {
+body.exporting .source-attribution,
+body.exporting .note-calcul-agregats {
   display: none !important;
 }
 /* La .source-attribution écran porte désormais aussi la mention de
